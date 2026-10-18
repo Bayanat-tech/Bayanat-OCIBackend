@@ -225,7 +225,7 @@ export const insUpdTteSdnBulk = async (
 
 
       REF_DOC_NO:
-        header.ref_doc_no ?? 0,
+        header.ref_doc_no ?? null,
 
 
 
@@ -372,6 +372,10 @@ export const insUpdTteSdnBulk = async (
 
       TX_COMPNT_HDISC_AMT_1:
         header.tx_compnt_hdisc_amt_1 ?? 0,
+
+
+       JOB_CARD_NO :
+        header.job_card_no ?? null,
 
 
 

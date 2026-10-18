@@ -136,9 +136,13 @@ async function startServer() {
     // await AttendanceEventScheduler.initializeScheduler();
     console.log(" All database connections initialized");
 
-    console.log("Initializing TypeORM service...");
-    await TypeORMService.initialize();
-    console.log("TypeORM initialized successfully");
+    try {
+      console.log("Initializing TypeORM service...");
+      await TypeORMService.initialize();
+      console.log("TypeORM initialized successfully");
+    } catch (typeormErr) {
+      console.warn("TypeORM service initialization warning (continuing):", typeormErr);
+    }
 
     try {
       console.log("Initializing passport strategies...");

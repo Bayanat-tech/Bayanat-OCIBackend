@@ -43,10 +43,14 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 
     const result = await connection.execute(
       `SELECT 
-          *
-       FROM VW_AC_MASTER
-       WHERE COMPANY_CODE = :company_code
-       ORDER BY l1_code, l2_code, l3_code, l4_code, ac_code`,
+          v.l1_code, v.l1_description, v.l2_code, v.l2_description,
+          v.l3_code, v.l3_description, v.l4_code, v.l4_description,
+          v.ac_code, v.ac_name, a.ac_active, a.ac_status, a.approved_by
+       FROM VW_AC_MASTER v
+       LEFT JOIN MS_ACCODES a 
+         ON a.company_code = v.company_code AND a.ac_code = v.ac_code
+       WHERE v.company_code = :company_code
+       ORDER BY v.l1_code, v.l2_code, v.l3_code, v.l4_code, v.ac_code`,
       {
         company_code: requestUser.company_code
       },
@@ -55,16 +59,13 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
       }
     );
 
-    console.log('Raw result:', result.rows); 
-    console.log('First row:', result.rows?.[0]); 
-
     if (!result.rows || result.rows.length === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({ success: false });
       return;
     }
 
     const normalizedData = result.rows.map((row: any) => ({
-      l1_code:row.L1_CODE,
+      l1_code: row.L1_CODE,
       l1_description: row.L1_DESCRIPTION,
       l2_code: row.L2_CODE,
       l2_description: row.L2_DESCRIPTION,
@@ -74,6 +75,9 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
       l4_description: row.L4_DESCRIPTION,
       ac_code: row.AC_CODE,
       ac_name: row.AC_NAME,
+      ac_active: row.AC_ACTIVE,
+      ac_status: row.AC_STATUS,
+      approved_by: row.APPROVED_BY,
     }));
     
     // Build hierarchy

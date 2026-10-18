@@ -275,19 +275,18 @@ export const procBulkAccountEntry = async (
         p_detail: {
           type: "TY_TR_AC_DETAIL_ACENTRY_TAB",
           val: safeDetails.map((d: any) => ({
-            COMPANY_CODE: d.company_code,
-            DOC_TYPE: d.doc_type,
+            COMPANY_CODE: d.company_code || header.company_code || user?.company_code,
+            DOC_TYPE: d.doc_type || header.doc_type,
             DOC_NO: d.doc_no || '0',
             SERIAL_NO: d.serial_no,
-            DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
+            DOC_DATE: d.doc_date ? new Date(d.doc_date) : (header.doc_date ? new Date(header.doc_date) : null),
             AC_CODE: d.ac_code,
             HEADER_AC_CODE: d.header_ac_code,
-            REMARKS: d.remarks,
-            AMOUNT: d.amount,
+            AMOUNT: Math.abs(Number(d.amount) || 0),
             SIGN_IND: normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
-            LCUR_AMOUNT: d.lcur_amount,
+            LCUR_AMOUNT: Math.abs(Number(d.lcur_amount !== undefined && d.lcur_amount !== null ? d.lcur_amount : d.amount) || 0),
             PDC_IND: oneChar(d.pdc_ind),
             CHEQUE_NO: d.cheque_no,
             CHEQUE_DATE: d.cheque_date
@@ -428,7 +427,11 @@ export const procBulkAccountEntry = async (
     res.json({
       success: true,
       message: "Account Entry saved successfully",
-      data: result.outBinds
+      doc_no: generatedDocNo,
+      data: {
+        ...(result.outBinds as any),
+        doc_no: generatedDocNo,
+      }
     });
 
   } catch (err: any) {

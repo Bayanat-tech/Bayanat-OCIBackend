@@ -499,7 +499,7 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
              asd.default_h_ac AS ac_code,
              a.ac_name,
              acs.tax_perc,
-             NVL(acs.lcur_decimal_nos, 3) AS lcur_decimal_nos
+             NVL(acs.lcur_decimal_nos, CASE WHEN NVL(asd.curr_code, a.curr_code) IN ('OMR', 'BHD', 'KWD') THEN 3 ELSE 2 END) AS lcur_decimal_nos
            FROM MS_AC_SETUP_DOC asd
            LEFT JOIN MS_ACCODES a
              ON asd.company_code = a.company_code
@@ -646,6 +646,65 @@ export async function initializeCompanyFinanceSetup(
   // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
   details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
 
+  // 6. MS_AC_SETUP (Account Setup & Decimal precision based on MS_COMPANYINFO)
+  try {
+    const checkAcSetup = await conn.execute(
+      `SELECT count(*) FROM MS_AC_SETUP WHERE COMPANY_CODE = :newCompany`,
+      { newCompany }
+    );
+    if (!((checkAcSetup.rows?.[0] as any)?.[0] || 0)) {
+      const compInfoRes: any = await conn.execute(
+        `SELECT CURRENCY, BANK_NAME, AC_CODE, SWIFT_CODE, REFERENCE_NO, COMPANY_NAME, AGE_1, AGE_2, AGE_3, AGE_4, AGE_5 
+         FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany AND ROWNUM = 1`,
+        { newCompany },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const cRow = compInfoRes?.rows?.[0] || {};
+      const curr = String(cRow.CURRENCY || 'INR').trim().toUpperCase();
+      const decimals = ['OMR', 'BHD', 'KWD'].includes(curr) ? 3 : 2;
+
+      await conn.execute(
+        `INSERT INTO MS_AC_SETUP (
+          COMPANY_CODE, AC_CODE, BANK_NAME, AC_NAME, SWIFT_CODE,
+          BASE_CURR_CODE, PRICE_DECIMAL_NOS, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS, QTY_DECIMAL_NOS,
+          FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO,
+          JOB_CLASS, PDC_RECEIPT_CODE, PDC_ISSUE_CODE, EXCHANGE_DIFF_AC,
+          PRINCIPAL_AC_GROUP, SUPPLIER_AC_GROUP, INTERCOMPANY_AC_GROUP,
+          AGE_1, AGE_2, AGE_3, AGE_4, AGE_5,
+          DOCNO_TYPE, MULTY_DIV_ACCOUNTING, BILL_SETTLE_LCUR,
+          CREATED_BY, CREATED_AT, UPDATED_BY, UPDATED_AT
+        )
+        VALUES (
+          :newCompany, :acCode, :bankName, :acName, :swift,
+          :curr, :decimals, :decimals, :decimals, 2,
+          TO_DATE('2023-01-01', 'YYYY-MM-DD'), TO_DATE('2026-12-31', 'YYYY-MM-DD'), TO_DATE('2023-01-01', 'YYYY-MM-DD'), TO_DATE('2027-12-31', 'YYYY-MM-DD'),
+          '2', '1021000001', '2020500001', '5030600003',
+          '10203', '20201', '30301',
+          NVL(:age1, 30), NVL(:age2, 60), NVL(:age3, 90), NVL(:age4, 120), NVL(:age5, 150),
+          'YRNOS', 'N', 'N',
+          'Admin', SYSDATE, 'Admin', SYSDATE
+        )`,
+        {
+          newCompany,
+          acCode: cRow.AC_CODE || null,
+          bankName: cRow.BANK_NAME || null,
+          acName: cRow.REFERENCE_NO || cRow.COMPANY_NAME || null,
+          swift: cRow.SWIFT_CODE || null,
+          curr,
+          decimals,
+          age1: cRow.AGE_1 ? Number(cRow.AGE_1) : null,
+          age2: cRow.AGE_2 ? Number(cRow.AGE_2) : null,
+          age3: cRow.AGE_3 ? Number(cRow.AGE_3) : null,
+          age4: cRow.AGE_4 ? Number(cRow.AGE_4) : null,
+          age5: cRow.AGE_5 ? Number(cRow.AGE_5) : null,
+        }
+      );
+      details.ac_setup = 'initialized';
+    }
+  } catch (acSetupErr) {
+    console.warn(`[initializeCompanyFinanceSetup] Non-fatal error initializing MS_AC_SETUP:`, acSetupErr);
+  }
+
   await conn.commit();
   return { success: true, details };
 }
@@ -727,6 +786,57 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
         // ignore
       }
     }
+
+    // Query MS_COMPANYINFO and MS_AC_SETUP to guarantee currency and decimal settings
+    let companyCurrency = "";
+    let companyBaseCurr = "";
+    let lcurDecimalNos: number | null = null;
+    let amountDecimalNos: number | null = null;
+
+    try {
+      const compInfoRes: any = await conn.execute(
+        `SELECT CURRENCY FROM MS_COMPANYINFO WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc)) AND ROWNUM = 1`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (compInfoRes?.rows?.length) {
+        const cRow = compInfoRes.rows[0] as any;
+        if (cRow.CURRENCY) companyCurrency = String(cRow.CURRENCY).trim().toUpperCase();
+      }
+
+      const acSetupRes: any = await conn.execute(
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS
+         FROM MS_AC_SETUP
+         WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
+           AND ROWNUM = 1`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (acSetupRes?.rows?.length) {
+        const acRow = acSetupRes.rows[0] as any;
+        if (acRow.BASE_CURR_CODE) companyBaseCurr = String(acRow.BASE_CURR_CODE).trim().toUpperCase();
+        if (acRow.LCUR_DECIMAL_NOS != null) lcurDecimalNos = Number(acRow.LCUR_DECIMAL_NOS);
+        if (acRow.AMOUNT_DECIMAL_NOS != null) amountDecimalNos = Number(acRow.AMOUNT_DECIMAL_NOS);
+      }
+    } catch (e) {
+      console.warn("[getCompanyInfo] Currency/Decimal enrichment warning:", e);
+    }
+
+    const effectiveCurr = companyCurrency || companyBaseCurr || normalizedData.currency || normalizedData.base_curr_code || "INR";
+    let effectiveDecimals = lcurDecimalNos ?? amountDecimalNos ?? normalizedData.lcur_decimal_nos ?? normalizedData.amount_decimal_nos;
+    if (effectiveDecimals == null || isNaN(effectiveDecimals)) {
+      if (["OMR", "BHD", "KWD"].includes(effectiveCurr)) {
+        effectiveDecimals = 3;
+      } else {
+        effectiveDecimals = 2; // Default for INR, USD, EUR, etc.
+      }
+    }
+
+    normalizedData.currency = effectiveCurr;
+    normalizedData.base_curr_code = effectiveCurr;
+    normalizedData.decimals = Number(effectiveDecimals);
+    normalizedData.lcur_decimal_nos = Number(effectiveDecimals);
+    normalizedData.amount_decimal_nos = Number(effectiveDecimals);
 
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -1198,8 +1308,8 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
     conn = await getConn(req);
 
-    const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO';
-    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV';
+    const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO' || doc_type === 'DN';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN';
 
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = {

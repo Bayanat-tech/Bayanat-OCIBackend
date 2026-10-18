@@ -63,6 +63,8 @@ export const getFinanceListData = async (
                   doc_type: "doc_type",
                   div_code: "div_code",
                   fy_period: "fy_period",
+                  doc_date: "doc_date",
+                  date: "doc_date",
                   ac_code: "ac_code",
                   ac_name: "ac_name",
                   party_name: "ac_name",
@@ -88,6 +90,53 @@ export const getFinanceListData = async (
                   } else {
                     groupClauses.push(`UPPER(NVL(canceled, 'N')) = UPPER(:${safeParam})`);
                     binds[safeParam] = normVal;
+                  }
+                  return;
+                }
+
+                if (dbField === "doc_date") {
+                  let fromVal: string | undefined;
+                  let toVal: string | undefined;
+
+                  if (typeof field_value === "object" && field_value !== null) {
+                    fromVal = (field_value as any).from;
+                    toVal = (field_value as any).to;
+                  } else if (typeof field_value === "string") {
+                    try {
+                      const parsed = JSON.parse(field_value);
+                      if (parsed && typeof parsed === "object") {
+                        fromVal = parsed.from;
+                        toVal = parsed.to;
+                      }
+                    } catch {
+                      const match = field_value.match(/\d{4}-\d{2}-\d{2}/);
+                      if (match) {
+                        fromVal = match[0];
+                        toVal = match[0];
+                      }
+                    }
+                  }
+
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (fromVal && dateRegex.test(String(fromVal).slice(0, 10))) fromVal = String(fromVal).slice(0, 10);
+                  else fromVal = undefined;
+                  if (toVal && dateRegex.test(String(toVal).slice(0, 10))) toVal = String(toVal).slice(0, 10);
+                  else toVal = undefined;
+
+                  if (fromVal && toVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD') AND TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                    binds[pTo] = toVal;
+                  } else if (fromVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                  } else if (toVal) {
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pTo] = toVal;
                   }
                   return;
                 }
@@ -119,6 +168,8 @@ export const getFinanceListData = async (
                 OR UPPER(doc_type) LIKE UPPER(:search)
                 OR UPPER(div_code) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_name, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(ref_no, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(cheque_no, ' ')) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_payee, ' ')) LIKE UPPER(:search)
               )
             `;
@@ -159,8 +210,29 @@ export const getFinanceListData = async (
 
         const dataResult = await connection.execute(
           `
-          SELECT *
-          FROM ${documentSource}
+          SELECT ranked.*,
+                 COALESCE(
+                   ranked.ac_name,
+                   (SELECT m.ac_name 
+                    FROM tr_ac_detail d, MS_ACCODES m 
+                    WHERE d.company_code = ranked.company_code 
+                      AND d.doc_type = ranked.doc_type 
+                      AND d.doc_no = ranked.doc_no 
+                      AND d.ac_code = m.ac_code(+) 
+                      AND ROWNUM = 1)
+                 ) AS resolved_ac_name,
+                 COALESCE(
+                   ranked.amount,
+                   (SELECT GREATEST(
+                             NVL(SUM(CASE WHEN d.sign_ind = 1 THEN d.lcur_amount ELSE 0 END), 0),
+                             NVL(SUM(CASE WHEN d.sign_ind = -1 THEN d.lcur_amount ELSE 0 END), 0)
+                           )
+                    FROM tr_ac_detail d
+                    WHERE d.company_code = ranked.company_code 
+                      AND d.doc_type = ranked.doc_type 
+                      AND d.doc_no = ranked.doc_no)
+                 ) AS resolved_amount
+          FROM ${documentSource} ranked
           ORDER BY doc_no DESC, doc_type
           OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
           `,
@@ -177,9 +249,11 @@ export const getFinanceListData = async (
           Object.keys(row).forEach((k) => {
             if (k.toLowerCase() !== "document_row_rank") mapped[k.toLowerCase()] = (row as any)[k];
           });
+          if (mapped.resolved_ac_name !== undefined) mapped.ac_name = mapped.resolved_ac_name;
+          if (mapped.resolved_amount !== undefined) mapped.amount = mapped.resolved_amount;
           return mapped;
         });
-        console.log('Get data from doc :', fetchedData);
+        console.log('Get data from doc count:', fetchedData.length);
       };
         break;
 
@@ -588,13 +662,14 @@ export const getFinanceListData = async (
         let defaultData: { [key: string]: any } = {};
 
         const voucherType = String(extra_param2 || "").toUpperCase();
-        const isReceipt = ["BR", "CR", "RJV"].includes(voucherType);
-        const isPayment = ["BP", "CP", "PJV"].includes(voucherType);
+        const isReceipt = ["BR", "CR", "RJV", "CN"].includes(voucherType);
+        const isPayment = ["BP", "CP", "PJV", "DN"].includes(voucherType);
 
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
         const knownDocNos = new Set<string>();
         const knownRefNos = new Set<string>();
+        const knownKeys = new Set<string>();
 
         try {
           const headerInvoicesResult = await connection.execute(
@@ -662,15 +737,16 @@ export const getFinanceListData = async (
           (headerInvoicesResult.rows || []).forEach((hRow: any) => {
             const docNo = String(hRow.DOC_NO || hRow.doc_no || '').trim();
             const refNo = String(hRow.REF_NO || hRow.ref_no || '').trim();
+            const primaryInvNo = refNo || docNo;
 
-            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid invoices
-            if (docNo) knownDocNos.add(docNo.toUpperCase());
-            if (refNo) knownRefNos.add(refNo.toUpperCase());
+            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid or duplicate invoices
+            if (docNo) { knownDocNos.add(docNo.toUpperCase()); knownKeys.add(docNo.toUpperCase()); }
+            if (refNo) { knownRefNos.add(refNo.toUpperCase()); knownKeys.add(refNo.toUpperCase()); }
+            if (primaryInvNo) { knownKeys.add(primaryInvNo.toUpperCase()); }
 
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
             const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
             const bal = Math.max(0, invAmt - paidAmt);
-            const primaryInvNo = refNo || docNo;
             if (bal > 0.001) {
               const rowObj: any = {
                 inv_no: primaryInvNo,
@@ -711,8 +787,8 @@ export const getFinanceListData = async (
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
           (cancelledRes.rows || []).forEach((cRow: any) => {
-            if (cRow.DOC_NO) knownDocNos.add(String(cRow.DOC_NO).toUpperCase());
-            if (cRow.REF_NO) knownRefNos.add(String(cRow.REF_NO).toUpperCase());
+            if (cRow.DOC_NO) { knownDocNos.add(String(cRow.DOC_NO).toUpperCase()); knownKeys.add(String(cRow.DOC_NO).toUpperCase()); }
+            if (cRow.REF_NO) { knownRefNos.add(String(cRow.REF_NO).toUpperCase()); knownKeys.add(String(cRow.REF_NO).toUpperCase()); }
           });
         } catch (cErr) {
           console.warn('[finance.controller invoice] Cancelled invoices check error:', cErr);
@@ -751,20 +827,44 @@ export const getFinanceListData = async (
             const rRefNo = String(r.REF_NO || r.ref_no || '').trim().toUpperCase();
 
             // Strict deduplication: skip if already in TR_AC_HEADER by doc_no, inv_no, or ref_no
+            if (rDocNo && knownKeys.has(rDocNo)) return;
+            if (rInvNo && knownKeys.has(rInvNo)) return;
+            if (rRefNo && knownKeys.has(rRefNo)) return;
             if (knownDocNos.has(rDocNo) || knownDocNos.has(rInvNo)) return;
             if (rRefNo && (knownRefNos.has(rRefNo) || knownDocNos.has(rRefNo))) return;
             if (rInvNo && knownRefNos.has(rInvNo)) return;
 
             legacyInvoices.push(r);
-            if (rDocNo) knownDocNos.add(rDocNo);
-            if (rInvNo) knownDocNos.add(rInvNo);
-            if (rRefNo) knownRefNos.add(rRefNo);
+            if (rDocNo) { knownDocNos.add(rDocNo); knownKeys.add(rDocNo); }
+            if (rInvNo) { knownDocNos.add(rInvNo); knownKeys.add(rInvNo); }
+            if (rRefNo) { knownRefNos.add(rRefNo); knownKeys.add(rRefNo); }
           });
         } catch (invErr) {
           console.warn('[finance.controller invoice] TR_AC_INVDETAIL query error:', invErr);
         }
 
-        fetchedData = [...headerInvoices, ...legacyInvoices];
+        // Final strict deduplication across both queries by invoice/voucher identifier
+        const combinedInvoices = [...headerInvoices, ...legacyInvoices];
+        const seenInvoiceKeys = new Set<string>();
+        const uniqueInvoices: any[] = [];
+        for (const item of combinedInvoices) {
+          const dNo = String(item.DOC_NO || item.doc_no || '').trim().toUpperCase();
+          const iNo = String(item.INV_NO || item.inv_no || '').trim().toUpperCase();
+          const rNo = String(item.REF_NO || item.ref_no || '').trim().toUpperCase();
+          const id = dNo || iNo || rNo;
+          if (!id) continue;
+          if ((dNo && seenInvoiceKeys.has(`DOC_${dNo}`)) ||
+              (iNo && seenInvoiceKeys.has(`INV_${iNo}`)) ||
+              (rNo && seenInvoiceKeys.has(`REF_${rNo}`))) {
+            continue;
+          }
+          if (dNo) seenInvoiceKeys.add(`DOC_${dNo}`);
+          if (iNo) seenInvoiceKeys.add(`INV_${iNo}`);
+          if (rNo) seenInvoiceKeys.add(`REF_${rNo}`);
+          uniqueInvoices.push(item);
+        }
+
+        fetchedData = uniqueInvoices;
 
         const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
           defaultData[row.inv_no] = row;
