@@ -96,6 +96,13 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       }
     }
 
+    const calculatedBase = rows.reduce((sum, r) => sum + (Number(r.bill) || 0), 0);
+    const calculatedVat = rows.reduce((sum, r) => sum + (Number(r.tx_compnt_amt_1) || 0), 0);
+    for (const r of rows) {
+      r.inv_amount = calculatedBase;
+      r.tot_vat_amt = calculatedVat;
+    }
+
     const meta: FreightInvoiceMeta = {
       invoiceNo: invoice_no,
       invoiceDate: invoice_date,
