@@ -73,6 +73,28 @@ export const frtRfqSave = async (req: Request, res: Response): Promise<void> => 
     }
 
     const rfqHeader = { ...header, enquiry_type: "RFQ" };
+    if (!rfqHeader.enquiry_nr || ["0", "AUTO", "NEW"].includes(String(rfqHeader.enquiry_nr).toUpperCase().trim())) {
+      try {
+        const numRes = await connection.execute(
+          `SELECT NVL(MAX(enquiry_nr), 50) AS MAX_NO FROM MS_COMPANYINFO WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR' OR ROWNUM = 1)`,
+          { company_code: rfqHeader.company_code || "BSG" },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const nextNo = (Number((numRes.rows?.[0] as any)?.MAX_NO) || 50) + 1;
+        try {
+          await connection.execute(
+            `UPDATE MS_COMPANYINFO SET enquiry_nr = :nextNo WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR')`,
+            { nextNo, company_code: rfqHeader.company_code || "BSG" },
+            { autoCommit: true }
+          );
+        } catch (_) {}
+        const mode = String(rfqHeader.transport_mode || "A").substring(0, 1).toUpperCase();
+        const type = String(rfqHeader.job_type || "I").substring(0, 1).toUpperCase();
+        const prin = String(rfqHeader.prin_code || "00001").padStart(5, "0");
+        rfqHeader.enquiry_nr = `${mode}${type}/${prin}/${String(nextNo).padStart(5, "0")}`;
+      } catch (_) {}
+    }
+
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_ENQUIRY_SAVE(:p_header, :p_details, :p_rfq_nr_out);
@@ -85,7 +107,7 @@ export const frtRfqSave = async (req: Request, res: Response): Promise<void> => 
       { autoCommit: true }
     );
 
-    const rfqNr = (result.outBinds as any).p_rfq_nr_out;
+    const rfqNr = (result.outBinds as any).p_rfq_nr_out || rfqHeader.enquiry_nr;
     res.json({ success: true, message: "RFQ saved successfully", data: { enquiry_nr: rfqNr, rfq_nr: rfqNr } });
   });
 };
