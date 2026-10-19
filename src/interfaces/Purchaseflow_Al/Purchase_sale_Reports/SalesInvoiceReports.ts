@@ -211,17 +211,19 @@ const lineDiscOf = (r: ReportRow) => {
   return round2(num(r.disc_price) || (gross * num(r.disc_percent)) / 100);
 };
 
+const lineGrossOf = (r: ReportRow) => round2(num(r.quantity) * num(r.unit_price));
+const lineNetOf = (r: ReportRow) => round2(lineGrossOf(r) - lineDiscOf(r));
+
 function computeInvoiceTotals(rows: ReportRow[], header: SalesInvoiceHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-
-  // Gross = qty × rate 
-  const totalAmount = round2(rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0));
-
+  const totalAmount = round2(rows.reduce((s, r) => s + lineGrossOf(r), 0));
   const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
 
-  // Header discount: 
-  const lineNet = totalAmount - lineDiscount;
-  const headerDiscount = round2(header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100);
+  
+  const headerDiscount =
+    lineDiscount > 0
+      ? 0
+      : round2(header.disc_hdr_price || (totalAmount * header.disc_hdr_percent) / 100);
 
   const overallDiscount = round2(lineDiscount + headerDiscount);
   const grandTotal = round2(totalAmount - overallDiscount);
@@ -452,9 +454,16 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
   const netTotal = round2(t.grandTotal + t.totalTax);
+   rows.forEach((r) => {
+    const expected = round2((lineNetOf(r) * num(r.tx_compnt_perc_1)) / 100);
+    if (Math.abs(expected - num(r.tx_compnt_amt_1)) > 0.01) {
+      console.warn("Tax mismatch", r.doc_no, r.prod_code, "expected:", expected, "db:", r.tx_compnt_amt_1);
+    }
+  });
 
   const bodyRows = rows
     .map((r, i) => {
+       const net = lineNetOf(r);
       const amountInclTax = num(r.amount) + num(r.tx_compnt_amt_1);
       return `
         <tr>
@@ -465,6 +474,7 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
           <td class="right">${amtFmt(r.unit_price)}</td>
           <td class="right">${amtFmt(lineDiscOf(r))}</td>
           <td class="right">${amtFmt(r.amount)}</td>
+            <td class="right">${amtFmt(net)}</td>
           <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
           <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
           <td class="right amount">${amtFmt(amountInclTax)}</td>
@@ -994,7 +1004,7 @@ function buildSalesInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
       xlCell(num(r.quantity), "dataNumInt"),
       xlCell(num(r.unit_price), "dataNum"),
       xlCell(lineDiscOf(r), "dataNum"),
-      xlCell(num(r.amount), "dataNum"),
+      xlCell(lineNetOf(r), "dataNum"),
     ]);
   });
 
@@ -1056,10 +1066,10 @@ function buildSalesInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
       xlCell(num(r.quantity), "dataNumInt"),
       xlCell(num(r.unit_price), "dataNum"),
       xlCell(lineDiscOf(r), "dataNum"),
-      xlCell(num(r.amount), "dataNum"),
+xlCell(lineNetOf(r), "dataNum"),
       xlCell(num(r.tx_compnt_perc_1), "dataNum"),
       xlCell(num(r.tx_compnt_amt_1), "dataNum"),
-      xlCell(num(r.amount) + num(r.tx_compnt_amt_1), "dataNum"),
+      xlCell(round2(lineNetOf(r) + num(r.tx_compnt_amt_1)), "dataNum"),
     ]);
   });
 
