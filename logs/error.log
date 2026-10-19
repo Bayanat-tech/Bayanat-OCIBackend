@@ -5938,3 +5938,16 @@ Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0025.AREP2
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-10-19 14:06:32 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (D:\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (D:\Bayanat-OCIBackend\index.ts:175:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (D:\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (D:\Bayanat-OCIBackend\index.ts:175:9)
