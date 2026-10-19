@@ -294,7 +294,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
     itemRowsHtml = flatRows
       .map((r, idx) => {
-        const desc = (r as any).activity?.trim() || r.inv_desc || r.other_services || r.act_group_name || "Service";
+        const desc = r.inv_desc || r.other_services || r.act_group_name || "";
         const price = Number(r.bill_rate ?? 0);
         const qty = r.quantity ?? "";
         const beforeTax = Number(r.bill ?? 0);
@@ -305,7 +305,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           <tr>
             <td class="c-no">${idx + 1}</td>
             <td class="c-desc">${esc(desc)}</td>
-            <td class="c-price">${price ? fmtMoney(price, 2) : ""}</td>
+            <td class="c-price">${fmtMoney(price, 2)}</td>
             <td class="c-qty">${qty}</td>
             <td class="c-amt">${fmtMoney(beforeTax, 2)}</td>
             <td class="c-vat">${vatPerc}</td>
@@ -315,54 +315,58 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       })
       .join("");
   } else {
-    // Grouped by Activity Group
-    const groupMap = new Map<string, InvoiceRow[]>();
+    const grouped = new Map<number, InvoiceRow[]>();
     for (const r of rows) {
       if (isCostRow(r)) continue;
       if (r.bill == null || Number(r.bill) === 0) continue;
-      const groupName = ((r.act_group_name || r.activity_group_code || "GENERAL SERVICES") as string).trim();
-      const key = groupName.toUpperCase();
-      if (!groupMap.has(key)) groupMap.set(key, []);
-      groupMap.get(key)!.push(r);
+      const key = r.srno ?? 0;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
     }
 
-    let rowSeq = 0;
-    const groupSections: string[] = [];
-
-    for (const groupRows of groupMap.values()) {
-      const groupTitle = (groupRows[0].act_group_name || groupRows[0].activity_group_code || "GENERAL SERVICES").trim();
-      const groupHeader = `
-        <tr class="group-header-row" style="background: #f8f9fa;">
-          <td class="c-no"></td>
-          <td colspan="7" class="c-desc"><strong>${esc(groupTitle)}</strong></td>
-        </tr>`;
-
-      const subRows = groupRows.map((r) => {
-        rowSeq += 1;
-        const activityDesc = (r as any).activity?.trim() || r.inv_desc || r.other_services || groupTitle;
-        const subPrice = Number(r.bill_rate ?? 0);
-        const subQty = r.quantity ?? "";
-        const subAmt = Number(r.bill ?? 0);
-        const subVat = Number(r.tx_compnt_amt_1 ?? 0);
-        const subWith = subAmt + subVat;
-        const subVatP = r.tx_compnt_perc_1 ?? "";
-        return `
-          <tr class="sub-row">
-            <td class="c-no">${rowSeq}</td>
-            <td class="c-desc sub-desc" style="padding-left: 14px;">${esc(activityDesc)}</td>
-            <td class="c-price">${subPrice ? fmtMoney(subPrice, 2) : ""}</td>
-            <td class="c-qty">${subQty}</td>
-            <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
-            <td class="c-vat">${subVatP}</td>
-            <td class="c-amt">${fmtMoney(subVat, 2)}</td>
-            <td class="c-amt">${fmtMoney(subWith, 2)}</td>
+    let rowCounter = 0;
+    itemRowsHtml = Array.from(grouped.values())
+      .map((group) => {
+        const head = group[0];
+        rowCounter += 1;
+        const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+        const groupVat = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
+        const groupWithVat = groupAmt + groupVat;
+        const price = group.length === 1 ? Number(head.bill_rate ?? 0) : 0;
+        const qty = group.length === 1 ? (head.quantity ?? "") : "";
+        const vatPerc = head.tx_compnt_perc_1 ?? "";
+        const groupDesc = (head.act_group_name || "").trim() || head.inv_desc || head.other_services || "Service";
+        const headRow = `
+          <tr>
+            <td class="c-no"></td>
+            <td colspan="7" class="c-desc"><strong>${esc(groupDesc)}</strong></td>
           </tr>`;
-      }).join("");
-
-      groupSections.push(groupHeader + subRows);
-    }
-
-    itemRowsHtml = groupSections.join("");
+        const subRows = group
+          .map((r) => {
+            const activityDesc = (r as any).activity?.trim() || r.inv_desc || r.other_services || groupDesc;
+            if (group.length === 1 && activityDesc.trim().toUpperCase() === groupDesc.trim().toUpperCase()) return "";
+            const subPrice = Number(r.bill_rate ?? 0);
+            const subQty = r.quantity ?? "";
+            const subAmt = Number(r.bill ?? 0);
+            const subVat = Number(r.tx_compnt_amt_1 ?? 0);
+            const subWith = subAmt + subVat;
+            const subVatP = r.tx_compnt_perc_1 ?? "";
+            return `
+              <tr class="sub-row">
+                <td class="c-no">${r.c_srno ?? ""}</td>
+                <td class="c-desc sub-desc">${esc(activityDesc)}</td>
+                <td class="c-price">${subPrice ? fmtMoney(subPrice, 2) : ""}</td>
+                <td class="c-qty">${subQty}</td>
+                <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
+                <td class="c-vat">${subVatP}</td>
+                <td class="c-amt">${fmtMoney(subVat, 2)}</td>
+                <td class="c-amt">${fmtMoney(subWith, 2)}</td>
+              </tr>`;
+          })
+          .join("");
+        return headRow + subRows;
+      })
+      .join("");
   }
 
   const FIXED_FILLERS = 28;
@@ -509,9 +513,9 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .footer { margin-top: 8px; padding-top: 6px; border: none; text-align: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .footer .addr-line { font-weight: 400; margin-top: 2px; }
   .footer .disclaimer { font-weight: 400; font-size: 8.5px; color: #222; border: none; margin-top: 4px; text-align: left; padding-top: 2px; }
-  .logo-box { flex: 0 0 auto; }
-  .company-details-right { text-align: right; margin-left: auto; font-size: 10px; line-height: 1.4; }
-  .company-name-right { font-size: 13px; font-weight: 700; color: #1a2c5e; margin-bottom: 2px; }
+  .logo-company-block { display: flex; align-items: flex-start; gap: 12px; }
+  .company-details-next-to-logo { font-size: 10px; line-height: 1.4; padding-top: 4px; }
+  .company-name-next { font-size: 12px; font-weight: 700; color: #1a2c5e; margin-bottom: 2px; }
   .company-addr-line { font-size: 9.5px; color: #222; }
 </style>
 </head>
@@ -524,24 +528,24 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 <div class="invoice-wrapper">
 
   <div class="masthead">
-    <div class="logo-box">
+    <div class="logo-company-block">
       ${(() => {
         const logoUrl = (first.company_logo || first.logo_path || "").trim();
         if (logoUrl) return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
         return `<div class="company-name-fallback">${esc(companyName)}</div>`;
       })()}
+      <div class="company-details-next-to-logo">
+        <div class="company-name-next">${esc(companyName)} COMPANY</div>
+        ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
+        ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
+        ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
+        ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
+        ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
+        ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
+        <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
+      </div>
     </div>
-    <div class="company-details-right">
-      <div class="company-name-right">${esc(companyName)}</div>
-      ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
-      ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
-      ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
-      ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
-      ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
-      ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
-      ${first.crn ? `<div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>` : ""}
-      ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
-    </div>
+    ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
   </div>
   <div class="invoice-title">TAX INVOICE</div>
 
@@ -597,7 +601,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <td class="bank-cell">${bankSection}</td>
       <td class="stamp-cell">
         ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-        <div class="signature-text">For ${esc(companyName)}</div>
+        <div class="signature-text">For ${esc(companyName)} COMPANY</div>
       </td>
     </tr>
   </table>

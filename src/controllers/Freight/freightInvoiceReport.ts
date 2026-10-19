@@ -2,15 +2,15 @@ import { Request, Response } from "express";
 import { getConn } from "../../res/oracleDbConnect";
 import { execDynamicProc } from "../../res/helperFunction";
 import {
-  buildInvoiceHtmlAMKSA,
-  buildInvoiceHtmlBTIND,
-  InvoiceMeta,
-  InvoiceRow,
-} from "../wms/reports/invoice_reports/render_html";
+  buildFreightInvoiceHtmlAMKSA,
+  buildFreightInvoiceHtmlBTIND,
+  FreightInvoiceMeta,
+  FreightInvoiceRow,
+} from "./freightInvoiceRenderHtml";
 
-const templateBuilders: Record<string, (rows: InvoiceRow[], meta: InvoiceMeta) => string> = {
-  AMKSA: buildInvoiceHtmlAMKSA,
-  BTIND: buildInvoiceHtmlBTIND,
+const templateBuilders: Record<string, (rows: FreightInvoiceRow[], meta: FreightInvoiceMeta) => string> = {
+  AMKSA: buildFreightInvoiceHtmlAMKSA,
+  BTIND: buildFreightInvoiceHtmlBTIND,
 };
 
 export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise<void> => {
@@ -33,7 +33,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
 
   try {
     const connection = await getConn(req);
-    const rawRows = await execDynamicProc<InvoiceRow>(
+    const rawRows = await execDynamicProc<FreightInvoiceRow>(
       connection,
       "PROC_BUILD_DYNAMIC_FRT_INVOICE",
       {
@@ -74,7 +74,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
 
     // Deduplicate lines by (srno, act_code)
     const seenLines = new Set<string>();
-    const rows: InvoiceRow[] = [];
+    const rows: FreightInvoiceRow[] = [];
     for (const r of rawRows) {
       const lineKey = `${r.srno ?? ""}|${r.act_code ?? ""}|${r.inv_desc ?? (r as any).activity ?? ""}`;
       if (!seenLines.has(lineKey)) {
@@ -95,7 +95,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       }
     }
 
-    const meta: InvoiceMeta = {
+    const meta: FreightInvoiceMeta = {
       invoiceNo: invoice_no,
       invoiceDate: invoice_date,
       invoicePeriod: invoice_period,
