@@ -164,6 +164,11 @@ function bindActionValue(req: Request, bindName: string) {
   const key = bindName.replace(/^p_/, "");
   if (key.includes("date")) return toDate(bodyValue(req, key));
   if (key === "op_code" || key === "sr_no") return numberValue(bodyValue(req, key));
+  if (key === "doc_nr") {
+    const raw = stringValue(bodyValue(req, key));
+    if (!raw) return null;
+    return /^\d+$/.test(raw) ? raw.padStart(5, "0") : raw;
+  }
   return bodyValue(req, key);
 }
 
