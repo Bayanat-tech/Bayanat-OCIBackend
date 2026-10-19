@@ -305,8 +305,11 @@ router.post('/reports/getYearlyLeaveBalanceReportHtml/html',   getYearlyLeaveBal
 router.post('/reports/exportYearlyLeaveBalanceReportExcel/excel', exportYearlyLeaveBalanceReportExcel);
 
 
-router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
-router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+// router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
+// router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+
+router.post("/reports/getMonthlySalarySummaryReportHtml/html", getMonthlySalarySummaryReport);
+router.post("/reports/getMonthlySalarySummaryReportExcel/excel", exportMonthlySalarySummaryReportExcel);
 
 
 router.post('/reports/getEmployeeSalaryNotProcessedReportHtml/html',   getEmployeeSalaryNotProcessedReport);
