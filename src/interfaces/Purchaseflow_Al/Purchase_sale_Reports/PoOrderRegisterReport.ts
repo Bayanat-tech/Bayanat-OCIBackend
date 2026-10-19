@@ -336,8 +336,8 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
 
       return `
       <tbody style="break-inside:avoid;page-break-inside:avoid;">
-        <tr>
-          <td colspan="5" class="section-strip" style="${S.head}">
+                <tr class="grand-total-row">
+          <td colspan="5" style="${S.head}">
             PO NO = ${escapeHtml(g.doc_no)}
             &nbsp;|&nbsp; PO Date = ${escapeHtml(dateText(g.doc_date))}
             &nbsp;|&nbsp; Supplier = ${escapeHtml(g.ac_name)}
@@ -738,7 +738,6 @@ const colXml = colWidths
 // ─── Route handlers ─────────────────────────────────────────────────────────
 
 export const getPoOrderRegisterReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
-  console.log(">>> PO ORDER REGISTER V2 CODE LOADED <<<");
   try {
     const params = extractParams(req);
     const rows = await loadPoOrderRegisterData(req, params);
