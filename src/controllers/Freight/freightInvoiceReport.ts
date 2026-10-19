@@ -31,8 +31,9 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
     return;
   }
 
+  let connection: any;
   try {
-    const connection = await getConn(req);
+    connection = await getConn(req);
     const rawRows = await execDynamicProc<FreightInvoiceRow>(
       connection,
       "PROC_BUILD_DYNAMIC_FRT_INVOICE",
@@ -117,6 +118,12 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
         error?.message || "Unknown error"
       )}</p>`
     );
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (_) {}
+    }
   }
 };
 

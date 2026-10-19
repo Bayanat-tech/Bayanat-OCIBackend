@@ -93,6 +93,28 @@ export const frtEnquirySave = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    if (!header.enquiry_nr || ["0", "AUTO", "NEW"].includes(String(header.enquiry_nr).toUpperCase().trim())) {
+      try {
+        const numRes = await connection.execute(
+          `SELECT NVL(MAX(enquiry_nr), 50) AS MAX_NO FROM WMSTST.MS_COMPANYINFO WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR' OR ROWNUM = 1)`,
+          { company_code: header.company_code || "BSG" },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const nextNo = (Number((numRes.rows?.[0] as any)?.MAX_NO) || 50) + 1;
+        try {
+          await connection.execute(
+            `UPDATE WMSTST.MS_COMPANYINFO SET enquiry_nr = :nextNo WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR')`,
+            { nextNo, company_code: header.company_code || "BSG" },
+            { autoCommit: true }
+          );
+        } catch (_) {}
+        const mode = String(header.transport_mode || "A").substring(0, 1).toUpperCase();
+        const type = String(header.job_type || "I").substring(0, 1).toUpperCase();
+        const prin = String(header.prin_code || "00001").padStart(5, "0");
+        header.enquiry_nr = `${mode}${type}/${prin}/${String(nextNo).padStart(5, "0")}`;
+      } catch (_) {}
+    }
+
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_ENQUIRY_SAVE(:p_header, :p_details, :p_enquiry_nr_out);
@@ -105,7 +127,7 @@ export const frtEnquirySave = async (req: Request, res: Response): Promise<void>
       { autoCommit: true }
     );
 
-    const enquiryNr = (result.outBinds as any).p_enquiry_nr_out;
+    const enquiryNr = (result.outBinds as any).p_enquiry_nr_out || header.enquiry_nr;
     res.json({ success: true, message: "Enquiry saved successfully", data: { enquiry_nr: enquiryNr } });
   });
 };
@@ -274,7 +296,7 @@ export function toHeaderObject(header: Record<string, unknown>) {
     WEIGHT: numberValue(header.weight),
     VOLUME: numberValue(header.volume),
     REMARKS: stringValue(header.remarks),
-    PAYMENT_TERMS: stringValue(header.payment_terms),
+    PAYMENT_TERMS: stringValue(header.payment_terms)?.substring(0, 3) || null,
     CURR_CODE: stringValue(header.curr_code),
     EX_RATE: numberValue(header.ex_rate, 1),
     JOB_TYPE: stringValue(header.job_type),
