@@ -97,18 +97,29 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 // Tenant Status Diagnostic Endpoint
-app.get("/api/diagnostics/tenants", (req: Request, res: Response) => {
-  const { TenantManager } = require("./src/database/TenantManager");
-  const registeredTenants = TenantManager.getTenants();
-  
-  res.status(200).json({
-    success: true,
-    message: "Tenant Status",
-    registered_tenants: registeredTenants,
-    total_registered: registeredTenants.length,
-    note: "Check server logs for connection attempts and failures",
-    timestamp: new Date().toISOString(),
-  });
+app.get("/api/diagnostics/tenants", async (req: Request, res: Response) => {
+  try {
+    const { TenantManager } = require("./src/database/TenantManager");
+    const registeredTenants = typeof TenantManager.listActiveTenants === "function"
+      ? await TenantManager.listActiveTenants()
+      : [];
+    
+    res.status(200).json({
+      success: true,
+      message: "Tenant Status",
+      registered_tenants: registeredTenants,
+      total_registered: registeredTenants.length,
+      note: "Check server logs for connection attempts and failures",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(200).json({
+      success: false,
+      message: "Failed to retrieve active tenants",
+      error: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // Database Status Endpoint
