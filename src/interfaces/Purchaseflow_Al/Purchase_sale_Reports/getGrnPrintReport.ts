@@ -441,7 +441,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
             <th>P. Qty</th>
             <th>LUOM</th>
             <th>L. Qty</th>
-            <th>Qty in LUOM</th>
+            <th>Net Qty</th>
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -449,7 +449,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
       <div class="totals-box">
   <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
   <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
-  <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
+  <div class="row grand"><span>Net Qty</span><span>${qtyFmt(totals.totalQty)}</span></div>
 </div>
       </table>`;
   }
@@ -468,44 +468,34 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   // ── Signature strip ──
   const signHtml = `
   <div class="grn-sign">
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Prepared By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Checked By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Approved By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Receiver's Name &amp; Signature</div>
     </div>
- 
   </div>`;
- 
   // ── Body: report title first, then details / items / remarks / terms ──
   const bodyHtml = `
     <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
- 
     ${detailsHtml}
- 
     <div class="group">
-      <div class="group-title">Items</div>
       ${itemsHtml}
     </div>
- 
     ${remarksHtml}
     ${termsHtml}`;
  

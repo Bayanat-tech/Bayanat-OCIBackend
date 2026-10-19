@@ -211,7 +211,7 @@ function computeInvoiceTotals(rows: ReportRow[], header: InvoiceHeader) {
 
   const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
 
- 
+
   const lineNet = totalAmount - lineDiscount;
   const headerDiscount = round2(header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100);
 
@@ -306,7 +306,86 @@ const PURCHASE_INVOICE_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
+
+    .data-table { width: 100%; table-layout: auto; }
+  .data-table th, .data-table td { font-size: 10.5px; padding: 6px 5px; }
+  .data-table td:nth-child(2) { min-width: 140px; }
 `;
+
+const PURCHASE_INVOICE_TAX_EXTRA_CSS = `${PURCHASE_INVOICE_EXTRA_CSS}
+  @page { size: A4 landscape; margin: 10mm; }
+
+  .data-table { width: 100% !important; table-layout: fixed !important; }
+  .data-table th,
+  .data-table td {
+    font-size: 9.5px !important;
+    padding: 5px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .data-table th:nth-child(1), .data-table td:nth-child(1)   { width: 5%; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2)   { width: 21%; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3)   { width: 6%; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4)   { width: 7%; }
+  .data-table th:nth-child(5), .data-table td:nth-child(5)   { width: 9%; }
+  .data-table th:nth-child(6), .data-table td:nth-child(6)   { width: 10%; }
+  .data-table th:nth-child(7), .data-table td:nth-child(7)   { width: 10%; }
+  .data-table th:nth-child(8), .data-table td:nth-child(8)   { width: 7%; }
+  .data-table th:nth-child(9), .data-table td:nth-child(9)   { width: 10%; }
+  .data-table th:nth-child(10), .data-table td:nth-child(10) { width: 15%; }
+`;
+const PURCHASE_INVOICE_TAX_PORTRAIT_CSS = `
+  .doc-title-row { display:flex; justify-content:space-between; align-items:flex-start; margin:4px 0 12px 0; }
+  .doc-title-row h1 { margin:0; font-size:18px; font-weight:800; color:#0b4ca1; }
+  .doc-title-row .doc-sub { margin:2px 0 0; font-size:11px; color:#64748b; }
+
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .info-block { border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; background:#f8fafc; }
+  .info-block .label { font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; margin-bottom:6px; font-weight:700; }
+  .info-block .value-line { font-size:12px; color:#0f172a; line-height:1.55; }
+
+  .totals-box { margin-top:16px; margin-left:auto; width:300px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; page-break-inside:avoid; }
+  .totals-box .row { display:flex; justify-content:space-between; padding:7px 14px; font-size:12px; border-bottom:1px solid #f1f5f9; }
+  .totals-box .row.grand { background:#0b4ca1; color:#fff; font-weight:700; font-size:13px; border-bottom:none; }
+
+  table.data-table.pi-portrait { width:100%; table-layout:fixed; }
+  table.data-table.pi-portrait th,
+  table.data-table.pi-portrait td {
+    font-size:9px;
+    padding:5px 3px;
+    word-break:break-word;
+    overflow-wrap:anywhere;
+  }
+`;
+
+// const TAX_TABLE_FIX_HTML_PORTRAIT = `
+// <style>
+//   @page { size: A4 portrait; margin: 10mm; }
+//   body table.data-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; }
+//   body table.data-table th,
+//   body table.data-table td {
+//     font-size: 8.5px !important;
+//     padding: 4px 3px !important;
+//     word-break: break-word;
+//     overflow-wrap: anywhere;
+//     white-space: normal !important;
+//   }
+// </style>`;
+
+const TAX_TABLE_FIX_HTML_PORTRAIT = ``;
+
+const TAX_TABLE_FIX_HTML = `
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body table.data-table { width: 100% !important; table-layout: fixed !important; }
+  body table.data-table th,
+  body table.data-table td {
+    font-size: 9.5px !important;
+    padding: 5px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+</style>`;
 
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
   return `
@@ -369,6 +448,7 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
     </div>
 
     <table class="data-table">
+      
       <thead>
         <tr>
           <th>S.No.</th>
@@ -393,7 +473,13 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
 
 // ─── Body 2: Purchase Invoice (Tax) ─────────────────────────────────────
 
-function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
+function renderPurchaseInvoiceTaxBody(
+  rows: ReportRow[],
+  loginId: string,
+  orientation: "portrait" | "landscape" = "landscape"
+): string {
+  const isPortrait = orientation === "portrait";
+
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
@@ -422,6 +508,7 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
     .join("");
 
   return `
+    ${isPortrait ? TAX_TABLE_FIX_HTML_PORTRAIT : TAX_TABLE_FIX_HTML}
     ${printMetaHtml("Purchase Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
     <div class="info-grid">
@@ -436,23 +523,32 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
       </div>
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>S.No.</th>
-          <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Discount</th>
-          <th class="right">Amount</th>
-          <th class="right">VAT %</th>
-          <th class="right">Amount Tax</th>
-          <th class="right">Amount (Incl. Tax)</th>
-        </tr>
-      </thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
+        <table class="data-table pi-portrait" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
+  <colgroup>
+    ${isPortrait
+      ? `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:6%">
+         <col style="width:9%"><col style="width:10%"><col style="width:11%"><col style="width:7%">
+         <col style="width:9%"><col style="width:16%">`
+      : `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:7%">
+         <col style="width:9%"><col style="width:10%"><col style="width:10%"><col style="width:7%">
+         <col style="width:10%"><col style="width:15%">`}
+  </colgroup>
+  <thead>
+    <tr>
+      <th>S.No.</th>
+      <th>Product / Description</th>
+      <th>Unit</th>
+      <th class="right">Qty</th>
+      <th class="right">${isPortrait ? "Rate" : "Unit Rate"}</th>
+      <th class="right">${isPortrait ? "Disc." : "Discount"}</th>
+      <th class="right">Amount</th>
+      <th class="right">VAT %</th>
+      <th class="right">${isPortrait ? "Tax Amt" : "Amount Tax"}</th>
+      <th class="right">${isPortrait ? "Total" : "Amount (Incl. Tax)"}</th>
+    </tr>
+  </thead>
+  <tbody>${bodyRows}</tbody>
+</table>
 
     <div class="totals-box">
       <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
@@ -542,14 +638,15 @@ export const getPurchaseInvoiceReportHtml = async (req: RequestWithUser, res: Re
     const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid);
 
     const html = buildReportDocument({
-      title: "Purchase Invoice",
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
-      autoPrint: false,
-      showPrintButton: true,
-    });
+  title: "Purchase Invoice",                  
+  headerHtml,
+  bodyHtml,
+  footerHtml,
+  extraCss: PURCHASE_INVOICE_EXTRA_CSS,         
+  autoPrint: false,
+  showPrintButton: true,
+                                               
+});
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
@@ -562,6 +659,9 @@ export const getPurchaseInvoiceReportHtml = async (req: RequestWithUser, res: Re
 export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
+    const orientation: "portrait" | "landscape" =
+      text(req.body?.orientation || req.query?.orientation).toLowerCase() === "portrait" ? "portrait" : "landscape";
+
     const rows = await loadPurchaseInvoiceData(req, params, "P_INVOICE_PI_TAX_19082026");
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected document." });
@@ -575,17 +675,18 @@ export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res:
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation);
 
     const html = buildReportDocument({
-      title: "Purchase Invoice (Tax)",
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
-      autoPrint: false,
-      showPrintButton: true,
-    });
+  title: "Purchase Invoice (Tax)",
+  headerHtml,
+  bodyHtml,
+  footerHtml,
+  extraCss: orientation === "portrait" ? PURCHASE_INVOICE_TAX_PORTRAIT_CSS : PURCHASE_INVOICE_TAX_EXTRA_CSS,
+  autoPrint: false,
+  showPrintButton: true,
+  ...(orientation === "landscape" ? { orientation } : {}),
+});
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);

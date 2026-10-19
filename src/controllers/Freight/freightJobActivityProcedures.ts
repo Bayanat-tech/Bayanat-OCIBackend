@@ -204,7 +204,7 @@ function toActivityObject(row: Record<string, unknown>) {
   const activity: Record<string, unknown> = {
     SRNO: numberValue(row.srno ?? row.SRNO),
     ACT_CODE: stringValue(row.act_code ?? row.ACT_CODE),
-    OTHER_SERVICES: stringValue(row.other_services ?? row.OTHER_SERVICES),
+    OTHER_SERVICES: stringValue(row.other_services ?? row.OTHER_SERVICES)?.substring(0, 50) || null,
     QUANTITY: numberValue(row.quantity ?? row.QUANTITY, 1),
     BILL_RATE: numberValue(row.bill_rate ?? row.BILL_RATE),
     BILL: numberValue(row.bill ?? row.BILL),

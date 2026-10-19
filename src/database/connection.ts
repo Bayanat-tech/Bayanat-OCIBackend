@@ -461,6 +461,7 @@ function processBindParameters(binds: any): any {
 export const oracleDb = {
   authenticate: async (): Promise<void> => {
     try {
+      if (oraclePool) return;
       oraclePool = await oracledb.createPool(dbConfig);
       console.log(" Oracle Database Connected (Thick Mode)");
     } catch (error: unknown) {
@@ -473,8 +474,13 @@ export const oracleDb = {
   },
 
   getConnection: async (): Promise<oracledb.Connection> => {
-    if (!oraclePool)
-      throw new Error("Database not connected. Call authenticate() first.");
+    if (!oraclePool) {
+      console.log("[oracleDb.getConnection] Pool not initialized. Attempting auto-authentication...");
+      await oracleDb.authenticate();
+    }
+    if (!oraclePool) {
+      throw new Error("Failed to initialize database pool.");
+    }
     return await oraclePool.getConnection();
   },
 
