@@ -406,16 +406,12 @@ export const procBulkAccountEntry = async (
     if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
       try {
         await connection.execute(
-          `UPDATE TR_AC_INVDETAIL 
-           SET INV_NO = :genDocNo 
-           WHERE company_code = :cc 
-             AND doc_no = :genDocNo 
-             AND (inv_no = '0' OR inv_no IS NULL)
-             AND indicator_origin = 'Y'`,
+          `BEGIN PROC_FIX_INVDETAIL_SELF_INV(:p_company_code, :p_doc_no, :p_status, :p_message); END;`,
           {
-            genDocNo: generatedDocNo,
-            cc: header.company_code,
-            refNo: header.ref_no || ''
+            p_company_code: header.company_code,
+            p_doc_no: generatedDocNo,
+            p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
           }
         );
         await connection.commit();
