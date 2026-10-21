@@ -11,34 +11,6 @@ type DocAccodeRow = {
   div_code?: string;
 };
 
-async function resolveL4Code(
-  connection: oracledb.Connection,
-  companyCode: string,
-  accountCode: string
-) {
-  try {
-    const result = await connection.execute<{ L4_CODE: string }>(
-      `
-        SELECT
-          COALESCE(
-            MAX(CASE WHEN UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) AND AC_CODE = :accountCode THEN L4_CODE END),
-            MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
-            MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
-          ) AS L4_CODE
-        FROM MS_ACCODES
-        WHERE (UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) OR :companyCode IS NULL)
-          AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
-      `,
-      { companyCode, accountCode },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    return result.rows?.[0]?.L4_CODE || accountCode;
-  } catch (_) {
-    return accountCode;
-  }
-}
-
 export const insDocAccodeBulk = async (
   req: Request,
   res: Response
@@ -58,6 +30,7 @@ export const insDocAccodeBulk = async (
     }
 
     let tenantId = getCurrentTenantId();
+
     if (!tenantId && loginId) {
       tenantId = await TenantManager.getTenantForUser(loginId);
     }
@@ -72,67 +45,43 @@ export const insDocAccodeBulk = async (
 
     connection = await TenantManager.getConnection(tenantId);
 
-    for (const row of rows as DocAccodeRow[]) {
-      const companyCode = String(row.company_code || "").trim();
-      const docId = String(row.doc_id || "").trim();
-      const hdrDtl = String(row.hdr_dtl || "").trim().toUpperCase().slice(0, 1);
-      const rawAccountCode = String(row.ac_code || "").trim();
-      const divCode = String(row.div_code || "").trim() || null;
+    const docAccodeTab = (rows as DocAccodeRow[]).map((row) => ({
+      COMPANY_CODE: String(row.company_code || "").trim(),
+      DOC_ID: String(row.doc_id || "").trim(),
+      HDR_DTL: String(row.hdr_dtl || "").trim().toUpperCase().slice(0, 1),
+      AC_CODE: String(row.ac_code || "").trim(),
+      DIV_CODE: String(row.div_code || "").trim() || null,
+    }));
 
-     if (!companyCode || !docId || !hdrDtl || !rawAccountCode) {
-      throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
-    }
-
-    const accountCode = await resolveL4Code(connection, companyCode, rawAccountCode);
-
-      if (!["H", "D"].includes(hdrDtl)) {
-        throw new Error(`Invalid hdr_dtl '${row.hdr_dtl}'. Use H or D.`);
+    // Call native stored procedure
+    await connection.execute(
+      `
+      BEGIN
+        PROC_INS_DOC_ACCODE(:p_loginid, :p_tab);
+      END;
+      `,
+      {
+        p_loginid: loginId,
+        p_tab: {
+          type: "TAB_DOC_ACCODE",
+          val: docAccodeTab,
+        },
       }
-
-      await connection.execute(
-        `
-          MERGE INTO MS_AC_SETUP_DOC_ACCODE target
-          USING (
-            SELECT
-              :companyCode AS COMPANY_CODE,
-              :docId AS DOC_ID,
-              :hdrDtl AS HDR_DTL,
-              :accountCode AS AC_CODE,
-              :divCode AS DIV_CODE
-            FROM DUAL
-          ) src
-          ON (
-            target.COMPANY_CODE = src.COMPANY_CODE
-            AND target.DOC_ID = src.DOC_ID
-            AND target.HDR_DTL = src.HDR_DTL
-            AND target.AC_CODE = src.AC_CODE
-            AND NVL(target.DIV_CODE, 'X') = NVL(src.DIV_CODE, 'X')
-          )
-          WHEN NOT MATCHED THEN
-            INSERT (COMPANY_CODE, DOC_ID, HDR_DTL, AC_CODE, DIV_CODE)
-            VALUES (src.COMPANY_CODE, src.DOC_ID, src.HDR_DTL, src.AC_CODE, src.DIV_CODE)
-        `,
-        { companyCode, docId, hdrDtl, accountCode, divCode }
-      );
-    }
-
-    await connection.commit();
+    );
 
     res.json({
       success: true,
-      message: "Document Account Codes inserted successfully"
+      message: `${rows.length} Document Account Codes inserted successfully`
     });
   } catch (err: any) {
-    console.error("Oracle Error:", err);
-
-    if (connection) await connection.rollback();
+    console.error("Oracle Error in insDocAccodeBulk:", err);
 
     res.status(500).json({
       success: false,
-      message: "Transaction failed",
+      message: "Procedure execution failed",
       details: err?.message || "Unknown error"
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) await connection.close().catch(() => {});
   }
 };
