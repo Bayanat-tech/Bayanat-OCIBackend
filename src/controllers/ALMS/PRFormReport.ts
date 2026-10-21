@@ -11,16 +11,16 @@ import { buildReportDocument, reportFooter, reportHeader } from "../common/repor
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:        string;
-  company_code:   string;
+  loginid: string;
+  company_code: string;
   request_number: string;
 }
 
-// Single dispatch key handled by PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS (one CASE branch)
+
 const PARAM_FORM = "PR_REGISTER_FORM";
 
 const REPORT_TITLE = "PURCHASE REQUEST";
-const REPORT_NAME  = "rpt_purchase_request_form";
+const REPORT_NAME = "rpt_purchase_request_form";
 
 // ─── DB helpers ─────────────────────────────────────────────────────────────
 
@@ -89,9 +89,9 @@ function fmt(value: unknown, decimals: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-const amtFmt  = (v: unknown) => fmt(v, 3);
+const amtFmt = (v: unknown) => fmt(v, 3);
 const rateFmt = (v: unknown) => fmt(v, 4);
-const pctFmt  = (v: unknown) => fmt(v, 2);
+const pctFmt = (v: unknown) => fmt(v, 2);
 
 function qtyFmt(value: unknown): string {
   const n = Number(value);
@@ -105,8 +105,8 @@ function qtyFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:        text(req.user?.loginid) || text(b.loginid) || "ADMIN",
-    company_code:   text(b.company_code),
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    company_code: text(b.company_code),
     request_number: text(b.request_number).trim(),
   };
 }
@@ -174,29 +174,27 @@ interface FormData {
 async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormData> {
   const conn = await getConn(req);
   try {
-    // One query: item rows from VW_PURCHASE_DETAILS_TXN, each row also carries the
-    // header columns (Created By, Flow, Description, Remarks, Division ...) from
-    // VW_PURCHASE_REQUEST_SUMMARY.
+
     const items = await runProcSql(conn, PARAM_FORM, p);
 
     const f = items[0];
     const header: ReportRow | null = f
       ? {
-          request_number: f.request_number,
-          request_date: f.request_date,
-          create_user: f.create_user,
-          flow_code: f.flow_code,
-          description: f.description,
-          remarks: f.remarks,
-          amount: f.hdr_amount,
-          req_div_code: f.req_div_code,
-          currency_rate: f.currency_rate,
-          currency_code: f.curr_code,
-          tx_cat_code: f.tx_cat_code,
-          tx_compntcat_code_1: f.tx_compntcat_code_1,
-          final_approved: f.hdr_final_approved ?? f.final_approved,
-          last_action: f.hdr_last_action ?? f.last_action,
-        }
+        request_number: f.request_number,
+        request_date: f.request_date,
+        create_user: f.create_user,
+        flow_code: f.flow_code,
+        description: f.description,
+        remarks: f.remarks,
+        amount: f.hdr_amount,
+        req_div_code: f.req_div_code,
+        currency_rate: f.currency_rate,
+        currency_code: f.curr_code,
+        tx_cat_code: f.tx_cat_code,
+        tx_compntcat_code_1: f.tx_compntcat_code_1,
+        final_approved: f.hdr_final_approved ?? f.final_approved,
+        last_action: f.hdr_last_action ?? f.last_action,
+      }
       : null;
 
     // Approval history needs its own table/query, so it is not part of the single-case form yet.
@@ -209,184 +207,229 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
 // ─── HTML renderer (inline styles, same approach as PO Order Register) ────
 
 const PR_FORM_EXTRA_CSS = `
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
+  @page { size: A4 portrait; margin: 6mm; }
+
+  table.pr-items {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
   }
+  table.pr-items th,
+  table.pr-items td {
+    padding: 3px 2px !important;
+    font-size: 7.5px !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+  table.pr-items th { font-size: 7px !important; }
+  table.pr-items tr { page-break-inside: avoid; }
 `;
 
 const S = {
-  wrap:   "font-size:9.5px;line-height:1.3;color:#1e293b;",
-  title:  "margin:0 0 8px 0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;text-align:center;letter-spacing:.5px;",
-  lbl:    "padding:3px 6px 3px 0;font-weight:700;font-size:9.5px;vertical-align:top;white-space:nowrap;width:34%;",
-  val:    "padding:3px 0;font-size:9.5px;vertical-align:top;word-break:break-word;",
+  wrap: "font-size:9.5px;line-height:1.3;color:#1e293b;",
+  title: "margin:0 0 8px 0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;text-align:center;letter-spacing:.5px;",
+  lbl: "padding:3px 6px 3px 0;font-weight:700;font-size:9.5px;vertical-align:top;white-space:nowrap;width:34%;",
+  val: "padding:3px 0;font-size:9.5px;vertical-align:top;word-break:break-word;",
   valBig: "padding:3px 0;font-size:13px;font-weight:800;vertical-align:top;color:#0b3d91;",
-  th:     "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:8.5px;padding:4px 3px;text-align:center;border:1px solid #9fb6d6;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  td:     "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;word-break:break-word;overflow-wrap:anywhere;",
-  tdR:    "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:right;word-break:break-word;",
-  tdC:    "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:center;",
-  sub:    "display:block;font-size:8px;color:#64748b;",
-  total:  "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  totalR: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  histBox:"margin-top:14px;border:1px solid #334155;padding:10px 16px;",
-  badge:  "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  th: "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:8px !important;padding:4px 2px !important;text-align:center;border:1px solid #9fb6d6;overflow-wrap:anywhere;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  td: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;overflow-wrap:anywhere;",
+  tdR: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;text-align:right;overflow-wrap:anywhere;",
+  tdC: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;text-align:center;overflow-wrap:anywhere;",
+  total: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:5px 2px !important;border-top:2px solid #0b4ca1;font-size:9px !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  totalR: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:5px 2px !important;border-top:2px solid #0b4ca1;font-size:9px !important;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  histBox: "margin-top:14px;border:1px solid #334155;padding:10px 16px;",
+  badge: "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
 };
 
-function kv(label: string, value: unknown, big = false): string {
-  return `
-    <tr>
-      <td style="${S.lbl}">${escapeHtml(label)} :</td>
-      <td style="${big ? S.valBig : S.val}">${escapeHtml(value)}</td>
-    </tr>`;
-}
-
 function renderFormBody(data: FormData, requestNumber: string): string {
-  const { header, items, history } = data;
+  const { items, history } = data;
+  const { left, right } = formHeaderPairs(data, requestNumber);
 
-  // Header falls back to the first item row if the header query returned nothing
-  const first = items[0] ?? {};
-  const h: ReportRow = header ?? {};
-  const reqNo = text(h.request_number) || text(first.request_number) || requestNumber;
-  const reqDate = h.request_date ?? first.request_date;
 
-  const leftHtml = [
-    kv("Purchase Request Number", reqNo, true),
-    kv("Created By", h.create_user ?? first.user_id),
-    kv("Flow", h.flow_code),
-    kv("Description", h.description),
-    kv("Remarks", h.remarks),
-    kv("Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))),
-    kv("Division", h.req_div_code),
-  ].join("");
 
-  const rightHtml = [
-    kv("Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)),
-    kv("Currency", h.currency_code ?? first.curr_code),
-    kv("Tax Category", h.tx_cat_code ?? first.tx_cat_code),
-    kv("Tax Code", h.tx_cat_code ?? first.tx_cat_code),
-    kv("Tax Type", h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1),
-    kv("Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"),
-    kv("Request Date", dateText(reqDate)),
-    kv("Last Action", h.last_action ?? first.last_action ?? first.purch_status),
-  ].join("");
+  const HDR_TH = "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:5px 8px;text-align:left;border:1px solid #9fb6d6;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
+  const HDR_TD = "font-size:9.5px;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word;border-left:1px solid #9fb6d6;border-right:1px solid #9fb6d6;border-top:none;border-bottom:none;";
+  const HDR_TD_LAST = HDR_TD.replace("border-bottom:none;", "border-bottom:1px solid #9fb6d6;");
+  const HDR_GAP = "width:2% !important;padding:0 !important;border:none !important;background:none !important;";
 
-  // ── Item lines ──
-  let totAmount = 0, totBase = 0, totTax = 0, totLine = 0;
+  const pairText = (p?: [string, string], bold = false) =>
+    p ? `${escapeHtml(p[0])}: ${bold ? `<b>${escapeHtml(p[1])}</b>` : escapeHtml(p[1])}` : "";
+
+  const hdrCount = Math.max(left.length, right.length);
+  const hdrRows = Array.from({ length: hdrCount }, (_, i) => {
+    const st = i === hdrCount - 1 ? HDR_TD_LAST : HDR_TD;
+    return `
+  <tr>
+   <td style="${st}width:49% !important;">${pairText(left[i], i === 0)}</td>
+<td style="${HDR_GAP}"></td>
+<td style="${st}width:49% !important;">${pairText(right[i], i === 0)}</td>
+  </tr>`;
+  }).join("");
+
+  const headerBlockHtml = `
+   <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 10px 0;">
+  <tr>
+    <th width="49%" style="${HDR_TH}">Request Details</th>
+    <th width="2%"  style="${HDR_GAP}"></th>
+    <th width="49%" style="${HDR_TH}">Other Details</th>
+  </tr>
+  ${hdrRows}
+</table>`;
+
+
+
+  const SUB = "font-size:8px;color:#64748b;";
+  let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
+
+
+
 
   const lines = items
     .map((r) => {
-      const amount = num(r.amount);
-      const base = num(r.lcurr_amt);
-      // In the entry form DISCOUNT_AMOUNT is a PERCENTAGE. Discount amount = rate x qty x % / 100,
-      // using the approved qty once it exists (same rule as the form).
+      const amount = num(r.amount);                 // Total Amt (E.T)
+      const tax = num(r.tx_compnt_amt_1);           // Tax Amt
+      const lineTotal = amount + tax;               // Total Amt (I.T)
+      const rate = num(r.currency_rate) || 1;
+      const lcurrAfterTax = lineTotal * rate;
       const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
       const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
-      const tax = num(r.tx_compnt_amt_1);
-      const lineTotal = amount + tax;
-      totAmount += amount; totBase += base; totTax += tax; totLine += lineTotal;
+      totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
 
       return `
-      <tr>
-        <td style="${S.tdC}">${escapeHtml(r.sr_no)}</td>
-        <td style="${S.td}">${escapeHtml(r.item_code)}<span style="${S.sub}">${escapeHtml(r.item_desp)}</span></td>
-        <td style="${S.td}">${escapeHtml(r.supplier_part_code)}<span style="${S.sub}">${escapeHtml(r.supplier_name || r.supplier)}</span></td>
-        <td style="${S.tdR}">${qtyFmt(r.item_qty)}</td>
-        <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
-        <td style="${S.tdR}">${amtFmt(discAmt)}<span style="${S.sub}">${pctFmt(r.discount_amount)} %</span></td>
-        <td style="${S.tdR}">${amtFmt(r.final_rate)}</td>
-        <td style="${S.tdC}">${escapeHtml(r.curr_code)}</td>
-        <td style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
-        <td style="${S.tdR}">${amtFmt(amount)}</td>
-        <td style="${S.tdR}">${amtFmt(base)}</td>
-        <td style="${S.td}">${escapeHtml(r.tx_compntcat_code_1)}<span style="${S.sub}">${escapeHtml(r.tx_cat_code)}</span></td>
-        <td style="${S.tdR}">${pctFmt(r.tx_compnt_perc_1)}</td>
-        <td style="${S.tdR}">${amtFmt(tax)}</td>
-        <td style="${S.tdR}">${qtyFmt(r.allocated_approved_quantity)}</td>
-        <td style="${S.tdR}">${amtFmt(lineTotal)}</td>
-      </tr>`;
+  <tr>
+    <td style="${S.tdC}">${escapeHtml(r.sr_no)}</td>
+    <td style="${S.td}">${escapeHtml(r.item_code)}<br/>${escapeHtml(r.item_desp)}${r.supplier_part_code ? `<br/>Part: ${escapeHtml(r.supplier_part_code)}` : ""
+        }${(r.supplier_name || r.supplier) ? `<br/>Supplier: ${escapeHtml(r.supplier_name || r.supplier)}` : ""
+        }</td>
+    <td style="${S.tdR}">${qtyFmt(r.item_qty)}<br/>Appr: ${qtyFmt(r.allocated_approved_quantity)}</td>
+    <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
+    <td style="${S.tdR}">${amtFmt(discAmt)}</td>
+    <td style="${S.tdR}">${amtFmt(amount)}</td>
+    <td style="${S.tdR}">${escapeHtml(r.tx_compntcat_code_1)}<br/>${pctFmt(r.tx_compnt_perc_1)}%</td>
+    <td style="${S.tdR}">${amtFmt(tax)}</td>
+    <td style="${S.tdR}">${amtFmt(lineTotal)}</td>
+    <td style="${S.tdC}">${escapeHtml(r.curr_code)}<br/>${rateFmt(r.currency_rate)}</td>
+    <td style="${S.tdR}">${amtFmt(lcurrAfterTax)}</td>
+  </tr>`;
     })
     .join("");
+
+
+  const ZOOM = 0.72; // portrait la cut hotay tar 0.68 kara, jaga urli tar 0.78 kara
+  const PX = (p: number) => `width:${p}px;min-width:${p}px;max-width:${p}px;`;
+  const SUM_L = "padding:4px 6px !important;font-size:9px !important;color:#0b3d91;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;";
+  const SUM_R = "padding:4px 6px !important;font-size:9px !important;text-align:right;border-bottom:1px solid #e2e8f0;";
+
+
+
+
 
   const itemsHtml = items.length === 0
     ? `<div style="padding:28px;font-size:11px;text-align:center;color:#64748b;">No items found for this request.</div>`
     : `
-    <table style="margin-top:10px;border-collapse:collapse;width:100%;table-layout:fixed;">
-      <colgroup>
-        <col style="width:4%"/><col style="width:13%"/><col style="width:8%"/><col style="width:6%"/>
-        <col style="width:6%"/><col style="width:6%"/><col style="width:6%"/><col style="width:5%"/>
-        <col style="width:5%"/><col style="width:7%"/><col style="width:7%"/><col style="width:6%"/>
-        <col style="width:4%"/><col style="width:5%"/><col style="width:5%"/><col style="width:7%"/>
-      </colgroup>
-      <thead>
-        <tr>
-          <th style="${S.th}">Sr. No.</th>
-          <th style="${S.th}">Item Code</th>
-          <th style="${S.th}">Supplier Part Code</th>
-          <th style="${S.th}">Request Qty</th>
-          <th style="${S.th}">Item Rate</th>
-          <th style="${S.th}">Discount Amt</th>
-          <th style="${S.th}">Final Rate</th>
-          <th style="${S.th}">Currency</th>
-          <th style="${S.th}">Ex Rate</th>
-          <th style="${S.th}">Amount</th>
-          <th style="${S.th}">Base Amount</th>
-          <th style="${S.th}">Tax Code</th>
-          <th style="${S.th}">TAX %</th>
-          <th style="${S.th}">Tax Amt</th>
-          <th style="${S.th}">Approved Qty</th>
-          <th style="${S.th}">Total Amt</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lines}
-        <tr>
-          <td colspan="9" style="${S.total}">Total Amount</td>
-          <td style="${S.totalR}">${amtFmt(totAmount)}</td>
-          <td style="${S.totalR}">${amtFmt(totBase)}</td>
-          <td colspan="2" style="${S.total}"></td>
-          <td style="${S.totalR}">${amtFmt(totTax)}</td>
-          <td style="${S.total}"></td>
-          <td style="${S.totalR}">${amtFmt(totLine)}</td>
-        </tr>
-      </tbody>
-    </table>`;
+  <table class="pr-items" width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin-top:8px;">
+    <colgroup>
+      <col width="3%"/><col width="25%"/><col width="7%"/><col width="8%"/><col width="7%"/>
+      <col width="10%"/><col width="7%"/><col width="8%"/><col width="10%"/><col width="8%"/><col width="15%"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <th style="${S.th}">Sr</th>
+        <th style="${S.th}">Item / Description</th>
+        <th style="${S.th}">Req Qty</th>
+        <th style="${S.th}">Item Rate</th>
+        <th style="${S.th}">Disc Amt</th>
+        <th style="${S.th}">Total Amt (E.T)</th>
+        <th style="${S.th}">Tax Type / %</th>
+        <th style="${S.th}">Tax Amt</th>
+        <th style="${S.th}">Total Amt (I.T)</th>
+        <th style="${S.th}">Curr / Ex Rate</th>
+        <th style="${S.th}">LCURR Amt After Tax</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lines}
+      <tr>
+        <td colspan="5" style="${S.total}">Total Amount</td>
+        <td style="${S.totalR}">${amtFmt(totAmount)}</td>
+        <td style="${S.total}"></td>
+        <td style="${S.totalR}">${amtFmt(totTax)}</td>
+        <td style="${S.totalR}">${amtFmt(totLine)}</td>
+        <td style="${S.total}"></td>
+        <td style="${S.totalR}">${amtFmt(totLcurr)}</td>
+      </tr>
+      <tr>
+        <td colspan="8" style="${SUM_L}">Total Discount</td>
+        <td colspan="3" style="${SUM_R}">${amtFmt(totDisc)}</td>
+      </tr>
+      <tr>
+        <td colspan="8" style="${SUM_L}">Total Amount Excluding Tax</td>
+        <td colspan="3" style="${SUM_R}">${amtFmt(totAmount)}</td>
+      </tr>
+      <tr>
+        <td colspan="8" style="${SUM_L}font-weight:800;">Total Amount Including Tax</td>
+        <td colspan="3" style="${SUM_R}font-weight:800;">${amtFmt(totLine)}</td>
+      </tr>
+    </tbody>
+  </table>`;
 
-  // ── Approval history box ──
+  // ── Approval history (only when a history query is wired up) ──
   const historyHtml = history.length === 0
     ? ""
     : `
     <div style="${S.histBox}">
-      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Request Number: &nbsp;${escapeHtml(reqNo)}</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Request Number: ${escapeHtml(left[0]?.[1] ?? requestNumber)}</div>
       ${history
-        .map(
-          (r) => `
-        <div style="margin:8px 0 2px 0;text-align:center;"><span style="${S.badge}">${escapeHtml(r.action_status)}</span></div>
-        <table style="border-collapse:collapse;margin-bottom:4px;">
-          <tr><td style="padding:2px 14px 2px 0;font-size:10px;">Last Updated :</td><td style="padding:2px 0;font-size:10px;">${escapeHtml(r.last_updated_by)}</td></tr>
-          <tr><td style="padding:2px 14px 2px 0;font-size:10px;">Last Updated Dt :</td><td style="padding:2px 0;font-size:10px;">${escapeHtml(dateTimeText(r.last_updated_dt))}</td></tr>
-        </table>`
-        )
-        .join("")}
+      .map(
+        (r) => `
+        <div style="margin:8px 0 2px 0;"><b>${escapeHtml(r.action_status)}</b></div>
+        <div style="font-size:10px;">Last Updated : ${escapeHtml(r.last_updated_by)}</div>
+        <div style="font-size:10px;">Last Updated Dt : ${escapeHtml(dateTimeText(r.last_updated_dt))}</div>`
+      )
+      .join("")}
     </div>`;
 
-  return `
-  <div class="pr-form" style="${S.wrap}">
-    <h1 style="${S.title}">${escapeHtml(REPORT_TITLE)}</h1>
+   return `
+<div class="pr-form" style="${S.wrap}">
+  <style>
+    .pr-form table.pr-items {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+    }
+    .pr-form table.pr-items th,
+    .pr-form table.pr-items td {
+      min-width: 0 !important;
+      padding: 3px 1px !important;
+      font-size: 7px !important;
+      white-space: normal !important;
+      word-break: break-all !important;
+      overflow-wrap: anywhere !important;
+    }
+    .pr-form table.pr-items th:nth-child(1)  { width: 3% !important; }
+    .pr-form table.pr-items th:nth-child(2)  { width: 17% !important; }
+    .pr-form table.pr-items th:nth-child(3)  { width: 7% !important; }
+    .pr-form table.pr-items th:nth-child(4)  { width: 8% !important; }
+    .pr-form table.pr-items th:nth-child(5)  { width: 7% !important; }
+    .pr-form table.pr-items th:nth-child(6)  { width: 10% !important; }
+    .pr-form table.pr-items th:nth-child(7)  { width: 7% !important; }
+    .pr-form table.pr-items th:nth-child(8)  { width: 8% !important; }
+    .pr-form table.pr-items th:nth-child(9)  { width: 10% !important; }
+    .pr-form table.pr-items th:nth-child(10) { width: 8% !important; }
+    .pr-form table.pr-items th:nth-child(11) { width: 15% !important; }
+  </style>
 
-    <table style="width:100%;border-collapse:collapse;border-top:1px solid #334155;border-bottom:1px solid #334155;table-layout:fixed;">
-      <tr>
-        <td style="width:55%;vertical-align:top;padding:6px 10px 6px 0;">
-          <table style="width:100%;border-collapse:collapse;">${leftHtml}</table>
-        </td>
-        <td style="width:45%;vertical-align:top;padding:6px 0 6px 10px;">
-          <table style="width:100%;border-collapse:collapse;">${rightHtml}</table>
-        </td>
-      </tr>
-    </table>
+  <h1 style="margin:0 0 8px 0;padding:0;font-size:15px;font-weight:800;color:#0b4ca1;">${escapeHtml(REPORT_TITLE)}</h1>
 
-    ${itemsHtml}
-    ${historyHtml}
-  </div>`;
+  ${headerBlockHtml}
+
+  ${itemsHtml}
+  ${historyHtml}
+</div>`;
 }
 
 // ─── Excel engine (raw OOXML) – shared by Summary and Details ─────────────
@@ -722,7 +765,7 @@ function formHeaderPairs(data: FormData, requestNumber: string): { left: [string
     ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
     ["Currency", text(h.currency_code ?? first.curr_code)],
     ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
-    ["Tax Code", text(h.tx_cat_code ?? first.tx_cat_code)],
+    //  ["Tax Code", text(h.tx_cat_code ?? first.tx_cat_code)],
     ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
     ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
     ["Request Date", dateText(reqDate)],
@@ -793,6 +836,7 @@ function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: st
   ];
   rows_.push(heads.map((t) => xlCell(t, "header")));
 
+  // Item lines
   // Item lines
   let totAmount = 0, totBase = 0, totTax = 0, totLine = 0;
   data.items.forEach((r) => {
