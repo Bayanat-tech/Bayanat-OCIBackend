@@ -514,8 +514,8 @@ function renderFormBody(data: FormData, requestNumber: string): string {
         <td></td>
         <td class="num">${amtFmt(totLcurr)}</td>
       </tr>
-      <tr class="subtotal-row">
-        <td colspan="5" class="right">Total Discount</td>
+            <tr class="subtotal-row">
+        <td colspan="10" class="right">Total Discount</td>
         <td class="num">${amtFmt(totDisc)}</td>
       </tr>
       <tr class="subtotal-row">
