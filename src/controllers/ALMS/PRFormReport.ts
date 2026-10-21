@@ -244,134 +244,287 @@ const S = {
   badge: "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
 };
 
+// function renderFormBody(data: FormData, requestNumber: string): string {
+//   const { items, history } = data;
+//   const { left, right } = formHeaderPairs(data, requestNumber);
+
+
+
+//   const HDR_TH = "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:5px 8px;text-align:left;border:1px solid #9fb6d6;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
+//   const HDR_TD = "font-size:9.5px;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word;border-left:1px solid #9fb6d6;border-right:1px solid #9fb6d6;border-top:none;border-bottom:none;";
+//   const HDR_TD_LAST = HDR_TD.replace("border-bottom:none;", "border-bottom:1px solid #9fb6d6;");
+//   const HDR_GAP = "width:2% !important;padding:0 !important;border:none !important;background:none !important;";
+
+//   const pairText = (p?: [string, string], bold = false) =>
+//     p ? `${escapeHtml(p[0])}: ${bold ? `<b>${escapeHtml(p[1])}</b>` : escapeHtml(p[1])}` : "";
+
+//   const hdrCount = Math.max(left.length, right.length);
+//   const hdrRows = Array.from({ length: hdrCount }, (_, i) => {
+//     const st = i === hdrCount - 1 ? HDR_TD_LAST : HDR_TD;
+//     return `
+//   <tr>
+//    <td style="${st}width:49% !important;">${pairText(left[i], i === 0)}</td>
+// <td style="${HDR_GAP}"></td>
+// <td style="${st}width:49% !important;">${pairText(right[i], i === 0)}</td>
+//   </tr>`;
+//   }).join("");
+
+//   const headerBlockHtml = `
+//    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 10px 0;">
+//   <tr>
+//     <th width="49%" style="${HDR_TH}">Request Details</th>
+//     <th width="2%"  style="${HDR_GAP}"></th>
+//     <th width="49%" style="${HDR_TH}">Other Details</th>
+//   </tr>
+//   ${hdrRows}
+// </table>`;
+//   const SUB = "font-size:8px;color:#64748b;";
+//   let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
+//   const lines = items
+//     .map((r) => {
+//       const amount = num(r.amount);                 // Total Amt (E.T)
+//       const tax = num(r.tx_compnt_amt_1);           // Tax Amt
+//       const lineTotal = amount + tax;               // Total Amt (I.T)
+//       const rate = num(r.currency_rate) || 1;
+//       const lcurrAfterTax = lineTotal * rate;
+//       const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
+//       const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
+//       totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
+
+//       return `
+//   <tr>
+//     <td style="${S.tdC}">${escapeHtml(r.sr_no)}</td>
+//     <td style="${S.td}">${escapeHtml(r.item_code)}<br/>${escapeHtml(r.item_desp)}${r.supplier_part_code ? `<br/>Part: ${escapeHtml(r.supplier_part_code)}` : ""
+//         }${(r.supplier_name || r.supplier) ? `<br/>Supplier: ${escapeHtml(r.supplier_name || r.supplier)}` : ""
+//         }</td>
+//     <td style="${S.tdR}">${qtyFmt(r.item_qty)}<br/>Appr: ${qtyFmt(r.allocated_approved_quantity)}</td>
+//     <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
+//     <td style="${S.tdR}">${amtFmt(discAmt)}</td>
+//     <td style="${S.tdR}">${amtFmt(amount)}</td>
+//     <td style="${S.tdR}">${escapeHtml(r.tx_compntcat_code_1)}<br/>${pctFmt(r.tx_compnt_perc_1)}%</td>
+//     <td style="${S.tdR}">${amtFmt(tax)}</td>
+//     <td style="${S.tdR}">${amtFmt(lineTotal)}</td>
+//     <td style="${S.tdC}">${escapeHtml(r.curr_code)}<br/>${rateFmt(r.currency_rate)}</td>
+//     <td style="${S.tdR}">${amtFmt(lcurrAfterTax)}</td>
+//   </tr>`;
+//     })
+//     .join("");
+
+
+//   const ZOOM = 0.72; // portrait la cut hotay tar 0.68 kara, jaga urli tar 0.78 kara
+//   const PX = (p: number) => `width:${p}px;min-width:${p}px;max-width:${p}px;`;
+//   const SUM_L = "padding:4px 6px !important;font-size:9px !important;color:#0b3d91;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;";
+//   const SUM_R = "padding:4px 6px !important;font-size:9px !important;text-align:right;border-bottom:1px solid #e2e8f0;";
+
+
+
+
+
+//   const itemsHtml = items.length === 0
+//     ? `<div style="padding:28px;font-size:11px;text-align:center;color:#64748b;">No items found for this request.</div>`
+//     : `
+//   <table class="pr-items" width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin-top:8px;">
+//     <colgroup>
+//       <col width="3%"/><col width="25%"/><col width="7%"/><col width="8%"/><col width="7%"/>
+//       <col width="10%"/><col width="7%"/><col width="8%"/><col width="10%"/><col width="8%"/><col width="15%"/>
+//     </colgroup>
+//     <thead>
+//       <tr>
+//         <th style="${S.th}">Sr</th>
+//         <th style="${S.th}">Item / Description</th>
+//         <th style="${S.th}">Req Qty</th>
+//         <th style="${S.th}">Item Rate</th>
+//         <th style="${S.th}">Disc Amt</th>
+//         <th style="${S.th}">Total Amt (E.T)</th>
+//         <th style="${S.th}">Tax Type / %</th>
+//         <th style="${S.th}">Tax Amt</th>
+//         <th style="${S.th}">Total Amt (I.T)</th>
+//         <th style="${S.th}">Curr / Ex Rate</th>
+//         <th style="${S.th}">LCURR Amt After Tax</th>
+//       </tr>
+//     </thead>
+//     <tbody>
+//       ${lines}
+//       <tr>
+//         <td colspan="5" style="${S.total}">Total Amount</td>
+//         <td style="${S.totalR}">${amtFmt(totAmount)}</td>
+//         <td style="${S.total}"></td>
+//         <td style="${S.totalR}">${amtFmt(totTax)}</td>
+//         <td style="${S.totalR}">${amtFmt(totLine)}</td>
+//         <td style="${S.total}"></td>
+//         <td style="${S.totalR}">${amtFmt(totLcurr)}</td>
+//       </tr>
+//       <tr>
+//         <td colspan="8" style="${SUM_L}">Total Discount</td>
+//         <td colspan="3" style="${SUM_R}">${amtFmt(totDisc)}</td>
+//       </tr>
+//       <tr>
+//         <td colspan="8" style="${SUM_L}">Total Amount Excluding Tax</td>
+//         <td colspan="3" style="${SUM_R}">${amtFmt(totAmount)}</td>
+//       </tr>
+//       <tr>
+//         <td colspan="8" style="${SUM_L}font-weight:800;">Total Amount Including Tax</td>
+//         <td colspan="3" style="${SUM_R}font-weight:800;">${amtFmt(totLine)}</td>
+//       </tr>
+//     </tbody>
+//   </table>`;
+
+//   // ── Approval history (only when a history query is wired up) ──
+//   const historyHtml = history.length === 0
+//     ? ""
+//     : `
+//     <div style="${S.histBox}">
+//       <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Request Number: ${escapeHtml(left[0]?.[1] ?? requestNumber)}</div>
+//       ${history
+//       .map(
+//         (r) => `
+//         <div style="margin:8px 0 2px 0;"><b>${escapeHtml(r.action_status)}</b></div>
+//         <div style="font-size:10px;">Last Updated : ${escapeHtml(r.last_updated_by)}</div>
+//         <div style="font-size:10px;">Last Updated Dt : ${escapeHtml(dateTimeText(r.last_updated_dt))}</div>`
+//       )
+//       .join("")}
+//     </div>`;
+
+//    return `
+// <div class="pr-form" style="${S.wrap}">
+//   <style>
+//     .pr-form table.pr-items {
+//       width: 100% !important;
+//       max-width: 100% !important;
+//       table-layout: fixed !important;
+//       border-collapse: collapse !important;
+//     }
+//     .pr-form table.pr-items th,
+//     .pr-form table.pr-items td {
+//       min-width: 0 !important;
+//       padding: 3px 1px !important;
+//       font-size: 7px !important;
+//       white-space: normal !important;
+//       word-break: break-all !important;
+//       overflow-wrap: anywhere !important;
+//     }
+//     .pr-form table.pr-items th:nth-child(1)  { width: 3% !important; }
+//     .pr-form table.pr-items th:nth-child(2)  { width: 17% !important; }
+//     .pr-form table.pr-items th:nth-child(3)  { width: 7% !important; }
+//     .pr-form table.pr-items th:nth-child(4)  { width: 8% !important; }
+//     .pr-form table.pr-items th:nth-child(5)  { width: 7% !important; }
+//     .pr-form table.pr-items th:nth-child(6)  { width: 10% !important; }
+//     .pr-form table.pr-items th:nth-child(7)  { width: 7% !important; }
+//     .pr-form table.pr-items th:nth-child(8)  { width: 8% !important; }
+//     .pr-form table.pr-items th:nth-child(9)  { width: 10% !important; }
+//     .pr-form table.pr-items th:nth-child(10) { width: 8% !important; }
+//     .pr-form table.pr-items th:nth-child(11) { width: 15% !important; }
+//   </style>
+
+//   <h1 style="margin:0 0 8px 0;padding:0;font-size:15px;font-weight:800;color:#0b4ca1;">${escapeHtml(REPORT_TITLE)}</h1>
+
+//   ${headerBlockHtml}
+
+//   ${itemsHtml}
+//   ${historyHtml}
+// </div>`;
+// }
+
+
 function renderFormBody(data: FormData, requestNumber: string): string {
   const { items, history } = data;
   const { left, right } = formHeaderPairs(data, requestNumber);
 
-
-
-  const HDR_TH = "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:5px 8px;text-align:left;border:1px solid #9fb6d6;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
-  const HDR_TD = "font-size:9.5px;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word;border-left:1px solid #9fb6d6;border-right:1px solid #9fb6d6;border-top:none;border-bottom:none;";
-  const HDR_TD_LAST = HDR_TD.replace("border-bottom:none;", "border-bottom:1px solid #9fb6d6;");
-  const HDR_GAP = "width:2% !important;padding:0 !important;border:none !important;background:none !important;";
-
+  // ── Header: one table, 2 columns, uses report_common "data-table" styling ──
   const pairText = (p?: [string, string], bold = false) =>
     p ? `${escapeHtml(p[0])}: ${bold ? `<b>${escapeHtml(p[1])}</b>` : escapeHtml(p[1])}` : "";
 
   const hdrCount = Math.max(left.length, right.length);
-  const hdrRows = Array.from({ length: hdrCount }, (_, i) => {
-    const st = i === hdrCount - 1 ? HDR_TD_LAST : HDR_TD;
-    return `
-  <tr>
-   <td style="${st}width:49% !important;">${pairText(left[i], i === 0)}</td>
-<td style="${HDR_GAP}"></td>
-<td style="${st}width:49% !important;">${pairText(right[i], i === 0)}</td>
-  </tr>`;
-  }).join("");
+  const hdrRows = Array.from({ length: hdrCount }, (_, i) => `
+    <tr>
+      <td>${pairText(left[i], i === 0)}</td>
+      <td>${pairText(right[i], i === 0)}</td>
+    </tr>`).join("");
 
   const headerBlockHtml = `
-   <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 10px 0;">
-  <tr>
-    <th width="49%" style="${HDR_TH}">Request Details</th>
-    <th width="2%"  style="${HDR_GAP}"></th>
-    <th width="49%" style="${HDR_TH}">Other Details</th>
-  </tr>
-  ${hdrRows}
-</table>`;
-
-
-
-  const SUB = "font-size:8px;color:#64748b;";
-  let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
-
-
-
-
-  const lines = items
-    .map((r) => {
-      const amount = num(r.amount);                 // Total Amt (E.T)
-      const tax = num(r.tx_compnt_amt_1);           // Tax Amt
-      const lineTotal = amount + tax;               // Total Amt (I.T)
-      const rate = num(r.currency_rate) || 1;
-      const lcurrAfterTax = lineTotal * rate;
-      const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
-      const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
-      totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
-
-      return `
-  <tr>
-    <td style="${S.tdC}">${escapeHtml(r.sr_no)}</td>
-    <td style="${S.td}">${escapeHtml(r.item_code)}<br/>${escapeHtml(r.item_desp)}${r.supplier_part_code ? `<br/>Part: ${escapeHtml(r.supplier_part_code)}` : ""
-        }${(r.supplier_name || r.supplier) ? `<br/>Supplier: ${escapeHtml(r.supplier_name || r.supplier)}` : ""
-        }</td>
-    <td style="${S.tdR}">${qtyFmt(r.item_qty)}<br/>Appr: ${qtyFmt(r.allocated_approved_quantity)}</td>
-    <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
-    <td style="${S.tdR}">${amtFmt(discAmt)}</td>
-    <td style="${S.tdR}">${amtFmt(amount)}</td>
-    <td style="${S.tdR}">${escapeHtml(r.tx_compntcat_code_1)}<br/>${pctFmt(r.tx_compnt_perc_1)}%</td>
-    <td style="${S.tdR}">${amtFmt(tax)}</td>
-    <td style="${S.tdR}">${amtFmt(lineTotal)}</td>
-    <td style="${S.tdC}">${escapeHtml(r.curr_code)}<br/>${rateFmt(r.currency_rate)}</td>
-    <td style="${S.tdR}">${amtFmt(lcurrAfterTax)}</td>
-  </tr>`;
-    })
-    .join("");
-
-
-  const ZOOM = 0.72; // portrait la cut hotay tar 0.68 kara, jaga urli tar 0.78 kara
-  const PX = (p: number) => `width:${p}px;min-width:${p}px;max-width:${p}px;`;
-  const SUM_L = "padding:4px 6px !important;font-size:9px !important;color:#0b3d91;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;";
-  const SUM_R = "padding:4px 6px !important;font-size:9px !important;text-align:right;border-bottom:1px solid #e2e8f0;";
-
-
-
-
-
-  const itemsHtml = items.length === 0
-    ? `<div style="padding:28px;font-size:11px;text-align:center;color:#64748b;">No items found for this request.</div>`
-    : `
-  <table class="pr-items" width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin-top:8px;">
-    <colgroup>
-      <col width="3%"/><col width="25%"/><col width="7%"/><col width="8%"/><col width="7%"/>
-      <col width="10%"/><col width="7%"/><col width="8%"/><col width="10%"/><col width="8%"/><col width="15%"/>
-    </colgroup>
+  <table class="data-table" width="100%">
     <thead>
       <tr>
-        <th style="${S.th}">Sr</th>
-        <th style="${S.th}">Item / Description</th>
-        <th style="${S.th}">Req Qty</th>
-        <th style="${S.th}">Item Rate</th>
-        <th style="${S.th}">Disc Amt</th>
-        <th style="${S.th}">Total Amt (E.T)</th>
-        <th style="${S.th}">Tax Type / %</th>
-        <th style="${S.th}">Tax Amt</th>
-        <th style="${S.th}">Total Amt (I.T)</th>
-        <th style="${S.th}">Curr / Ex Rate</th>
-        <th style="${S.th}">LCURR Amt After Tax</th>
+        <th width="50%">Request Details</th>
+        <th width="50%">Other Details</th>
+      </tr>
+    </thead>
+    <tbody>${hdrRows}</tbody>
+  </table>`;
+
+  // ── Items: ONE table, 11 columns ──
+  let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
+
+  const lines = items.map((r) => {
+    const amount = num(r.amount);                 // Total Amt (E.T)
+    const tax = num(r.tx_compnt_amt_1);           // Tax Amt
+    const lineTotal = amount + tax;               // Total Amt (I.T)
+    const lcurrAfterTax = lineTotal * (num(r.currency_rate) || 1);
+    const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
+    const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
+    totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
+
+    return `
+    <tr>
+      <td class="center">${escapeHtml(r.sr_no)}</td>
+      <td>${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${
+        r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""
+      }${
+        (r.supplier_name || r.supplier) ? `<br/><span class="muted">Supplier: ${escapeHtml(r.supplier_name || r.supplier)}</span>` : ""
+      }</td>
+      <td class="num">${qtyFmt(r.item_qty)}<br/><span class="muted">Appr: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
+      <td class="num">${amtFmt(r.item_rate)}</td>
+      <td class="num">${amtFmt(discAmt)}</td>
+      <td class="num">${amtFmt(amount)}</td>
+      <td class="num">${escapeHtml(r.tx_compntcat_code_1)}<br/><span class="muted">${pctFmt(r.tx_compnt_perc_1)}%</span></td>
+      <td class="num">${amtFmt(tax)}</td>
+      <td class="num">${amtFmt(lineTotal)}</td>
+      <td class="center">${escapeHtml(r.curr_code)}<br/><span class="muted">${rateFmt(r.currency_rate)}</span></td>
+      <td class="num">${amtFmt(lcurrAfterTax)}</td>
+    </tr>`;
+  }).join("");
+
+  const itemsHtml = items.length === 0
+    ? `<div class="empty">No items found for this request.</div>`
+    : `
+  <table class="data-table" width="100%">
+    <thead>
+      <tr>
+        <th class="center">Sr</th>
+        <th>Item / Description</th>
+        <th class="right">Req Qty</th>
+        <th class="right">Item Rate</th>
+        <th class="right">Disc Amt</th>
+        <th class="right">Total Amt (E.T)</th>
+        <th class="right">Tax Type / %</th>
+        <th class="right">Tax Amt</th>
+        <th class="right">Total Amt (I.T)</th>
+        <th class="center">Curr / Ex Rate</th>
+        <th class="right">LCURR Amt After Tax</th>
       </tr>
     </thead>
     <tbody>
       ${lines}
-      <tr>
-        <td colspan="5" style="${S.total}">Total Amount</td>
-        <td style="${S.totalR}">${amtFmt(totAmount)}</td>
-        <td style="${S.total}"></td>
-        <td style="${S.totalR}">${amtFmt(totTax)}</td>
-        <td style="${S.totalR}">${amtFmt(totLine)}</td>
-        <td style="${S.total}"></td>
-        <td style="${S.totalR}">${amtFmt(totLcurr)}</td>
+      <tr class="grand-total-row">
+        <td colspan="5">Total Amount</td>
+        <td class="num">${amtFmt(totAmount)}</td>
+        <td></td>
+        <td class="num">${amtFmt(totTax)}</td>
+        <td class="num">${amtFmt(totLine)}</td>
+        <td></td>
+        <td class="num">${amtFmt(totLcurr)}</td>
       </tr>
-      <tr>
-        <td colspan="8" style="${SUM_L}">Total Discount</td>
-        <td colspan="3" style="${SUM_R}">${amtFmt(totDisc)}</td>
+      <tr class="subtotal-row">
+        <td colspan="5" class="right">Total Discount</td>
+        <td class="num">${amtFmt(totDisc)}</td>
       </tr>
-      <tr>
-        <td colspan="8" style="${SUM_L}">Total Amount Excluding Tax</td>
-        <td colspan="3" style="${SUM_R}">${amtFmt(totAmount)}</td>
+      <tr class="subtotal-row">
+        <td colspan="10" class="right">Total Amount Excluding Tax</td>
+        <td class="num">${amtFmt(totAmount)}</td>
       </tr>
-      <tr>
-        <td colspan="8" style="${SUM_L}font-weight:800;">Total Amount Including Tax</td>
-        <td colspan="3" style="${SUM_R}font-weight:800;">${amtFmt(totLine)}</td>
+      <tr class="subtotal-row">
+        <td colspan="10" class="right">Total Amount Including Tax</td>
+        <td class="num">${amtFmt(totLine)}</td>
       </tr>
     </tbody>
   </table>`;
@@ -383,50 +536,18 @@ function renderFormBody(data: FormData, requestNumber: string): string {
     <div style="${S.histBox}">
       <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Request Number: ${escapeHtml(left[0]?.[1] ?? requestNumber)}</div>
       ${history
-      .map(
-        (r) => `
+        .map((r) => `
         <div style="margin:8px 0 2px 0;"><b>${escapeHtml(r.action_status)}</b></div>
         <div style="font-size:10px;">Last Updated : ${escapeHtml(r.last_updated_by)}</div>
-        <div style="font-size:10px;">Last Updated Dt : ${escapeHtml(dateTimeText(r.last_updated_dt))}</div>`
-      )
-      .join("")}
+        <div style="font-size:10px;">Last Updated Dt : ${escapeHtml(dateTimeText(r.last_updated_dt))}</div>`)
+        .join("")}
     </div>`;
 
-   return `
-<div class="pr-form" style="${S.wrap}">
-  <style>
-    .pr-form table.pr-items {
-      width: 100% !important;
-      max-width: 100% !important;
-      table-layout: fixed !important;
-      border-collapse: collapse !important;
-    }
-    .pr-form table.pr-items th,
-    .pr-form table.pr-items td {
-      min-width: 0 !important;
-      padding: 3px 1px !important;
-      font-size: 7px !important;
-      white-space: normal !important;
-      word-break: break-all !important;
-      overflow-wrap: anywhere !important;
-    }
-    .pr-form table.pr-items th:nth-child(1)  { width: 3% !important; }
-    .pr-form table.pr-items th:nth-child(2)  { width: 17% !important; }
-    .pr-form table.pr-items th:nth-child(3)  { width: 7% !important; }
-    .pr-form table.pr-items th:nth-child(4)  { width: 8% !important; }
-    .pr-form table.pr-items th:nth-child(5)  { width: 7% !important; }
-    .pr-form table.pr-items th:nth-child(6)  { width: 10% !important; }
-    .pr-form table.pr-items th:nth-child(7)  { width: 7% !important; }
-    .pr-form table.pr-items th:nth-child(8)  { width: 8% !important; }
-    .pr-form table.pr-items th:nth-child(9)  { width: 10% !important; }
-    .pr-form table.pr-items th:nth-child(10) { width: 8% !important; }
-    .pr-form table.pr-items th:nth-child(11) { width: 15% !important; }
-  </style>
-
-  <h1 style="margin:0 0 8px 0;padding:0;font-size:15px;font-weight:800;color:#0b4ca1;">${escapeHtml(REPORT_TITLE)}</h1>
-
+  return `
+<div class="pr-form">
+  <h1 class="report-title" style="margin:0 0 8px 0;">${escapeHtml(REPORT_TITLE)}</h1>
   ${headerBlockHtml}
-
+  <div style="height:10px;"></div>
   ${itemsHtml}
   ${historyHtml}
 </div>`;
@@ -921,15 +1042,15 @@ export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Res
     });
     const bodyHtml = renderFormBody(data, params.request_number);
 
-    const html = buildReportDocument({
-      title: `${REPORT_TITLE} - ${params.request_number}`,
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: PR_FORM_EXTRA_CSS,
-      autoPrint: false,
-      showPrintButton: true,
-    });
+   const html = buildReportDocument({
+  title: `${REPORT_TITLE} - ${params.request_number}`,
+  headerHtml,
+  bodyHtml,
+  footerHtml,
+  autoPrint: false,
+  showPrintButton: true,
+  orientation: "portrait",
+});
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
