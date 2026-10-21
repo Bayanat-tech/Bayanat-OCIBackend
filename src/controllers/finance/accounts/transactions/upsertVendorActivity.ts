@@ -271,27 +271,26 @@ return;
 
 connection=await TenantManager.getConnection(tenantId);
 
-const result=await connection.execute(
-`
-DELETE FROM MS_AC_VENDOR_ACTVY
-WHERE COMPANY_CODE = :company_code
-  AND AC_CODE = :ac_code
-  AND SRNO = :srno
-`,
-{
-company_code:data.company_code,
-ac_code,
-srno:toNumber(srno)
-},
-{ autoCommit:false }
+const result = await connection.execute(
+  `BEGIN PROC_DELETE_MS_AC_VENDOR_ACTVY(:p_company_code, :p_ac_code, :p_srno, :p_status, :p_message); END;`,
+  {
+    p_company_code: data.company_code,
+    p_ac_code: ac_code,
+    p_srno: toNumber(srno),
+    p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+    p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+  }
 );
-
-await connection.commit();
-
+const status = (result.outBinds as any)?.p_status;
+const message = (result.outBinds as any)?.p_message;
+if (status === 'ERROR') {
+  res.status(400).json({ success: false, message });
+  return;
+}
 res.json({
-success:true,
-message:"Activity deleted successfully",
-rowsAffected:result.rowsAffected || 0
+  success: true,
+  message: message || "Activity deleted successfully",
+  rowsAffected: 1
 });
 
 }

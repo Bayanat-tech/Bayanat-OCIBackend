@@ -552,161 +552,30 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
   } finally { await closeConn(conn); }
 };
 
-async function copyTableRows(
-  conn: oracledb.Connection,
-  tbl: string,
-  newCompany: string,
-  sourceCompany: string
-): Promise<number> {
-  try {
-    const check = await conn.execute(
-      `SELECT count(*) FROM ${tbl} WHERE COMPANY_CODE = :newCompany`,
-      { newCompany }
-    );
-    if (((check.rows?.[0] as any)?.[0] || 0) > 0) return 0;
-
-    const cols = await conn.execute(
-      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = :tbl AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
-      { tbl }
-    );
-    if (!cols.rows?.length) return 0;
-
-    const colList = cols.rows
-      .map((r: any) => r[0] || r.COLUMN_NAME)
-      .filter((c: string) => c !== 'COMPANY_CODE');
-    if (!colList.length) return 0;
-
-    const selectCols = colList.join(', ');
-    const insertCols = 'COMPANY_CODE, ' + selectCols;
-
-    const res = await conn.execute(
-      `INSERT INTO ${tbl} (${insertCols})
-       SELECT :newCompany, ${selectCols}
-       FROM ${tbl}
-       WHERE COMPANY_CODE = :sourceCompany`,
-      { newCompany, sourceCompany }
-    );
-    return res.rowsAffected || 0;
-  } catch (err) {
-    console.warn(`[copyTableRows] Non-fatal error copying ${tbl}:`, err);
-    return 0;
-  }
-}
-
 export async function initializeCompanyFinanceSetup(
   conn: oracledb.Connection,
   newCompany: string,
   sourceCompany = 'BSG'
 ): Promise<{ success: boolean; details: Record<string, any> }> {
-  const details: Record<string, any> = {};
-
-  // 1. MS_COMPANYINFO
-  const checkInfo = await conn.execute(
-    `SELECT count(*) FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany`,
-    { newCompany }
-  );
-  if (!((checkInfo.rows?.[0] as any)?.[0] || 0)) {
-    const infoCols = await conn.execute(
-      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = 'MS_COMPANYINFO' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
-      []
-    );
-    const colList = (infoCols.rows || [])
-      .map((r: any) => r[0] || r.COLUMN_NAME)
-      .filter((c: string) => !['COMPANY_CODE', 'COMPANY_NAME', 'AC_FY_PERIOD', 'OPN_FY_PERIOD'].includes(c));
-    const selectCols = colList.length ? ', ' + colList.join(', ') : '';
-
-    await conn.execute(
-      `INSERT INTO MS_COMPANYINFO (COMPANY_CODE, COMPANY_NAME, AC_FY_PERIOD, OPN_FY_PERIOD ${selectCols})
-       SELECT 
-         :newCompany, 
-         COALESCE((SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :newCompany), :newCompany),
-         COALESCE((SELECT AC_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225'),
-         COALESCE((SELECT OPN_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225')
-         ${selectCols}
-       FROM MS_COMPANYINFO
-       WHERE COMPANY_CODE = :sourceCompany`,
-      { newCompany, sourceCompany }
-    );
-    details.company_info = 'initialized';
-  }
-
-  // 2. MS_CURRENCY
-  details.currencies = await copyTableRows(conn, 'MS_CURRENCY', newCompany, sourceCompany);
-
-  // 3. MS_HR_DIVISION (Default branch/division)
-  details.divisions = await copyTableRows(conn, 'MS_HR_DIVISION', newCompany, sourceCompany);
-
-  // 4. Standard Statutory Chart of Accounts Groups (Levels 1, 2, and 3 only)
-  // Levels 4 & 5 (MS_ACCODES) and specific document account mappings (MS_AC_SETUP_DOC_ACCODE)
-  // are created specifically per company by the finance team.
-  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3']) {
-    details[lvl] = await copyTableRows(conn, lvl, newCompany, sourceCompany);
-  }
-
-  // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
-  details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
-
-  // 6. MS_AC_SETUP (Account Setup & Decimal precision based on MS_COMPANYINFO)
   try {
-    const checkAcSetup = await conn.execute(
-      `SELECT count(*) FROM MS_AC_SETUP WHERE COMPANY_CODE = :newCompany`,
-      { newCompany }
+    const result: any = await conn.execute(
+      `BEGIN PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:p_new_company, :p_source_company, 'ADMIN', :p_status, :p_message); END;`,
+      {
+        p_new_company: newCompany,
+        p_source_company: sourceCompany,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
     );
-    if (!((checkAcSetup.rows?.[0] as any)?.[0] || 0)) {
-      const compInfoRes: any = await conn.execute(
-        `SELECT CURRENCY, BANK_NAME, AC_CODE, SWIFT_CODE, REFERENCE_NO, COMPANY_NAME, AGE_1, AGE_2, AGE_3, AGE_4, AGE_5 
-         FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany AND ROWNUM = 1`,
-        { newCompany },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      const cRow = compInfoRes?.rows?.[0] || {};
-      const curr = String(cRow.CURRENCY || 'INR').trim().toUpperCase();
-      const decimals = ['OMR', 'BHD', 'KWD'].includes(curr) ? 3 : 2;
-
-      await conn.execute(
-        `INSERT INTO MS_AC_SETUP (
-          COMPANY_CODE, AC_CODE, BANK_NAME, AC_NAME, SWIFT_CODE,
-          BASE_CURR_CODE, PRICE_DECIMAL_NOS, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS, QTY_DECIMAL_NOS,
-          FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO,
-          JOB_CLASS, PDC_RECEIPT_CODE, PDC_ISSUE_CODE, EXCHANGE_DIFF_AC,
-          PRINCIPAL_AC_GROUP, SUPPLIER_AC_GROUP, INTERCOMPANY_AC_GROUP,
-          AGE_1, AGE_2, AGE_3, AGE_4, AGE_5,
-          DOCNO_TYPE, MULTY_DIV_ACCOUNTING, BILL_SETTLE_LCUR,
-          CREATED_BY, CREATED_AT, UPDATED_BY, UPDATED_AT
-        )
-        VALUES (
-          :newCompany, :acCode, :bankName, :acName, :swift,
-          :curr, :decimals, :decimals, :decimals, 2,
-          TO_DATE('2023-01-01', 'YYYY-MM-DD'), TO_DATE('2026-12-31', 'YYYY-MM-DD'), TO_DATE('2023-01-01', 'YYYY-MM-DD'), TO_DATE('2027-12-31', 'YYYY-MM-DD'),
-          '2', '1021000001', '2020500001', '5030600003',
-          '10203', '20201', '30301',
-          NVL(:age1, 30), NVL(:age2, 60), NVL(:age3, 90), NVL(:age4, 120), NVL(:age5, 150),
-          'YRNOS', 'N', 'N',
-          'Admin', SYSDATE, 'Admin', SYSDATE
-        )`,
-        {
-          newCompany,
-          acCode: cRow.AC_CODE || null,
-          bankName: cRow.BANK_NAME || null,
-          acName: cRow.REFERENCE_NO || cRow.COMPANY_NAME || null,
-          swift: cRow.SWIFT_CODE || null,
-          curr,
-          decimals,
-          age1: cRow.AGE_1 ? Number(cRow.AGE_1) : null,
-          age2: cRow.AGE_2 ? Number(cRow.AGE_2) : null,
-          age3: cRow.AGE_3 ? Number(cRow.AGE_3) : null,
-          age4: cRow.AGE_4 ? Number(cRow.AGE_4) : null,
-          age5: cRow.AGE_5 ? Number(cRow.AGE_5) : null,
-        }
-      );
-      details.ac_setup = 'initialized';
-    }
-  } catch (acSetupErr) {
-    console.warn(`[initializeCompanyFinanceSetup] Non-fatal error initializing MS_AC_SETUP:`, acSetupErr);
+    const status = result.outBinds?.p_status;
+    const message = result.outBinds?.p_message;
+    return {
+      success: status !== 'ERROR',
+      details: { message }
+    };
+  } catch (err: any) {
+    return { success: false, details: { error: err.message } };
   }
-
-  await conn.commit();
-  return { success: true, details };
 }
 
 export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promise<void> => {
@@ -2246,9 +2115,15 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       const userInvNo = v.inv_no?.trim() || null;
       const invToSet = userInvNo || invoice_no || purchase_no;
       await conn.execute(
-        `UPDATE TR_AC_HEADER SET INVOICE_NUMBER = :inv
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-        { inv: invToSet, cc: req.user.company_code, dn: purchase_no, dt: v.doc_type }
+        `BEGIN PROC_UPDATE_HEADER_INVOICE_NO(:p_company_code, :p_doc_no, :p_doc_type, :p_inv_no, :p_status, :p_message); END;`,
+        {
+          p_company_code: req.user.company_code,
+          p_doc_no: purchase_no,
+          p_doc_type: v.doc_type,
+          p_inv_no: invToSet,
+          p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+          p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+        }
       );
     } catch (uerr) {
       console.warn('Failed to update TR_AC_HEADER.INVOICE_NUMBER:', uerr);
@@ -2584,14 +2459,13 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     // Delete + reinsert details (your existing logic is fine)
     await conn.execute(
-      `DELETE FROM TR_AC_LPO_DETAIL
-       WHERE company_code = :cc
-         AND doc_no = :dn
-         AND doc_type = :dt`,
+      `BEGIN PROC_DEL_LPO_DETAIL(:p_company_code, :p_doc_no, :p_doc_type, :p_status, :p_message); END;`,
       {
-        cc: req.user.company_code,
-        dn: doc_no,
-        dt: doc_type
+        p_company_code: req.user.company_code,
+        p_doc_no: doc_no,
+        p_doc_type: doc_type,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
       }
     );
 
