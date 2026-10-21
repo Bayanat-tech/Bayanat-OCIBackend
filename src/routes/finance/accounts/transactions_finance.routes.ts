@@ -117,6 +117,7 @@ import { exportMonthlySalarySummaryReportExcel, getMonthlySalarySummaryReport } 
 import { exportEmployeeSalaryNotProcessedReportExcel, getEmployeeSalaryNotProcessedReport } from "../../../controllers/HR/Hr-Reports/Employeesalarynotprocessed";
 import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from "../../../controllers/HR/Hr-Reports/Yearlyleavebalance";
 import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
+import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../../controllers/ALMS/PurchaseRequestReports";
 
 
 
@@ -212,6 +213,15 @@ router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryRepo
 
 router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
 router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
+
+
+// purchase reqest register report routes
+
+router.post('/reports/PR_Register_Summary/html', getPrRegisterSummaryReportHtml);
+router.post('/reports/PR_Register_Summary/excel', getPrRegisterSummaryReportExcel);
+
+router.post('/reports/PR_Register_Details/html', getPrRegisterDetailReportHtml);
+router.post('/reports/PR_Register_Details/excel', getPrRegisterDetailReportExcel);
 
 // Purchase Sales Stock Summary/Transaction Report Routes
 

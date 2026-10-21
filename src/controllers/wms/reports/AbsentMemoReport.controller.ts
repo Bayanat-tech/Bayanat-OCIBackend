@@ -6,7 +6,8 @@
 //  • Uses the same DB helper / tenant resolution as the Salary Adv/Ded report.
 //  • Calls PROC_BUILD_DYNAMIC_SQL_HR_REPORT with parameter
 //    'Hr_Report_SALARY_ADV_DED_FORM_SIMPLE' to get the SELECT text, then runs it.
-//  • Renders an A4 memo layout (info + subject + remarks + signatory).
+//  • Renders an A4 memo layout (info + subject + remarks + signatory)
+//    AND an employee/detail lines table (same style as Salary Adv/Ded report).
 //  • header/footer come from report_common (reportHeader / reportFooter).
 //  • applied filters shown via reportAppliedFilters.
 
@@ -60,6 +61,18 @@ function normalize(rows: any[] = []): ReportRow[] {
 function text(value: unknown): string {
   if (value == null) return "";
   return String(value);
+}
+
+function num(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function fmtAmount(n: number): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 }
 
 function escapeHtml(value: unknown): string {
@@ -211,6 +224,25 @@ const ABSENT_MEMO_EXTRA_CSS = `
     line-height: 1.7;
   }
   .signatory .name { font-weight: 800; }
+
+  /* ── Employee / detail lines table (same as Salary Adv/Ded report) ── */
+  table.lines-table { width: 100%; border-collapse: collapse; margin: 18px 0 0; }
+  table.lines-table th {
+    padding: 5px 8px;
+    background: #00378c;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: left;
+  }
+  table.lines-table td { padding: 4px 6px; font-size: 9.5px; vertical-align: top; }
+  table.lines-table .num { text-align: right; }
+  table.lines-table tr.total td {
+    border-top: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b;
+    font-weight: 700;
+    font-size: 9.5px;
+  }
 `;
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
@@ -234,6 +266,46 @@ function renderAbsentMemoBody(rows: ReportRow[], filtersHtml = ""): string {
     .filter(Boolean)
     .map((v) => escapeHtml(v))
     .join("\n");
+
+  // ── Detail lines (one row per HR_SALARY_ADVDED_FORM_DET record) ─────────────
+  const lineRows = rows.filter((x) => x.line_no != null || x.line_amount != null);
+  const total = lineRows.length
+    ? lineRows.reduce((sum, x) => sum + num(x.line_amount), 0)
+    : num(r.amount);
+
+  const linesHtml = lineRows.length
+    ? `<table class="lines-table">
+        <thead>
+          <tr>
+            <th style="width:16%">Employee Code</th>
+            <th>Employee Name</th>
+            <th style="width:20%">Pay Unit</th>
+            <th style="width:14%" class="num">Amount</th>
+            <th style="width:14%">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineRows
+            .map(
+              (x) => `<tr>
+            <td>${escapeHtml(x.line_emp_code ?? empCode)}</td>
+            <td>${escapeHtml(x.line_emp_name ?? empName)}</td>
+            <td>${escapeHtml(x.pay_comp_id)}</td>
+            <td class="num">${escapeHtml(fmtAmount(num(x.line_amount)))}</td>
+            <td>${escapeHtml(fmtDate(x.recover_from_dt))}</td>
+          </tr>`,
+            )
+            .join("")}
+          <tr class="total">
+            <td></td>
+            <td></td>
+            <td class="num">Total:</td>
+            <td class="num">${escapeHtml(fmtAmount(total))}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>`
+    : "";
 
   return `
     ${heading}
@@ -274,6 +346,8 @@ function renderAbsentMemoBody(rows: ReportRow[], filtersHtml = ""): string {
     </div>
 
     <div class="memo-body">${remarks}</div>
+
+    ${linesHtml}
 
     ${
       r.signatory_name || r.signatory_position

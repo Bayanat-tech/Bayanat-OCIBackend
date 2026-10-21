@@ -308,15 +308,15 @@ const PO_REGISTER_EXTRA_CSS = `
 function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
   const { groups, grandQty } = groupByPo(rows);
 
-  // ── Inline styles (CSS file pe depend nahi) ──
+  const EX = "-webkit-print-color-adjust:exact;print-color-adjust:exact;";
   const S = {
-    head:  "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;padding:6px 8px;border-left:3px solid #0b4ca1;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-    total: "background:#f4f7fb !important;color:#0b3d91 !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-    grand: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:8px 6px;border-top:2px solid #0b4ca1;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-    th:    "background:#0b4ca1 !important;color:#ffffff !important;font-weight:700;padding:5px 6px;text-align:left;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-    thR:   "background:#0b4ca1 !important;color:#ffffff !important;font-weight:700;padding:5px 6px;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+    head:  `background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;padding:6px 8px;border-left:3px solid #0b4ca1;${EX}`,
+    total: `background:#f4f7fb !important;color:#0b3d91 !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;${EX}`,
+    grand: `background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:8px 6px;border-top:2px solid #0b4ca1;font-size:11px;${EX}`,
+    th:    `background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;padding:5px 6px;text-align:left;border-bottom:2px solid #0b4ca1;${EX}`,
+    thR:   `background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;padding:5px 6px;text-align:right;border-bottom:2px solid #0b4ca1;${EX}`,
     td:    "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;",
-    tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;",
+    tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;white-space:nowrap;",
   };
 
   const groupsHtml = groups
@@ -328,7 +328,7 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
           <td style="${S.td}">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
           <td style="${S.td}">${escapeHtml(dateText(r.required_dt || r.doc_date))}</td>
           <td style="${S.td}">${escapeHtml(r.remarks || r.det_remarks)}</td>
-          <td style="${S.tdR}">${qtyFmt(r.quantity)}</td>
+          <td class="right num" style="${S.tdR}">${qtyFmt(r.quantity)}</td>
           <td style="${S.td}">${escapeHtml(r.l_uom)}</td>
         </tr>`
         )
@@ -337,7 +337,7 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
       return `
       <tbody style="break-inside:avoid;page-break-inside:avoid;">
         <tr>
-          <td colspan="5" style="${S.head}">
+          <td colspan="5" class="section-strip" style="${S.head}">
             PO NO = ${escapeHtml(g.doc_no)}
             &nbsp;|&nbsp; PO Date = ${escapeHtml(dateText(g.doc_date))}
             &nbsp;|&nbsp; Supplier = ${escapeHtml(g.ac_name)}
@@ -345,9 +345,9 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
           </td>
         </tr>
         ${lines}
-        <tr>
+        <tr class="subtotal-row">
           <td colspan="3" style="${S.total}">Total for : ${escapeHtml(g.doc_no)}</td>
-          <td style="${S.total} text-align:right;">${qtyFmt(g.qtyTotal)}</td>
+          <td class="right num" style="${S.total} text-align:right;">${qtyFmt(g.qtyTotal)}</td>
           <td style="${S.total}"></td>
         </tr>
       </tbody>`;
@@ -366,21 +366,21 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
       rows.length === 0
         ? `<div style="padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;">No records found for the selected filters.</div>`
         : `
-      <table style="margin-top:8px;border-collapse:collapse;width:100%;">
+      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;">
         <thead>
           <tr>
             <th style="${S.th}">Product</th>
             <th style="${S.th}">Required Date</th>
             <th style="${S.th}">Remarks</th>
-            <th style="${S.thR}">P.O Qty</th>
+            <th class="right" style="${S.thR}">P.O Qty</th>
             <th style="${S.th}">UOM</th>
           </tr>
         </thead>
         ${groupsHtml}
         <tbody>
-          <tr>
+          <tr class="grand-total-row">
             <td colspan="3" style="${S.grand}">Grand Total Qty</td>
-            <td style="${S.grand} text-align:right;">${qtyFmt(grandQty)}</td>
+            <td class="right num" style="${S.grand} text-align:right;">${qtyFmt(grandQty)}</td>
             <td style="${S.grand}"></td>
           </tr>
         </tbody>

@@ -2,15 +2,15 @@ import { Request, Response } from "express";
 import { getConn } from "../../res/oracleDbConnect";
 import { execDynamicProc } from "../../res/helperFunction";
 import {
-  buildInvoiceHtmlAMKSA,
-  buildInvoiceHtmlBTIND,
-  InvoiceMeta,
-  InvoiceRow,
-} from "../wms/reports/invoice_reports/render_html";
+  buildFreightInvoiceHtmlAMKSA,
+  buildFreightInvoiceHtmlBTIND,
+  FreightInvoiceMeta,
+  FreightInvoiceRow,
+} from "./freightInvoiceRenderHtml";
 
-const templateBuilders: Record<string, (rows: InvoiceRow[], meta: InvoiceMeta) => string> = {
-  AMKSA: buildInvoiceHtmlAMKSA,
-  BTIND: buildInvoiceHtmlBTIND,
+const templateBuilders: Record<string, (rows: FreightInvoiceRow[], meta: FreightInvoiceMeta) => string> = {
+  AMKSA: buildFreightInvoiceHtmlAMKSA,
+  BTIND: buildFreightInvoiceHtmlBTIND,
 };
 
 export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise<void> => {
@@ -31,9 +31,10 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
     return;
   }
 
+  let connection: any;
   try {
-    const connection = await getConn(req);
-    const rows = await execDynamicProc<InvoiceRow>(
+    connection = await getConn(req);
+    const rawRows = await execDynamicProc<FreightInvoiceRow>(
       connection,
       "PROC_BUILD_DYNAMIC_FRT_INVOICE",
       {
@@ -44,12 +45,65 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       }
     );
 
-    if (!rows.length) {
+    if (!rawRows.length) {
       res.status(404).send("<h3>No Freight invoice report data was found for the selected invoice.</h3>");
       return;
     }
 
-    const meta: InvoiceMeta = {
+    // Query official company name and logo from MS_COMPANY
+    let officialCompanyName = "";
+    let officialCompanyLogo = "";
+    try {
+      const oracledb = await import("oracledb");
+      const compRes = await connection.execute(
+        `SELECT company_name, company_logo FROM MS_COMPANY WHERE company_code = :company_code`,
+        { company_code },
+        { outFormat: oracledb.default?.OUT_FORMAT_OBJECT || oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (compRes.rows && compRes.rows.length > 0) {
+        officialCompanyName = (compRes.rows[0] as any).COMPANY_NAME || "";
+        officialCompanyLogo = (compRes.rows[0] as any).COMPANY_LOGO || "";
+      }
+    } catch (_) {}
+
+    // Pick preferred company address info (matches invoice currency or country = 'OMAN')
+    const preferredCompany = rawRows.find((r: any) =>
+      String(r.country).toUpperCase() === "OMAN" ||
+      (r.curr_code && r.currency && String(r.currency).toUpperCase() === String(r.curr_code).toUpperCase()) ||
+      String(r.company_name).trim().toUpperCase() === "AAA LOGISTICS"
+    ) || rawRows[0];
+
+    // Deduplicate lines by (srno, act_code)
+    const seenLines = new Set<string>();
+    const rows: FreightInvoiceRow[] = [];
+    for (const r of rawRows) {
+      const lineKey = `${r.srno ?? ""}|${r.act_code ?? ""}|${r.inv_desc ?? (r as any).activity ?? ""}`;
+      if (!seenLines.has(lineKey)) {
+        seenLines.add(lineKey);
+        rows.push({
+          ...r,
+          company_name: officialCompanyName || preferredCompany.company_name || r.company_name,
+          company_logo: officialCompanyLogo || preferredCompany.company_logo || r.company_logo,
+          address1: preferredCompany.address1 || r.address1,
+          address2: preferredCompany.address2 || r.address2,
+          address3: preferredCompany.address3 || r.address3,
+          city: preferredCompany.city || r.city,
+          country: preferredCompany.country || r.country,
+          tel_no: preferredCompany.tel_no || r.tel_no,
+          email: preferredCompany.email || r.email,
+          crn: preferredCompany.crn || r.crn,
+        });
+      }
+    }
+
+    const calculatedBase = rows.reduce((sum, r) => sum + (Number(r.bill) || 0), 0);
+    const calculatedVat = rows.reduce((sum, r) => sum + (Number(r.tx_compnt_amt_1) || 0), 0);
+    for (const r of rows) {
+      r.inv_amount = calculatedBase;
+      r.tot_vat_amt = calculatedVat;
+    }
+
+    const meta: FreightInvoiceMeta = {
       invoiceNo: invoice_no,
       invoiceDate: invoice_date,
       invoicePeriod: invoice_period,
@@ -71,6 +125,12 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
         error?.message || "Unknown error"
       )}</p>`
     );
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (_) {}
+    }
   }
 };
 

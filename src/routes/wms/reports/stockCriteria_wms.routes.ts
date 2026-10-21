@@ -28,6 +28,11 @@ import { getAbsenceReportHtml } from "../../../controllers/wms/reports/AbsenceRe
 import { getDocumentReportHtml } from "../../../controllers/wms/reports/HrDocumentReport.controller";
 import { getLabourCardExpiryReportHtml } from "../../../controllers/wms/reports/HrLabourExpiryCard.controller";
 import { getEmployeeHeadCountReportHtml } from "../../../controllers/wms/reports/HrEmployeeHeadCountList.controller";
+import { getSalaryRegisterHtml } from "../../../controllers/wms/reports/SalaryRegister.controller";
+import { getHrVarianceReportHtml } from "../../../controllers/wms/reports/VarianceReport.controller";
+import { getHrEmployeeDetailsHtml } from "../../../controllers/wms/reports/EmployeeDetails.controller";
+// NEW IMPORT ADDED HERE
+import { getHrEmployeeWiseCostHtml } from "../../../controllers/wms/reports/EmployeeWiseCostReport.controller";
 
 const router = express.Router();
 
@@ -154,13 +159,77 @@ router.get(
   getRetirementReportHtml
 );
 
-// Optional: also allow POST for parity with other routes
 router.post(
   "/hr/retirement/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getRetirementReportHtml
 );
+
+// ─── Salary Register Report ───────────────────────────────────────────────────
+
+router.get(
+  "/hr/salary-register/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryRegisterHtml
+);
+
+router.post(
+  "/hr/salary-register/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryRegisterHtml
+);
+
+// ─── HR Variance Report ───────────────────────────────────────────────────────
+
+router.get(
+  "/hr/variance-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrVarianceReportHtml
+);
+
+router.post(
+  "/hr/variance-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrVarianceReportHtml
+);
+
+// ─── HR Employee Details Report ───────────────────────────────────────────────
+
+router.get(
+  "/hr/employee-details/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeDetailsHtml
+);
+
+router.post(
+  "/hr/employee-details/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeDetailsHtml
+);
+
+// ─── Employee Wise Cost Report ────────────────────────────────────────────────
+// NEW ROUTE ADDED HERE
+router.get(
+  "/hr/employee-wise-cost/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeWiseCostHtml
+);
+
+router.post(
+  "/hr/employee-wise-cost/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeWiseCostHtml
+);
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Absence Report ───────────────────────────────────────────────────────────
 
@@ -171,7 +240,6 @@ router.get(
   getAbsenceReportHtml
 );
 
-// Optional: also allow POST for parity with other routes
 router.post(
   "/hr/absence/html",
   passport.authenticate("jwt", { session: false }),
@@ -188,7 +256,6 @@ router.get(
   getDocumentReportHtml
 );
 
-// Optional: also allow POST for parity with other routes
 router.post(
   "/hr/document/html",
   passport.authenticate("jwt", { session: false }),
@@ -205,7 +272,6 @@ router.get(
   getLabourCardExpiryReportHtml
 );
 
-// Optional: also allow POST for parity with other routes
 router.post(
   "/hr/labour-card-expiry/html",
   passport.authenticate("jwt", { session: false }),
@@ -222,7 +288,6 @@ router.get(
   getEmployeeHeadCountReportHtml
 );
 
-// Optional: also allow POST for parity with other routes
 router.post(
   "/hr/employee-head-count/html",
   passport.authenticate("jwt", { session: false }),
