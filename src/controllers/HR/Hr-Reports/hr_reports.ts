@@ -197,6 +197,20 @@ function pick(req: RequestWithUser, ...keys: string[]): string {
   return "";
 }
 
+/** company_code sent by the frontend (useAuth) – always feeds code1 */
+function companyOf(req: RequestWithUser): string {
+  return (
+    pick(req, "company_code", "as_companycode", "as_company_code") ||
+    text(req.user?.company_code) ||
+    "All"
+  );
+}
+
+/** loginid = user_id sent by the frontend (useAuth) */
+function loginOf(req: RequestWithUser): string {
+  return pick(req, "loginid", "user_id") || text(req.user?.loginid) || "ADMIN";
+}
+
 /**
  * Returns the date as a 'YYYY-MM-DD' string (or null).
  * Accepts 'YYYY-MM-DD[...]' (ISO, incl. timestamps) and 'DD/MM/YYYY' or 'DD-MM-YYYY'.
@@ -452,7 +466,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_JOINER_LIST");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -466,7 +480,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -507,7 +520,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_REGISTER");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -521,7 +534,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -557,7 +569,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_LEAVERS");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -570,7 +582,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "From", value: pick(req, "sep_from", "adt_join_from", "date_from") },
@@ -601,7 +612,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_TENURE");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -613,7 +624,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Employee ID", value: pick(req, "employee_id", "as_employee_id") || "All" },
@@ -642,7 +652,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_ATTENDANCE_REGISTER");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -655,7 +665,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -689,7 +698,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_ACCRUAL_BALANCE");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -699,7 +708,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -734,7 +742,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_PAYUNIT_LIST");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -748,7 +756,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -788,7 +795,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_PASSPORT_EXPIRY_LISTING");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -802,7 +809,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -846,7 +852,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_AIRTICKET_REQUEST_LIST");
-      b.code1 = pick(req, "company_code", "as_company_code") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_div_code") || "All";
       b.code3 = pick(req, "dept_code", "as_dept_code") || "All";
       b.code4 = pick(req, "section_code", "as_section_code") || "All";
@@ -857,7 +863,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_company_code") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_div_code") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_dept_code") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_section_code") || "All" },
@@ -914,7 +919,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_LISTING");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -931,7 +936,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -972,7 +976,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_AIRFARE_REPORT");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -986,7 +990,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -1013,8 +1016,10 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
 // ─── Data loader ──────────────────────────────────────────────────────────
 
 async function loadReportData(req: RequestWithUser, cfg: ReportConfig): Promise<ReportRow[]> {
-  const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
+  const loginid = loginOf(req);
   const binds = cfg.buildBinds(req, loginid);
+  binds.code1 = companyOf(req); // company_code is ALWAYS code1, for every report
+  binds.loginid = loginid;
   console.log(`Loading report data for ${cfg.key} (loginid=${loginid}) with binds:`, binds);
   const conn = await getConn(req);
   try {
@@ -1905,7 +1910,7 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
 
     const group = resolveGroup(req, cfg);
     const rows = applyGrouping(await loadReportData(req, cfg), group);
-    const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
+    const loginid = loginOf(req);
 
     if (type === "excel") {
       const buffer = buildExcelBuffer(cfg, rows, loginid, group);
@@ -1920,10 +1925,8 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
     }
 
     // HTML
-    const companyCode =
-      pick(req, "company_code", "as_companycode") ||
-      text(req.user?.company_code) ||
-      "BSG";
+    const company = companyOf(req);
+    const companyCode = company === "All" ? "BSG" : company;
 
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
