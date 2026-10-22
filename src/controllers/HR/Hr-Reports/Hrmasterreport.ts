@@ -29,6 +29,8 @@ interface ReportCol {
   weight?: number;  // relative width, default 1
   fmt?: Fmt;
   primary?: boolean; // blue bold (code column)
+  /** Serial number column (1, 2, 3 ...). Not read from the database. */
+  index?: boolean;
   /** Stack several DB fields in ONE column: first line bold, the rest smaller with a label */
   lines?: { key: string; label?: string; fmt?: Fmt }[];
 }
@@ -180,64 +182,24 @@ const HR_REPORTS: Record<string, MasterReport> = {
     orderBy: ["COMPANY_CODE", "SKILL_CODE"],
   },
 
-  // All 14 fields are shown, grouped into 7 columns so it fits A4 portrait cleanly.
+  // "List of Documents" layout: SI No, Doc Type, Doctype Name, Short Name,
+  // Renewal Days, Renewal Charges, Attach Folder Path, Document Notes
   document_types: {
     title: "Document Type Master Report",
     table: "MS_HR_DOCTYPES",
     companyCol: "COMPANY_CODE",
     companyRequired: true,
-    orientation: "portrait",
+    orientation: "landscape",
     filters: [{ col: "DOC_TYPE", source: "code", label: "Doc Type" }],
     columns: [
-      { key: "doc_type", label: "Doc Type", primary: true, weight: 0.8 },
-      {
-        key: "doctype_name",
-        label: "Document",
-        weight: 2.6,
-        lines: [
-          { key: "doctype_name" },
-          { key: "doctype_short_desc", label: "Short" },
-          { key: "doc_notes", label: "Notes" },
-        ],
-      },
-      {
-        key: "renewal_period_days",
-        label: "Renewal",
-        weight: 1.3,
-        lines: [
-          { key: "renewal_period_days", label: "Days", fmt: "int" },
-          { key: "renewal_chgs", label: "Charges", fmt: "num2" },
-        ],
-      },
-      {
-        key: "mand_flag",
-        label: "Rules",
-        weight: 1.2,
-        lines: [
-          { key: "mand_flag", label: "Mandatory", fmt: "yn" },
-          { key: "doc_editable", label: "Editable", fmt: "yn" },
-        ],
-      },
-      {
-        key: "attach_folder",
-        label: "Attachment",
-        weight: 2,
-        lines: [
-          { key: "attach_folder", label: "Folder" },
-          { key: "attach_prefix", label: "Prefix" },
-          { key: "attach_type", label: "Type" },
-        ],
-      },
-      {
-        key: "email_id_for_alerts",
-        label: "Alerts",
-        weight: 2,
-        lines: [
-          { key: "email_id_for_alerts", label: "Email" },
-          { key: "alert_before", label: "Before (days)", fmt: "int" },
-        ],
-      },
-      { key: "status_flag", label: "Status", align: "center", fmt: "status", weight: 0.8 },
+      { key: "_sl", label: "SI No", index: true, align: "center", weight: 0.6 },
+      { key: "doc_type", label: "Doc Type", primary: true, align: "center", weight: 0.8 },
+      { key: "doctype_name", label: "Doctype Name", weight: 2.4 },
+      { key: "doctype_short_desc", label: "Short Name", weight: 1.2 },
+      { key: "renewal_period_days", label: "Renewal Days", align: "right", fmt: "int", weight: 1 },
+      { key: "renewal_chgs", label: "Renewal Charges", align: "right", fmt: "num2", weight: 1.1 },
+      { key: "attach_folder", label: "Attach Folder Path", weight: 2 },
+      { key: "doc_notes", label: "Document Notes", weight: 2.4 },
     ],
     orderBy: ["COMPANY_CODE", "DOC_TYPE"],
   },
@@ -324,9 +286,13 @@ async function loadData(req: RequestWithUser, def: MasterReport, params: ReportP
     binds[`f${i}`] = value;
   });
 
-  // Every DB column used by the report (including stacked "lines" fields), de-duplicated
+  // Every DB column used by the report (stacked "lines" fields included, SI No column skipped)
   const keys = Array.from(
-    new Set(def.columns.flatMap((c) => (c.lines ? c.lines.map((l) => l.key) : [c.key])))
+    new Set(
+      def.columns
+        .filter((c) => !c.index)
+        .flatMap((c) => (c.lines ? c.lines.map((l) => l.key) : [c.key]))
+    )
   );
   const select = keys.map((k) => `"${t}"."${k.toUpperCase()}"`).join(", ");
   const order = def.orderBy.map((c) => `"${t}"."${c}" ASC`).join(", ");
@@ -532,28 +498,33 @@ function renderBody(def: MasterReport, rows: ReportRow[], params: ReportParams, 
   if (!rows.length) {
     bodyRows = `<tr class="empty-row"><td colspan="${cols.length}">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
   } else {
-    for (const r of rows) {
+    rows.forEach((r, rowIdx) => {
       bodyRows +=
         `<tr class="data-row">` +
         cols
           .map((c) => {
-            const nowrap = !c.lines && (c.primary || c.fmt === "num2" || c.fmt === "int");
+            const nowrap = c.index || (!c.lines && (c.primary || c.fmt === "num2" || c.fmt === "int"));
             const cls = `${c.align ?? "left"}${nowrap ? " nw" : ""}${c.primary ? " primary-text" : ""}`;
-            const inner = c.lines
-              ? c.lines
-                  .map(
-                    (l, i) =>
-                      `<div class="${i === 0 ? "line-main" : "line-sub"}">` +
-                      `${l.label ? `<span class="line-lbl">${escapeHtml(l.label)}:</span> ` : ""}` +
-                      `${escapeHtml(formatCell(r[l.key], l.fmt))}</div>`
-                  )
-                  .join("")
-              : escapeHtml(formatCell(r[c.key], c.fmt));
+            let inner: string;
+            if (c.index) {
+              inner = String(rowIdx + 1);
+            } else if (c.lines) {
+              inner = c.lines
+                .map(
+                  (l, i) =>
+                    `<div class="${i === 0 ? "line-main" : "line-sub"}">` +
+                    `${l.label ? `<span class="line-lbl">${escapeHtml(l.label)}:</span> ` : ""}` +
+                    `${escapeHtml(formatCell(r[l.key], l.fmt))}</div>`
+                )
+                .join("");
+            } else {
+              inner = escapeHtml(formatCell(r[c.key], c.fmt));
+            }
             return `<td class="${cls}">${inner}</td>`;
           })
           .join("") +
         `</tr>`;
-    }
+    });
     bodyRows += `<tr class="grand-total-row"><td colspan="${cols.length}">Total: ${rows.length} Records</td></tr>`;
   }
 

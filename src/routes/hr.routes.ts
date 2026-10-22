@@ -12,6 +12,7 @@ import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRec
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
 import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
+import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
 
 // Initialize the Express router
 const router = express.Router();
@@ -48,12 +49,22 @@ router.use(
 
 
 router.get(
+  "/reports/grade_master",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getGradeMasterReportHtml
+);
+
+router.get(
   "/reports/:master",
   passport.authenticate("jwt", { session: false }),
   tenantContextMiddleware,
   checkUserAuthorization,
   getHrMasterReportHtml
 );
+
+
 
 
 // Define a DELETE API endpoint to delete HR master data
