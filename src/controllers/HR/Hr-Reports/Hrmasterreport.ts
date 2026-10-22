@@ -29,6 +29,8 @@ interface ReportCol {
   weight?: number;  // relative width, default 1
   fmt?: Fmt;
   primary?: boolean; // blue bold (code column)
+  /** Stack several DB fields in ONE column: first line bold, the rest smaller with a label */
+  lines?: { key: string; label?: string; fmt?: Fmt }[];
 }
 
 interface ReportFilter {
@@ -46,6 +48,8 @@ interface MasterReport {
   filters: ReportFilter[];
   columns: ReportCol[];
   orderBy: string[];
+  /** Optional. Default: 7 or fewer columns = portrait, otherwise landscape */
+  orientation?: "portrait" | "landscape";
 }
 
 const HR_REPORTS: Record<string, MasterReport> = {
@@ -76,10 +80,10 @@ const HR_REPORTS: Record<string, MasterReport> = {
     companyCol: "COMPANY_CODE",
     filters: [{ col: "DESG_CODE", source: "code", label: "Designation" }],
     columns: [
-      { key: "company_code", label: "Company" },
       { key: "desg_code", label: "Designation Code", primary: true },
       { key: "desg_name", label: "Designation Name", weight: 3 },
       { key: "desg_short_name", label: "Short Name", weight: 1.5 },
+      { key: "remarks", label: "Remarks", weight: 2.5 },
       { key: "status", label: "Status", align: "center", fmt: "status" },
     ],
     orderBy: ["COMPANY_CODE", "DESG_CODE"],
@@ -91,10 +95,10 @@ const HR_REPORTS: Record<string, MasterReport> = {
     companyCol: "COMPANY_CODE",
     filters: [{ col: "CONTRACT_TYPE", source: "code", label: "Contract Type" }],
     columns: [
-      { key: "company_code", label: "Company" },
       { key: "contract_type", label: "Contract Type", primary: true },
       { key: "contract_type_desc", label: "Description", weight: 3 },
       { key: "contract_type_short_desc", label: "Short Description", weight: 1.5 },
+      { key: "remarks", label: "Remarks", weight: 2.5 },
       { key: "status", label: "Status", align: "center", fmt: "status" },
     ],
     orderBy: ["COMPANY_CODE", "CONTRACT_TYPE"],
@@ -108,6 +112,7 @@ const HR_REPORTS: Record<string, MasterReport> = {
       { key: "religion_code", label: "Religion Code", primary: true },
       { key: "religion_name", label: "Religion Name", weight: 3 },
       { key: "religion_short_name", label: "Short Name", weight: 1.5 },
+      { key: "remarks", label: "Remarks", weight: 2.5 },
       { key: "status", label: "Status", align: "center", fmt: "status" },
     ],
     orderBy: ["RELIGION_CODE"],
@@ -153,6 +158,7 @@ const HR_REPORTS: Record<string, MasterReport> = {
       { key: "lang_code", label: "Language Code", primary: true },
       { key: "lang_desc", label: "Description", weight: 3 },
       { key: "lang_short_desc", label: "Short Description", weight: 1.5 },
+      { key: "remarks", label: "Remarks", weight: 2.5 },
       { key: "status", label: "Status", align: "center", fmt: "status" },
     ],
     orderBy: ["LANG_CODE"],
@@ -164,36 +170,73 @@ const HR_REPORTS: Record<string, MasterReport> = {
     companyCol: "COMPANY_CODE",
     filters: [{ col: "SKILL_CODE", source: "code", label: "Skill" }],
     columns: [
-      { key: "company_code", label: "Company" },
       { key: "skill_code", label: "Skill Code", primary: true },
       { key: "skill_desc", label: "Description", weight: 3 },
       { key: "skill_short_desc", label: "Short Description", weight: 1.5 },
       { key: "skill_category", label: "Category", fmt: "skillcat", align: "center" },
+      { key: "remarks", label: "Remarks", weight: 2.5 },
       { key: "status", label: "Status", align: "center", fmt: "status" },
     ],
     orderBy: ["COMPANY_CODE", "SKILL_CODE"],
   },
 
+  // All 14 fields are shown, grouped into 7 columns so it fits A4 portrait cleanly.
   document_types: {
     title: "Document Type Master Report",
     table: "MS_HR_DOCTYPES",
     companyCol: "COMPANY_CODE",
     companyRequired: true,
+    orientation: "portrait",
     filters: [{ col: "DOC_TYPE", source: "code", label: "Doc Type" }],
     columns: [
-      { key: "company_code", label: "Company", weight: 0.8 },
-      { key: "doc_type", label: "Doc Type", primary: true, weight: 0.9 },
-      { key: "doctype_name", label: "Document Name", weight: 2 },
-      { key: "doctype_short_desc", label: "Short Desc", weight: 1.3 },
-      { key: "renewal_period_days", label: "Renewal Days", align: "right", fmt: "int", weight: 0.9 },
-      { key: "renewal_chgs", label: "Renewal Chgs", align: "right", fmt: "num2", weight: 1 },
-      { key: "mand_flag", label: "Mandatory", align: "center", fmt: "yn", weight: 0.9 },
-      { key: "attach_folder", label: "Attach Folder", weight: 1.3 },
-      { key: "attach_prefix", label: "Prefix", weight: 0.9 },
-      { key: "attach_type", label: "Type", weight: 0.8 },
-      { key: "doc_editable", label: "Editable", align: "center", fmt: "yn", weight: 0.8 },
-      { key: "email_id_for_alerts", label: "Alert Email", weight: 1.5 },
-      { key: "alert_before", label: "Alert Before", align: "right", fmt: "int", weight: 0.9 },
+      { key: "doc_type", label: "Doc Type", primary: true, weight: 0.8 },
+      {
+        key: "doctype_name",
+        label: "Document",
+        weight: 2.6,
+        lines: [
+          { key: "doctype_name" },
+          { key: "doctype_short_desc", label: "Short" },
+          { key: "doc_notes", label: "Notes" },
+        ],
+      },
+      {
+        key: "renewal_period_days",
+        label: "Renewal",
+        weight: 1.3,
+        lines: [
+          { key: "renewal_period_days", label: "Days", fmt: "int" },
+          { key: "renewal_chgs", label: "Charges", fmt: "num2" },
+        ],
+      },
+      {
+        key: "mand_flag",
+        label: "Rules",
+        weight: 1.2,
+        lines: [
+          { key: "mand_flag", label: "Mandatory", fmt: "yn" },
+          { key: "doc_editable", label: "Editable", fmt: "yn" },
+        ],
+      },
+      {
+        key: "attach_folder",
+        label: "Attachment",
+        weight: 2,
+        lines: [
+          { key: "attach_folder", label: "Folder" },
+          { key: "attach_prefix", label: "Prefix" },
+          { key: "attach_type", label: "Type" },
+        ],
+      },
+      {
+        key: "email_id_for_alerts",
+        label: "Alerts",
+        weight: 2,
+        lines: [
+          { key: "email_id_for_alerts", label: "Email" },
+          { key: "alert_before", label: "Before (days)", fmt: "int" },
+        ],
+      },
       { key: "status_flag", label: "Status", align: "center", fmt: "status", weight: 0.8 },
     ],
     orderBy: ["COMPANY_CODE", "DOC_TYPE"],
@@ -281,7 +324,11 @@ async function loadData(req: RequestWithUser, def: MasterReport, params: ReportP
     binds[`f${i}`] = value;
   });
 
-  const select = def.columns.map((c) => `"${t}"."${c.key.toUpperCase()}"`).join(", ");
+  // Every DB column used by the report (including stacked "lines" fields), de-duplicated
+  const keys = Array.from(
+    new Set(def.columns.flatMap((c) => (c.lines ? c.lines.map((l) => l.key) : [c.key])))
+  );
+  const select = keys.map((k) => `"${t}"."${k.toUpperCase()}"`).join(", ");
   const order = def.orderBy.map((c) => `"${t}"."${c}" ASC`).join(", ");
   const sql =
     `SELECT ${select} FROM "${t}"` +
@@ -409,7 +456,7 @@ const EXTRA_CSS = `
     padding: 9px 6px;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b;
-    vertical-align: middle;
+    vertical-align: top;
     white-space: normal !important;
   }
   /* Codes / numbers stay on one line */
@@ -418,6 +465,11 @@ const EXTRA_CSS = `
     font-variant-numeric: tabular-nums;
   }
   table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
+
+  /* Stacked multi-field cells (first line bold, others smaller with label) */
+  table.data-table td .line-main { font-weight: 600; color: #1e293b; }
+  table.data-table td .line-sub  { color: #475569; margin-top: 2px; font-size: 10px; }
+  table.data-table td .line-lbl  { color: #64748b; font-weight: 600; }
 
   /* Total row – shaded, bold navy, right aligned */
   table.data-table tbody tr.grand-total-row td {
@@ -466,15 +518,15 @@ const PRINT_LISTENER_SCRIPT = `
 
 // ─── Body + document ────────────────────────────────────────────────────────
 
-function renderBody(def: MasterReport, rows: ReportRow[], params: ReportParams, company: string, title: string): string {
+function renderBody(def: MasterReport, rows: ReportRow[], params: ReportParams, title: string): string {
   const cols = def.columns;
   const totalWeight = cols.reduce((s, c) => s + (c.weight ?? 1), 0);
 
-  const filterItems: { label: string; value: string }[] = [];
-  if (def.companyCol) filterItems.push({ label: "Company", value: company });
-  def.filters.forEach((f) => {
-    filterItems.push({ label: f.label, value: f.source === "religion" ? params.religion : params.code });
-  });
+  // Company is intentionally NOT shown in the filter strip
+  const filterItems: { label: string; value: string }[] = def.filters.map((f) => ({
+    label: f.label,
+    value: f.source === "religion" ? params.religion : params.code,
+  }));
 
   let bodyRows = "";
   if (!rows.length) {
@@ -485,9 +537,19 @@ function renderBody(def: MasterReport, rows: ReportRow[], params: ReportParams, 
         `<tr class="data-row">` +
         cols
           .map((c) => {
-            const nowrap = c.primary || c.fmt === "num2" || c.fmt === "int";
+            const nowrap = !c.lines && (c.primary || c.fmt === "num2" || c.fmt === "int");
             const cls = `${c.align ?? "left"}${nowrap ? " nw" : ""}${c.primary ? " primary-text" : ""}`;
-            return `<td class="${cls}">${escapeHtml(formatCell(r[c.key], c.fmt))}</td>`;
+            const inner = c.lines
+              ? c.lines
+                  .map(
+                    (l, i) =>
+                      `<div class="${i === 0 ? "line-main" : "line-sub"}">` +
+                      `${l.label ? `<span class="line-lbl">${escapeHtml(l.label)}:</span> ` : ""}` +
+                      `${escapeHtml(formatCell(r[l.key], l.fmt))}</div>`
+                  )
+                  .join("")
+              : escapeHtml(formatCell(r[c.key], c.fmt));
+            return `<td class="${cls}">${inner}</td>`;
           })
           .join("") +
         `</tr>`;
@@ -539,12 +601,15 @@ export const getHrMasterReportHtml = async (req: RequestWithUser, res: Response)
       extraLeft: `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
     });
 
+    // Few columns -> portrait, many columns -> landscape (or set `orientation` on the entry)
+    const orientation = def.orientation ?? (def.columns.length <= 7 ? "portrait" : "landscape");
+
     const html = buildReportDocument({
       title,
       headerHtml,
-      bodyHtml: renderBody(def, rows, params, company, title),
+      bodyHtml: renderBody(def, rows, params, title),
       footerHtml,
-      extraCss: EXTRA_CSS,
+      extraCss: EXTRA_CSS.replace("size: A4 landscape", `size: A4 ${orientation}`),
       autoPrint,
       showPrintButton: true,
       fontMode: "native",
