@@ -508,11 +508,21 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       formattedPermissions as StructuredResult
     );
 
+    const accessibleModuleCount = Object.values(userAccessibleModules).filter(
+      (moduleAccess) => Object.values(moduleAccess).some(Boolean)
+    ).length;
+
     console.log(`[me] 📤 FINAL RESPONSE SUMMARY:`, {
       tenantId,
       user_permission_keys: Object.keys(formattedPermissions),
       permissions_count: allPermissions.length,
-      accessible_modules: Object.keys(userAccessibleModules).length,
+      accessible_modules: accessibleModuleCount,
+      menu_apps_returned: Array.isArray(permissionBasedMenuTree)
+        ? permissionBasedMenuTree.length
+        : 0,
+      menu_apps: Array.isArray(permissionBasedMenuTree)
+        ? permissionBasedMenuTree.map((app) => app.title)
+        : [],
       has_permissions: Object.keys(formattedPermissions).length > 0
     });
 
