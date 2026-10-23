@@ -192,11 +192,7 @@ async function startServer() {
     }
 
     console.log(`Listening on port ${PORT}...`);
-
-    // IMPORTANT:
-    // Use httpServer.listen instead of app.listen
-    // so Socket.IO and Express share the same HTTP server.
-    httpServer.listen(PORT, () => {
+    app.listen(Number(PORT), process.env.HOST || '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log(
         "Health check: http://localhost:" + PORT + "/health"

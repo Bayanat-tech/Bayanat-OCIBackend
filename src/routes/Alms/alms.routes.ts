@@ -3,7 +3,7 @@ import express from "express";
 import { insPsUserRoleMappingBulk } from "../../controllers/ALMS/insPsUserRoleMappingBulk";
 import { insPsFlowRoleMappingBulk } from "../../controllers/ALMS/insPsFlowRoleMappingBulk";
 import { insUpdTtePrequestBulk } from "../../controllers/ALMS/insUpdTtePrequestBulk";
-import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../controllers/ALMS/PurchaseRequestReports";
+// import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../controllers/ALMS/PurchaseRequestReports";
 
 const router = express.Router();
 

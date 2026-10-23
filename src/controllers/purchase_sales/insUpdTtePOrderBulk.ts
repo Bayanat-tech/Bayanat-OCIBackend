@@ -447,16 +447,16 @@ export const insUpdTtePOrderBulk = async (
       TX_COMPNT_LCURAMT_4:
         d.tx_compnt_lcuramt_4 ?? 0,
       TX_COMPNT_1_EXPMT:
-        String(d.tx_compnt_1_expmt ?? "S"),
+        String(d.tx_compnt_1_expmt ?? ""),
 
       TX_COMPNT_2_EXPMT:
-        String(d.tx_compnt_2_expmt ?? "S"),
+        String(d.tx_compnt_2_expmt ?? ""),
 
       TX_COMPNT_3_EXPMT:
-        String(d.tx_compnt_3_expmt ?? "S"),
+        String(d.tx_compnt_3_expmt ?? ""),
 
       TX_COMPNT_4_EXPMT:
-        String(d.tx_compnt_4_expmt ?? "S"),
+        String(d.tx_compnt_4_expmt ?? ""),
 
       TX_COMPNT_HDISC_AMT_1:
         d.tx_compnt_hdisc_amt_1 ?? 0,
