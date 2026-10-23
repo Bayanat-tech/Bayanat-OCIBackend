@@ -12,11 +12,19 @@ import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRec
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
 import { getEmployeeMasterPrint } from "../controllers/HR/Hr-Reports/employeeMasterReport";
+import { getMobileLeaveBucket } from "../controllers/HR/mobileLeave.controller";
 
 // Initialize the Express router
 const router = express.Router();
 
 console.log("HR Routes Loaded");
+
+router.get('/mobile/leave/:bucket',
+  passport.authenticate('jwt', { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getMobileLeaveBucket,
+);
 
 // Define a common GET API endpoint to retrieve HR master data based on the master name
 router.get(
