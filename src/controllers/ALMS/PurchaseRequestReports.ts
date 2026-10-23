@@ -206,82 +206,8 @@ const REPORT_NAME = "rep_pfs_txns_datewise";
 
 /** Shared extra CSS for both Summary and Details reports */
 const PR_REGISTER_EXTRA_CSS = `
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
-  }
-
-  .pr-register {
-    font-size: 9.5px;
-    line-height: 1.25;
-    color: #1e293b;
-  }
-
-  .pr-register .title {
-    margin: 0 0 6px 0;
-  }
-  .pr-register .title h1 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 800;
-    color: #0b4ca1;
-    line-height: 1.2;
-  }
-
-  .pr-register .status-block {
-    margin: 0 0 10px 0;
-    break-inside: avoid;
-  }
-  .pr-register .status-header {
-    padding: 5px 10px;
-    background: #0b4ca1;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    border-radius: 4px 4px 0 0;
-  }
-
-  .pr-register table.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0;
-    font-size: 9.5px;
-  }
-  .pr-register table.data-table th {
-    padding: 5px 6px;
-    font-size: 9px;
-    background: #0b4ca1;
-    color: #fff;
-    text-align: left;
-    white-space: nowrap;
-  }
-  .pr-register table.data-table th.right,
-  .pr-register table.data-table td.right {
-    text-align: right;
-  }
-  .pr-register table.data-table td {
-    padding: 4px 6px;
-    border-bottom: 1px solid #e2e8f0;
-    vertical-align: top;
-  }
-  .pr-register .subtotal-row td {
-    background: #eef2f7 !important;
-    font-weight: 700;
-    color: #1e3a8a;
-  }
-  .pr-register .grand-row td {
-    background: #0b4ca1 !important;
-    color: #ffffff !important;
-    font-weight: 700;
-    font-size: 12px;
-  }
-
-  .pr-register .empty {
-    padding: 28px;
-    text-align: center;
-    color: #64748b;
-    font-size: 11px;
-  }
+  @page { size: A4 landscape; margin: 8mm; }
+  .pr-register { font-size: 9.5px; line-height: 1.25; color: #1e293b; }
 `;
 
 // Inline styles, same approach as the PO Order Register report (does not depend on extraCss)
@@ -289,8 +215,8 @@ const PR_S = {
   head:  "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:11px;padding:6px 8px;border-left:3px solid #0b4ca1;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
   total: "background:#f4f7fb !important;color:#0b3d91 !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
   grand: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:8px 6px;border-top:2px solid #0b4ca1;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  th:    "background:#1e3a8a !important;color:#ffffff !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:left;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  thR:   "background:#1e3a8a !important;color:#ffffff !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:right;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+    th:    "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:left;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  thR:   "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:right;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
   td:    "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;",
   tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;word-break:break-word;",
 };
@@ -315,21 +241,21 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
           <td style="${S.td}">${escapeHtml(r.create_user)}</td>
           <td style="${S.td}">${escapeHtml(r.description)}</td>
           <td style="${S.td}">${escapeHtml(r.currency_code)}</td>
-          <td style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
-          <td style="${S.tdR}">${amtFmt(r.amount)}</td>
+          <td class="right num" style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
+          <td class="right num" style="${S.tdR}">${amtFmt(r.amount)}</td>
         </tr>`
         )
         .join("");
 
       return `
       <tbody style="break-inside:avoid;page-break-inside:avoid;">
-        <tr>
+        <tr class="grand-total-row">
           <td colspan="7" style="${S.head}">Purchase Status: ${escapeHtml(g.status)}</td>
         </tr>
         ${lines}
-        <tr>
+        <tr class="subtotal-row">
           <td colspan="6" style="${S.total}">Total Amount for ${escapeHtml(g.status)}</td>
-          <td style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
+          <td class="right num" style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
         </tr>
       </tbody>`;
     })
@@ -345,7 +271,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
       rows.length === 0
         ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
         : `
-      <table style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:14%"/><col style="width:11%"/><col style="width:12%"/><col style="width:33%"/><col style="width:9%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
         <thead>
           <tr>
@@ -354,15 +280,15 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
             <th style="${S.th}">Create User</th>
             <th style="${S.th}">Description</th>
             <th style="${S.th}">Currency</th>
-            <th style="${S.thR}">EX Rate</th>
-            <th style="${S.thR}">Amount</th>
+            <th class="right" style="${S.thR}">EX Rate</th>
+            <th class="right" style="${S.thR}">Amount</th>
           </tr>
         </thead>
         ${groupsHtml}
         <tbody>
-          <tr>
+          <tr class="grand-total-row">
             <td colspan="6" style="${S.grand}">Grand Total Amount</td>
-            <td style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
+            <td class="right num" style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
           </tr>
         </tbody>
       </table>`
@@ -421,18 +347,18 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
           <td style="${S.td}">${escapeHtml(r.sr_no)}</td>
           <td style="${S.td}">${escapeHtml(r.item_code)}</td>
           <td style="${S.td}">${escapeHtml(r.item_desp)}</td>
-          <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
-          <td style="${S.tdR}">${amtFmt(r.item_qty)}</td>
+          <td class="right num" style="${S.tdR}">${amtFmt(r.item_rate)}</td>
+          <td class="right num" style="${S.tdR}">${amtFmt(r.item_qty)}</td>
           <td style="${S.td}">${escapeHtml(r.curr_code)}</td>
-          <td style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
-          <td style="${S.tdR}">${amtFmt(r.amount)}</td>
+          <td class="right num" style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
+          <td class="right num" style="${S.tdR}">${amtFmt(r.amount)}</td>
         </tr>`
         )
         .join("");
 
       return `
       <tbody style="break-inside:avoid;page-break-inside:avoid;">
-        <tr>
+        <tr class="grand-total-row">
           <td colspan="8" style="${S.head}">
             Request No. ${escapeHtml(g.request_number)}
             &nbsp;|&nbsp; ${escapeHtml(dateText(g.request_date))}
@@ -440,9 +366,9 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
           </td>
         </tr>
         ${lines}
-        <tr>
+        <tr class="subtotal-row">
           <td colspan="7" style="${S.total}">Total Amount for ${escapeHtml(g.request_number)}</td>
-          <td style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
+          <td class="right num" style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
         </tr>
       </tbody>`;
     })
@@ -458,25 +384,25 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
       rows.length === 0
         ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
         : `
-      <table style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:6%"/><col style="width:13%"/><col style="width:33%"/><col style="width:11%"/><col style="width:9%"/><col style="width:8%"/><col style="width:8%"/><col style="width:12%"/></colgroup>
         <thead>
           <tr>
             <th style="${S.th}">Sr No</th>
             <th style="${S.th}">Item Code</th>
             <th style="${S.th}">Item Description</th>
-            <th style="${S.thR}">Rate</th>
-            <th style="${S.thR}">Qty</th>
+            <th class="right" style="${S.thR}">Rate</th>
+            <th class="right" style="${S.thR}">Qty</th>
             <th style="${S.th}">Currency</th>
-            <th style="${S.thR}">EX Rate</th>
-            <th style="${S.thR}">Amount</th>
+            <th class="right" style="${S.thR}">EX Rate</th>
+            <th class="right" style="${S.thR}">Amount</th>
           </tr>
         </thead>
         ${groupsHtml}
         <tbody>
-          <tr>
+          <tr class="grand-total-row">
             <td colspan="7" style="${S.grand}">Grand Total Amount</td>
-            <td style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
+            <td class="right num" style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
           </tr>
         </tbody>
       </table>`
@@ -488,8 +414,7 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
 
 const XL_BLUE = "FF1D4ED8";
 const XL_WHITE = "FFFFFFFF";
-const XL_HEADER_BLUE = "FF1E3A8A";
-const XL_GREEN_BG = "FFD1FAE5";
+
 
 interface XlCell { v: unknown; styleKey: string }
 type XlRow = (XlCell | null)[];
@@ -513,22 +438,22 @@ const XL_STYLE_DEFS: Record<string, any> = {
     border: { top: xlBorderThin(XL_BLUE), bottom: xlBorderThin(XL_BLUE), left: xlBorderThin(XL_BLUE), right: xlBorderThin(XL_BLUE) },
   },
   groupHeader: {
-    font: { bold: true, sz: 11, color: { rgb: XL_WHITE } },
-    fill: { fgColor: { rgb: XL_HEADER_BLUE } },
+    font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+    fill: { fgColor: { rgb: "FFDCE6F4" } },
     alignment: { horizontal: "left", vertical: "center" },
   },
   groupTotal: {
-    font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
-    fill: { fgColor: { rgb: XL_GREEN_BG } },
+    font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+    fill: { fgColor: { rgb: "FFF4F7FB" } },
     alignment: { horizontal: "left", vertical: "center" },
-    border: { top: xlBorderThin("FF065F46") },
+    border: { top: xlBorderThin("FFC5D5EA") },
   },
   groupTotalNum: {
-    font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
-    fill: { fgColor: { rgb: XL_GREEN_BG } },
+    font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+    fill: { fgColor: { rgb: "FFF4F7FB" } },
     alignment: { horizontal: "right", vertical: "center" },
     numFmt: "#,##0.000",
-    border: { top: xlBorderThin("FF065F46") },
+    border: { top: xlBorderThin("FFC5D5EA") },
   },
   data: { font: { sz: 10 }, alignment: { vertical: "center" }, border: { bottom: xlBorderThin("FFF3F4F6") } },
   dataNum2: {
@@ -540,13 +465,13 @@ const XL_STYLE_DEFS: Record<string, any> = {
     numFmt: "#,##0.000", border: { bottom: xlBorderThin("FFF3F4F6") },
   },
   grandTotal: {
-    font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
-    fill: { fgColor: { rgb: XL_BLUE } },
+    font: { bold: true, sz: 11, color: { rgb: "FF0B3D91" } },
+    fill: { fgColor: { rgb: "FFCFE0F5" } },
     alignment: { horizontal: "left", vertical: "center" },
   },
-  grandTotalNum: {
-    font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
-    fill: { fgColor: { rgb: XL_BLUE } },
+   grandTotalNum: {
+    font: { bold: true, sz: 11, color: { rgb: "FF0B3D91" } },
+    fill: { fgColor: { rgb: "FFCFE0F5" } },
     alignment: { horizontal: "right", vertical: "center" },
     numFmt: "#,##0.000",
   },
@@ -558,9 +483,10 @@ function buildXlsx(opts: {
   merges: XlMerge[];
   colCount: number;
   colWidth: number;
+  colWidths?: number[];
   sheetName: string;
 }): Buffer {
-  const { rows: rows_, merges, colCount, colWidth, sheetName } = opts;
+  const { rows: rows_, merges, colCount, colWidth, colWidths, sheetName } = opts;
   const styleDefs = XL_STYLE_DEFS;
 
   // ── Style registration engine ──
@@ -640,8 +566,8 @@ function buildXlsx(opts: {
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
   // ── Sheet XML ──
-  const colXml = Array.from({ length: colCount }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="${colWidth}" customWidth="1"/>`
+   const colXml = Array.from({ length: colCount }, (_, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${colWidths?.[i] ?? colWidth}" customWidth="1"/>`
   ).join("");
 
   let sheetDataXml = "";
@@ -913,13 +839,13 @@ function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   rows_.push([null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-  return buildXlsx({ rows: rows_, merges, colCount: COL_COUNT, colWidth: 18, sheetName: "PR Register Details" });
+   return buildXlsx({ rows: rows_, merges, colCount: COL_COUNT, colWidth: 18, colWidths: [8, 14, 40, 12, 12, 10, 10, 16], sheetName: "PR Register Details" });
 }
 
 // ─── Route handlers ─────────────────────────────────────────────────────────
 
 export const getPrRegisterSummaryReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
-  console.log(">>> PR REGISTER SUMMARY V3 (inline styles, fixed layout) LOADED <<<");
+
   try {
     const t0 = Date.now();
     const params = extractParams(req);

@@ -40,6 +40,69 @@ function toDate(v: any): string | null {
   if (!v) return null;
   return typeof v === 'string' ? v.substring(0, 10) : new Date(v).toISOString().substring(0, 10);
 }
+// date validation for lpo-fy
+async function validateLpoFinancialYear(
+  conn: oracledb.Connection,
+  companyCode: string,
+  docDate: any,
+  docNo?: string,
+  docType?: string
+): Promise<string | null> {
+  const date = toDate(docDate);
+
+  if (!date) {
+    return "Doc Date is required.";
+  }
+
+  const fyFor = async (d: string): Promise<string | null> => {
+    const result = await conn.execute(
+      `SELECT FY_PERIOD
+         FROM MS_FY_PERIOD
+        WHERE COMPANY_CODE = :cc
+          AND DATE_FROM IS NOT NULL
+          AND TO_DATE(:dd, 'YYYY-MM-DD')
+              BETWEEN TRUNC(DATE_FROM) AND TRUNC(DATE_TO)
+          AND ROWNUM = 1`,
+      { cc: companyCode, dd: d },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    return (result.rows?.[0] as any)?.FY_PERIOD != null
+      ? String((result.rows?.[0] as any).FY_PERIOD)
+      : null;
+  };
+
+  const newFy = await fyFor(date);
+
+  if (!newFy) {
+    return `Doc Date ${date} does not fall in a configured financial year.`;
+  }
+
+  // For an existing LPO, prevent changing its financial year.
+  if (docNo && docType) {
+    const existing = await conn.execute(
+      `SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DOC_DATE
+         FROM TR_AC_LPO_HEADER
+        WHERE COMPANY_CODE = :cc
+          AND DOC_NO = :dn
+          AND DOC_TYPE = :dt`,
+      { cc: companyCode, dn: docNo, dt: docType },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const oldDate = (existing.rows?.[0] as any)?.DOC_DATE;
+
+    if (oldDate) {
+      const oldFy = await fyFor(String(oldDate).slice(0, 10));
+
+      if (oldFy && oldFy !== newFy) {
+        return `Doc Date cannot be moved from FY ${oldFy} to FY ${newFy}. Cancel and create a new document in the correct year.`;
+      }
+    }
+  }
+
+  return null;
+}
 
 /** Normalize tax-exempt flags to single-character 'S'/'N' or null */
 function expmtToChar(v: any): string | null {
@@ -2271,8 +2334,22 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     conn = await getConn(req);
 
-    const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(
+const fyError = await validateLpoFinancialYear(
+  conn,
+  req.user.company_code,
+  v.doc_date
+);
+
+if (fyError) {
+  res.status(400).json({
+    success: false,
+    message: fyError
+  });
+  return;
+}
+
+const result = await conn.execute(
+  `BEGIN SP_CREATE_LPO_HEADER(
     :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
     :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
     :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:pdo,:dn
@@ -2412,6 +2489,22 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       tx_compntcat_code_1: req.body.tx_compntcat_code_1 ?? old.TX_COMPNTCAT_CODE_1,
       pdo_type: req.body.pdo_type ?? old.PDO_TYPE,
     };
+
+    const fyError = await validateLpoFinancialYear(
+  conn,
+  req.user.company_code,
+  h.doc_date,
+  String(doc_no),
+  String(doc_type)
+);
+
+if (fyError) {
+  res.status(400).json({
+    success: false,
+    message: fyError
+  });
+  return;
+}
 
     //  Call your SP safely
     await conn.execute(

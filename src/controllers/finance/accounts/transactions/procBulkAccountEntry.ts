@@ -105,6 +105,45 @@ export const procBulkAccountEntry = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+   if (oneChar(header.canceled) !== 'Y' && header.doc_date) {
+  const fyFor = async (d: string) => {
+    const r = await connection!.execute(
+      `SELECT FY_PERIOD FROM MS_FY_PERIOD
+        WHERE COMPANY_CODE = :cc AND DATE_FROM IS NOT NULL
+          AND TO_DATE(:dd,'YYYY-MM-DD') BETWEEN TRUNC(DATE_FROM) AND TRUNC(DATE_TO)
+          AND ROWNUM = 1`,
+      { cc: header.company_code, dd: d },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    return ((r.rows?.[0] as any)?.FY_PERIOD ?? null) as string | null;
+  };
+
+  const newDate = String(header.doc_date).slice(0, 10);
+  const newFy = await fyFor(newDate);
+  if (!newFy) {
+    res.status(400).json({ success: false, message: `Doc Date ${newDate} does not fall in this financial year.` });
+    return;
+  }
+
+  if (header.doc_no && String(header.doc_no) !== '0') {
+    const old = await connection.execute(
+      `SELECT TO_CHAR(DOC_DATE,'YYYY-MM-DD') AS D FROM TR_AC_HEADER
+        WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO = :dn`,
+      { cc: header.company_code, dt: header.doc_type, dn: String(header.doc_no) },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const oldDate = (old.rows?.[0] as any)?.D;
+    if (oldDate) {
+      const oldFy = await fyFor(oldDate);
+      if (oldFy && oldFy !== newFy) {
+        res.status(400).json({ success: false, message: `Doc Date cannot be moved from FY ${oldFy} to FY ${newFy}. Cancel and create a new document in the correct year.` });
+        return;
+      }
+    }
+  }
+}
+
     const safeDetails = normalizeUniqueSerials(details, String(header.doc_no || "0"));
     const safeInvoiceDetail = normalizeChildSequences(invoiceDetail, String(header.doc_no || "0"));
     const safeExpenseDetail = normalizeChildSequences(expenseDetail, String(header.doc_no || "0"));
@@ -281,7 +320,9 @@ export const procBulkAccountEntry = async (
             SERIAL_NO: d.serial_no,
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : (header.doc_date ? new Date(header.doc_date) : null),
             AC_CODE: d.ac_code,
+            JOB_NO: d.job_no || null,
             HEADER_AC_CODE: d.header_ac_code,
+            REMARKS: d.remarks || null,
             AMOUNT: Math.abs(Number(d.amount) || 0),
             SIGN_IND: normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             CURR_CODE: d.curr_code,

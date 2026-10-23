@@ -66,31 +66,24 @@ function buildResetPasswordUrl(req: Request, token: string): string {
   return `${getFrontendOrigin(req)}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
-async function resolveTenantCompanyDetails(tenantId: string, companyCode: string): Promise<{ companyName?: string; companyLogo?: string }> {
+async function resolveTenantCompanyName(tenantId: string, companyCode: string): Promise<string | undefined> {
   if (!tenantId || !companyCode) {
-    return {};
+    return undefined;
   }
 
   try {
     const rows = await TenantManager.executeInTenant(
       tenantId,
-      `SELECT COMPANY_NAME, COMPANY_LOGO, COMPANY_LOGO_AWSURL FROM MS_COMPANY WHERE COMPANY_CODE = :company_code`,
+      `SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :company_code`,
       { company_code: companyCode },
     );
 
-    const companyRow = Array.isArray(rows) ? (rows[0] as any) : null;
-    const companyName = companyRow?.COMPANY_NAME || companyRow?.company_name || undefined;
-    const companyLogo = companyRow?.COMPANY_LOGO || companyRow?.company_logo || companyRow?.COMPANY_LOGO_AWSURL || companyRow?.company_logo_awsurl || undefined;
-    return { companyName, companyLogo };
+    const companyRow = Array.isArray(rows) ? rows[0] : null;
+    return companyRow?.COMPANY_NAME || companyRow?.company_name || undefined;
   } catch (error) {
-    console.warn(`[auth.controller] Failed to resolve company details for tenant=${tenantId}, company_code=${companyCode}:`, error);
-    return {};
+    console.warn(`[auth.controller] Failed to resolve company name for tenant=${tenantId}, company_code=${companyCode}:`, error);
+    return undefined;
   }
-}
-
-async function resolveTenantCompanyName(tenantId: string, companyCode: string): Promise<string | undefined> {
-  const details = await resolveTenantCompanyDetails(tenantId, companyCode);
-  return details.companyName;
 }
 
 function generatePasswordResetToken(email: string): string {
@@ -220,7 +213,7 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     
     console.log(`[login] ✅ STEP 3 SUCCESS: Tenant config loaded`);
 
-    const { companyName, companyLogo } = await resolveTenantCompanyDetails(tenantId, user.COMPANY_CODE);
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
     const tenantName = tenantConfig?.TENANT_NAME || tenantId;
 
     // Generate token with tenant info
@@ -233,7 +226,6 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       tenant_name: tenantName,
       company_code: user.COMPANY_CODE,
       company_name: companyName,
-      company_logo: companyLogo,
       schemaName: tenantConfig.SCHEMA_NAME,
     });
     
@@ -251,7 +243,6 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
           loginid: user.LOGINID,
           company_code: user.COMPANY_CODE,
           company_name: companyName,
-          company_logo: companyLogo,
           tenant_name: tenantName,
         }
       },
@@ -309,12 +300,11 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     delete userWithoutPassword.PASSWORD;
 
     const tenantConfig = await TenantManager.getTenantConfig(tenantId);
-    const { companyName, companyLogo } = await resolveTenantCompanyDetails(tenantId, user.COMPANY_CODE);
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
     const tenantName = tenantConfig?.TENANT_NAME || tenantId;
     const enrichedUser = {
       ...userWithoutPassword,
       company_name: companyName,
-      company_logo: companyLogo,
       tenant_name: tenantName,
     };
 
@@ -518,11 +508,21 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       formattedPermissions as StructuredResult
     );
 
+    const accessibleModuleCount = Object.values(userAccessibleModules).filter(
+      (moduleAccess) => Object.values(moduleAccess).some(Boolean)
+    ).length;
+
     console.log(`[me] 📤 FINAL RESPONSE SUMMARY:`, {
       tenantId,
       user_permission_keys: Object.keys(formattedPermissions),
       permissions_count: allPermissions.length,
-      accessible_modules: Object.keys(userAccessibleModules).length,
+      accessible_modules: accessibleModuleCount,
+      menu_apps_returned: Array.isArray(permissionBasedMenuTree)
+        ? permissionBasedMenuTree.length
+        : 0,
+      menu_apps: Array.isArray(permissionBasedMenuTree)
+        ? permissionBasedMenuTree.map((app) => app.title)
+        : [],
       has_permissions: Object.keys(formattedPermissions).length > 0
     });
 
