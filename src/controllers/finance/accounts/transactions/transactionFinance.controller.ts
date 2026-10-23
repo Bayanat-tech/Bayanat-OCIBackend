@@ -1241,7 +1241,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     conn = await getConn(req);
 
     const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO' || doc_type === 'DN';
-    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN' || doc_type === 'IV';
 
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = {
@@ -1265,6 +1265,13 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
            NVL((
+             SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+             FROM TR_AC_INVDETAIL invd
+             WHERE invd.company_code = h.company_code
+               AND invd.doc_type     = h.doc_type
+               AND invd.doc_no       = h.doc_no
+               AND invd.indicator_origin = 'Y'
+           ), NVL((
              SELECT ABS(NVL(d.lcur_amount, d.amount))
              FROM TR_AC_DETAIL d
              WHERE d.company_code = h.company_code
@@ -1272,13 +1279,14 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                AND d.doc_no       = h.doc_no
                AND d.serial_no    = 9001
            ), (
-             SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+             SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                        SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
              FROM TR_AC_DETAIL d
              WHERE d.company_code = h.company_code
                AND d.doc_type     = h.doc_type
                AND d.doc_no       = h.doc_no
                AND d.serial_no    <> 9001
-           )) AS original_amount,
+           ))) AS original_amount,
            NVL((
              SELECT SUM(ABS(d.lcur_amount)) 
              FROM TR_AC_INVDETAIL d 
@@ -1295,7 +1303,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            ), 0) AS paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
-           AND h.div_code     = :dc 
+           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR h.div_code = :dc) 
            AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
              SELECT 1 FROM TR_AC_DETAIL d2 
              WHERE d2.company_code = h.company_code 
@@ -1304,7 +1312,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                AND d2.ac_code = :ac
            ))
            AND (
-             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
              OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
              OR (:is_receipt = 0 AND :is_payment = 0)
            )
@@ -1399,11 +1407,11 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              ON h.company_code = inv.company_code
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
-             AND inv.div_code     = :dc 
+             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR inv.div_code = :dc) 
              AND NVL(h.canceled, 'N') = 'N'
              AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
              AND (
-               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV') OR h.doc_type IN ('SI', 'SV')))
+               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV', 'IV') OR h.doc_type IN ('SI', 'SV', 'IV')))
                OR (:is_payment = 1 AND (inv.doc_type IN ('PI', 'PO') OR h.doc_type IN ('PI', 'PO')))
                OR (:is_receipt = 0 AND :is_payment = 0)
              )
