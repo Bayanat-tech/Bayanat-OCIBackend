@@ -47,6 +47,38 @@ export function leaveBucketWhere(master: string): string {
   switch (master) {
     case 'Pg_Leave_flow':
       condition = `${active} AND ((TRIM(L.NEXT_ACTION_BY) = :loginid AND ${notFinal})
+        OR (${resumption} AND ${notFinal}))`; break;
+    case 'Pg_leave_flow_InProgress':
+      condition = `${active} AND ${notFinal} AND UPPER(TRIM(NVL(L.LAST_ACTION, 'NONE'))) <> 'SAVEASDRAFT'
+        AND NVL(TRIM(L.NEXT_ACTION_BY), 'NONE') <> :loginid AND NOT ${resumption} AND ${related} AND ${participated}`; break;
+    case 'Pg_leave_flow_close':
+      condition = `${active} AND UPPER(TRIM(L.FINAL_APPROVED)) IN ('YES','Y') AND ${related}`; break;
+    case 'Pg_leave_flow_Rejected':
+      condition = `UPPER(TRIM(L.LAST_ACTION)) = 'REJECTED' AND ${related}`; break;
+    case 'Pg_leave_flow_SentBack':
+      condition = `UPPER(TRIM(L.LAST_ACTION)) = 'SENTBACK' AND (${related} OR TRIM(L.NEXT_ACTION_BY) = :loginid)`; break;
+    case 'Pg_leave_flow_cancel':
+      condition = `UPPER(TRIM(L.LAST_ACTION)) IN ('CANCEL','CANCELLED','CANCELED') AND TRIM(L.CREATED_BY) = :loginid`; break;
+    default: throw new Error('Unknown leave approval bucket.');
+  }
+  return `TRIM(L.COMPANY_CODE) = :company_code AND (${condition})`;
+}
+
+// Preserve the previously released reader for MHDL callers.
+export function legacyLeaveBucketWhere(master: string): string {
+  const related = `(TRIM(L.CREATED_BY) = :loginid OR TRIM(L.IMMEDIATE_SUPERVISOR) = :loginid
+    OR TRIM(L.DEPT_HEAD) = :loginid OR TRIM(L.HOD) = :loginid)`;
+  const participated = `(TRIM(L.CREATED_BY) = :loginid OR L.REQUEST_NUMBER IN (SELECT H.REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY H
+      WHERE H.COMPANY_CODE = :company_code
+        AND (H.NEXT_ACTION_BY = :loginid OR H.UPDATED_BY = :loginid)))`;
+  const active = `UPPER(TRIM(NVL(L.LAST_ACTION, 'NONE'))) NOT IN ('REJECTED','CANCEL','CANCELLED','CANCELED')`;
+  const notFinal = `UPPER(TRIM(NVL(L.FINAL_APPROVED, 'NO'))) NOT IN ('YES','Y')`;
+  const resumption = `(TRIM(L.IMMEDIATE_SUPERVISOR) = :loginid AND L.ACTUAL_RESUME_DATE IS NOT NULL
+    AND UPPER(TRIM(NVL(L.RESUME_DATE_APPROVED, 'NO'))) NOT IN ('YES','Y'))`;
+  let condition: string;
+  switch (master) {
+    case 'Pg_Leave_flow':
+      condition = `${active} AND ((TRIM(L.NEXT_ACTION_BY) = :loginid AND ${notFinal})
         OR (UPPER(TRIM(L.LAST_ACTION)) = 'SAVEASDRAFT' AND TRIM(L.CREATED_BY) = :loginid)
         OR ${resumption})`; break;
     case 'Pg_leave_flow_InProgress':
