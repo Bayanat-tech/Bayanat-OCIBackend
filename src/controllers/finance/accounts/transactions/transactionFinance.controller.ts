@@ -737,7 +737,8 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
       }
 
       const acSetupRes: any = await conn.execute(
-        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS,
+                FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO, DOC_DATE_EDITABLE
          FROM MS_AC_SETUP
          WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
            AND ROWNUM = 1`,
@@ -749,6 +750,31 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
         if (acRow.BASE_CURR_CODE) companyBaseCurr = String(acRow.BASE_CURR_CODE).trim().toUpperCase();
         if (acRow.LCUR_DECIMAL_NOS != null) lcurDecimalNos = Number(acRow.LCUR_DECIMAL_NOS);
         if (acRow.AMOUNT_DECIMAL_NOS != null) amountDecimalNos = Number(acRow.AMOUNT_DECIMAL_NOS);
+        normalizedData.financial_yr_start = acRow.FINANCIAL_YR_START || null;
+        normalizedData.financial_yr_end = acRow.FINANCIAL_YR_END || null;
+        normalizedData.doc_edit_from = acRow.DOC_EDIT_FROM || null;
+        normalizedData.doc_edit_to = acRow.DOC_EDIT_TO || null;
+        normalizedData.doc_date_editable = acRow.DOC_DATE_EDITABLE || 'Y';
+      }
+
+      // Query current active FY dates from MS_FY_PERIOD
+      if (normalizedData.ac_fy_period) {
+        try {
+          const currentFyRes: any = await conn.execute(
+            `SELECT DATE_FROM, DATE_TO FROM MS_FY_PERIOD
+             WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
+               AND TRIM(FY_PERIOD) = TRIM(:fy)
+               AND ROWNUM = 1`,
+            { cc: companyCode, fy: String(normalizedData.ac_fy_period) },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          if (currentFyRes?.rows?.length) {
+            normalizedData.current_fy_start = currentFyRes.rows[0].DATE_FROM || null;
+            normalizedData.current_fy_end = currentFyRes.rows[0].DATE_TO || null;
+          }
+        } catch (fErr) {
+          console.warn("[getCompanyInfo] Active FY dates lookup error:", fErr);
+        }
       }
     } catch (e) {
       console.warn("[getCompanyInfo] Currency/Decimal enrichment warning:", e);
@@ -1241,7 +1267,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     conn = await getConn(req);
 
     const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO' || doc_type === 'DN';
-    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN' || doc_type === 'IV';
 
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = {
@@ -1265,6 +1291,13 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
            NVL((
+             SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+             FROM TR_AC_INVDETAIL invd
+             WHERE invd.company_code = h.company_code
+               AND invd.doc_type     = h.doc_type
+               AND invd.doc_no       = h.doc_no
+               AND invd.indicator_origin = 'Y'
+           ), NVL((
              SELECT ABS(NVL(d.lcur_amount, d.amount))
              FROM TR_AC_DETAIL d
              WHERE d.company_code = h.company_code
@@ -1272,13 +1305,14 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                AND d.doc_no       = h.doc_no
                AND d.serial_no    = 9001
            ), (
-             SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+             SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                        SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
              FROM TR_AC_DETAIL d
              WHERE d.company_code = h.company_code
                AND d.doc_type     = h.doc_type
                AND d.doc_no       = h.doc_no
                AND d.serial_no    <> 9001
-           )) AS original_amount,
+           ))) AS original_amount,
            NVL((
              SELECT SUM(ABS(d.lcur_amount)) 
              FROM TR_AC_INVDETAIL d 
@@ -1295,7 +1329,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            ), 0) AS paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
-           AND h.div_code     = :dc 
+           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR h.div_code = :dc) 
            AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
              SELECT 1 FROM TR_AC_DETAIL d2 
              WHERE d2.company_code = h.company_code 
@@ -1304,7 +1338,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                AND d2.ac_code = :ac
            ))
            AND (
-             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
              OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
              OR (:is_receipt = 0 AND :is_payment = 0)
            )
@@ -1399,11 +1433,11 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              ON h.company_code = inv.company_code
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
-             AND inv.div_code     = :dc 
+             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR inv.div_code = :dc) 
              AND NVL(h.canceled, 'N') = 'N'
              AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
              AND (
-               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV') OR h.doc_type IN ('SI', 'SV')))
+               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV', 'IV') OR h.doc_type IN ('SI', 'SV', 'IV')))
                OR (:is_payment = 1 AND (inv.doc_type IN ('PI', 'PO') OR h.doc_type IN ('PI', 'PO')))
                OR (:is_receipt = 0 AND :is_payment = 0)
              )
@@ -2138,6 +2172,85 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     }
 
     conn = await getConn(req);
+
+    // Period Lock & Current Financial Period Validation
+    try {
+      const activeFyRes: any = await conn.execute(
+        `SELECT 
+           v.ac_fy_period,
+           p.date_from AS fy_date_from,
+           p.date_to AS fy_date_to,
+           s.financial_yr_start,
+           s.financial_yr_end,
+           s.doc_edit_from,
+           s.doc_edit_to,
+           s.doc_date_editable
+         FROM VW_COMPANY_INFO v
+         LEFT JOIN MS_FY_PERIOD p 
+           ON p.company_code = v.company_code 
+          AND p.fy_period = TO_CHAR(v.ac_fy_period)
+         LEFT JOIN MS_AC_SETUP s
+           ON s.company_code = v.company_code
+         WHERE v.company_code = :cc`,
+        { cc: req.user.company_code },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const fyInfo = activeFyRes.rows?.[0] || {};
+      const currentFy = String(fyInfo.AC_FY_PERIOD || '226');
+      const docDateStr = String(v.doc_date || '').slice(0, 10);
+      const fyFrom = fyInfo.FY_DATE_FROM ? new Date(fyInfo.FY_DATE_FROM).toISOString().slice(0, 10) : null;
+      const fyTo = fyInfo.FY_DATE_TO ? new Date(fyInfo.FY_DATE_TO).toISOString().slice(0, 10) : null;
+      const editFrom = fyInfo.DOC_EDIT_FROM ? new Date(fyInfo.DOC_EDIT_FROM).toISOString().slice(0, 10) : null;
+
+      if (fyFrom && fyTo && (docDateStr < fyFrom || docDateStr > fyTo)) {
+        res.status(400).json({
+          success: false,
+          message: `Transaction entry is allowed only in current financial period ${currentFy} (${fyFrom} to ${fyTo}). Selected date ${docDateStr} is in an invalid financial period.`
+        });
+        return;
+      }
+      if (editFrom && docDateStr < editFrom) {
+        res.status(400).json({
+          success: false,
+          message: `Account period is locked prior to ${editFrom}. Backdated entry is not allowed.`
+        });
+        return;
+      }
+    } catch (fyErr) {
+      console.warn('[createPurchaseDocument] FY validation warning:', fyErr);
+    }
+
+    // Duplicate Freight Job Purchase Booking Validation
+    if (v.doc_type === 'PI' && Array.isArray(v.detail)) {
+      const jobNos = Array.from(new Set(
+        v.detail.map((d: any) => String(d.job_no || '').trim()).filter(Boolean)
+      ));
+      for (const jNo of jobNos) {
+        const checkBooked: any = await conn.execute(
+          `SELECT h.doc_no, d.remarks, d.amount, d.lcur_amount
+           FROM TR_AC_DETAIL d
+           JOIN TR_AC_HEADER h
+             ON h.company_code = d.company_code
+            AND h.doc_type = d.doc_type
+            AND h.doc_no = d.doc_no
+            AND NVL(h.canceled, 'N') = 'N'
+           WHERE h.company_code = :cc
+             AND h.doc_type = 'PI'
+             AND d.job_no = :job_no
+             AND d.serial_no < 9000`,
+          { cc: req.user.company_code, job_no: String(jNo) },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (checkBooked.rows && checkBooked.rows.length > 0) {
+          const bookedDoc = (checkBooked.rows[0] as any).DOC_NO;
+          res.status(400).json({
+            success: false,
+            message: `Job ${jNo} has already been booked in Purchase Invoice (${bookedDoc}). Duplicate purchase booking is completely blocked.`
+          });
+          return;
+        }
+      }
+    }
 
     // Step 1 — create header, get generated doc_no
     const result = await conn.execute(
@@ -2931,6 +3044,177 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     const statusCode = err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR;
     const message = err.message ?? 'Error updating purchase document';
     res.status(statusCode).json({ success: false, message });
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const getCompanyFinanceSetup = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const companyCode = String(req.query.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_GET_COMPANY_FINANCE_SETUP(
+           :p_company_code,
+           :p_out_company,
+           :p_out_ac_setup,
+           :p_out_fy_periods
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_out_company: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_out_ac_setup: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_out_fy_periods: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR }
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const outBinds = result.outBinds as any;
+
+    const compCur = outBinds?.p_out_company;
+    const compRows = compCur ? await compCur.getRows(100) : [];
+    if (compCur) await compCur.close();
+
+    const setupCur = outBinds?.p_out_ac_setup;
+    const setupRows = setupCur ? await setupCur.getRows(100) : [];
+    if (setupCur) await setupCur.close();
+
+    const fyCur = outBinds?.p_out_fy_periods;
+    const fyRows = fyCur ? await fyCur.getRows(1000) : [];
+    if (fyCur) await fyCur.close();
+
+    res.json({
+      success: true,
+      data: {
+        company_info: compRows[0] || null,
+        ac_setup: setupRows[0] || null,
+        fy_periods: fyRows || []
+      }
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const saveCompanyFinanceSetup = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const body = req.body || {};
+    const companyCode = String(body.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+    const userId = String(req.user.loginid || req.user.user_id || 'ADMIN').trim();
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_SAVE_COMPANY_FINANCE_SETUP(
+           :p_company_code,
+           :p_ac_fy_period,
+           :p_opn_fy_period,
+           :p_doc_edit_from,
+           :p_doc_edit_to,
+           :p_doc_date_editable,
+           :p_base_curr_code,
+           :p_amount_decimal_nos,
+           :p_price_decimal_nos,
+           :p_lcur_decimal_nos,
+           :p_user_id,
+           :p_status,
+           :p_message
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_ac_fy_period: body.ac_fy_period ? String(body.ac_fy_period).trim() : null,
+        p_opn_fy_period: body.opn_fy_period ? String(body.opn_fy_period).trim() : null,
+        p_doc_edit_from: body.doc_edit_from ? new Date(body.doc_edit_from) : null,
+        p_doc_edit_to: body.doc_edit_to ? new Date(body.doc_edit_to) : null,
+        p_doc_date_editable: body.doc_date_editable ? String(body.doc_date_editable).trim().toUpperCase() : 'Y',
+        p_base_curr_code: body.base_curr_code ? String(body.base_curr_code).trim().toUpperCase() : null,
+        p_amount_decimal_nos: body.amount_decimal_nos != null ? Number(body.amount_decimal_nos) : 2,
+        p_price_decimal_nos: body.price_decimal_nos != null ? Number(body.price_decimal_nos) : 2,
+        p_lcur_decimal_nos: body.lcur_decimal_nos != null ? Number(body.lcur_decimal_nos) : 2,
+        p_user_id: userId,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
+    );
+
+    const outBinds = result.outBinds as any;
+    const status = outBinds?.p_status;
+    const message = outBinds?.p_message;
+
+    if (status === 'ERROR') {
+      res.status(400).json({ success: false, message: message || 'Failed to save company finance setup' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: message || 'Company finance setup updated successfully'
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const saveFyPeriod = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const body = req.body || {};
+    const companyCode = String(body.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+    const userId = String(req.user.loginid || req.user.user_id || 'ADMIN').trim();
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_SAVE_MS_FY_PERIOD(
+           :p_company_code,
+           :p_fy_period,
+           :p_date_from,
+           :p_date_to,
+           :p_sort_order,
+           :p_action,
+           :p_user_id,
+           :p_status,
+           :p_message
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_fy_period: String(body.fy_period || '').trim(),
+        p_date_from: body.date_from ? new Date(body.date_from) : null,
+        p_date_to: body.date_to ? new Date(body.date_to) : null,
+        p_sort_order: body.sort_order != null ? Number(body.sort_order) : 99,
+        p_action: String(body.action || 'UPD').trim().toUpperCase(),
+        p_user_id: userId,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
+    );
+
+    const outBinds = result.outBinds as any;
+    const status = outBinds?.p_status;
+    const message = outBinds?.p_message;
+
+    if (status === 'ERROR') {
+      res.status(400).json({ success: false, message: message || 'Failed to save financial period' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: message || 'Financial period updated successfully'
+    });
+  } catch (err) {
+    sendError(res, err);
   } finally {
     await closeConn(conn);
   }

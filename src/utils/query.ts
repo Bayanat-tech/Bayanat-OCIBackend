@@ -96,7 +96,7 @@ LEFT JOIN TR_AC_HEADER h
  AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
 WHERE inv.company_code = :company_code
   AND inv.ac_code = :ac_code
-  AND inv.div_code = :div_code
+  AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR inv.div_code = :div_code)
   AND NVL(h.canceled, 'N') = 'N'
   AND (TRIM(inv.doc_type) || TRIM(TO_CHAR(inv.doc_no)) || TRIM(TO_CHAR(inv.serial_no)) <> :invrsno)
 GROUP BY inv.company_code, inv.ac_code, inv.inv_no, inv.div_code
