@@ -83,7 +83,7 @@ export const insUpdHrSalaryAdvDed = async (
       COMPANY_CODE: header.company_code ?? null,
 
       // HARD CODE
-      DOC_TYPE: header.doc_type ?? "ADD",
+      DOC_TYPE: header.doc_type ?? "ADV",
 
       DOC_NO: toNumber(header.doc_no),
       DOC_DATE: toDate(header.doc_date),
