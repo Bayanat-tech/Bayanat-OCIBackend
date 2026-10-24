@@ -22,6 +22,9 @@ import {
   getChequePaymentHeader,
   getChildTableName,
   getCompanyInfo,
+  getCompanyFinanceSetup,
+  saveCompanyFinanceSetup,
+  saveFyPeriod,
   initializeCompanyFinance,
   getDefaultTransactionDetails,
   getPurchaseHeader,
@@ -393,7 +396,10 @@ router.post('/reports/PrRegisterReport/excel', exportPRRegisterReportExcel);
 
 
 // GET Routes - Information Retrieval
-router.get("/company_info", getCompanyInfo);             
+router.get("/company_info", getCompanyInfo);
+router.get("/company-setup", getCompanyFinanceSetup);
+router.post("/company-setup", saveCompanyFinanceSetup);
+router.post("/company-setup/fy-period", saveFyPeriod);             
 router.post("/initialize_company_finance", initializeCompanyFinance);
 router.get("/default_details", getDefaultTransactionDetails);  
 router.get("/cheque_detail", getChequeDetail);                 
