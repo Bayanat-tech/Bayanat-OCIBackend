@@ -107,42 +107,119 @@ export const procBulkAccountEntry = async (
     connection = await TenantManager.getConnection(tenantId);
 
    if (oneChar(header.canceled) !== 'Y' && header.doc_date) {
-  const fyFor = async (d: string) => {
-    const r = await connection!.execute(
-      `SELECT FY_PERIOD FROM MS_FY_PERIOD
-        WHERE COMPANY_CODE = :cc AND DATE_FROM IS NOT NULL
-          AND TO_DATE(:dd,'YYYY-MM-DD') BETWEEN TRUNC(DATE_FROM) AND TRUNC(DATE_TO)
-          AND ROWNUM = 1`,
-      { cc: header.company_code, dd: d },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    return ((r.rows?.[0] as any)?.FY_PERIOD ?? null) as string | null;
-  };
+     // 1. Fetch current active financial period and accounting period lock rules
+     const activeFyRes: any = await connection!.execute(
+       `SELECT 
+          v.ac_fy_period,
+          p.date_from AS fy_date_from,
+          p.date_to AS fy_date_to,
+          s.financial_yr_start,
+          s.financial_yr_end,
+          s.doc_edit_from,
+          s.doc_edit_to,
+          s.doc_date_editable
+        FROM VW_COMPANY_INFO v
+        LEFT JOIN MS_FY_PERIOD p 
+          ON p.company_code = v.company_code 
+         AND p.fy_period = TO_CHAR(v.ac_fy_period)
+        LEFT JOIN MS_AC_SETUP s
+          ON s.company_code = v.company_code
+        WHERE v.company_code = :cc`,
+       { cc: header.company_code },
+       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+     );
 
-  const newDate = String(header.doc_date).slice(0, 10);
-  const newFy = await fyFor(newDate);
-  if (!newFy) {
-    res.status(400).json({ success: false, message: `Doc Date ${newDate} does not fall in this financial year.` });
-    return;
-  }
+     const fyInfo = activeFyRes.rows?.[0] || {};
+     const currentFy = String(fyInfo.AC_FY_PERIOD || '226');
+     const fyFrom = fyInfo.FY_DATE_FROM ? new Date(fyInfo.FY_DATE_FROM).toISOString().slice(0, 10) : null;
+     const fyTo = fyInfo.FY_DATE_TO ? new Date(fyInfo.FY_DATE_TO).toISOString().slice(0, 10) : null;
+     const editFrom = fyInfo.DOC_EDIT_FROM ? new Date(fyInfo.DOC_EDIT_FROM).toISOString().slice(0, 10) : null;
 
-  if (header.doc_no && String(header.doc_no) !== '0') {
-    const old = await connection.execute(
-      `SELECT TO_CHAR(DOC_DATE,'YYYY-MM-DD') AS D FROM TR_AC_HEADER
-        WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO = :dn`,
-      { cc: header.company_code, dt: header.doc_type, dn: String(header.doc_no) },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const oldDate = (old.rows?.[0] as any)?.D;
-    if (oldDate) {
-      const oldFy = await fyFor(oldDate);
-      if (oldFy && oldFy !== newFy) {
-        res.status(400).json({ success: false, message: `Doc Date cannot be moved from FY ${oldFy} to FY ${newFy}. Cancel and create a new document in the correct year.` });
-        return;
-      }
-    }
-  }
-}
+     const docDateStr = String(header.doc_date).slice(0, 10);
+     const isNewDoc = !header.doc_no || String(header.doc_no) === '0';
+
+     // Rule 1: New transaction entry MUST be within the CURRENT active financial period
+     if (isNewDoc && fyFrom && fyTo) {
+       if (docDateStr < fyFrom || docDateStr > fyTo) {
+         res.status(400).json({
+           success: false,
+           message: `Transaction entry is allowed only in current financial period ${currentFy} (${fyFrom} to ${fyTo}). Selected date ${docDateStr} is in an invalid financial period.`
+         });
+         return;
+       }
+     }
+
+     // Rule 2: Period Lock & No provision for backdated entry into closed periods
+     if (editFrom && docDateStr < editFrom) {
+       res.status(400).json({
+         success: false,
+         message: `Account period is locked prior to ${editFrom}. Backdated entry is not allowed.`
+       });
+       return;
+     }
+
+     // Rule 3: Prevent moving existing document across financial periods
+     if (!isNewDoc) {
+       const oldRes: any = await connection!.execute(
+         `SELECT TO_CHAR(DOC_DATE,'YYYY-MM-DD') AS D FROM TR_AC_HEADER
+          WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO = :dn`,
+         { cc: header.company_code, dt: header.doc_type, dn: String(header.doc_no) },
+         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+       );
+       const oldDate = oldRes.rows?.[0]?.D;
+       if (oldDate && fyFrom && fyTo) {
+         const oldDVal = String(oldDate).slice(0, 10);
+         const oldInCurrent = oldDVal >= fyFrom && oldDVal <= fyTo;
+         const newInCurrent = docDateStr >= fyFrom && docDateStr <= fyTo;
+         if (oldInCurrent !== newInCurrent) {
+           res.status(400).json({
+             success: false,
+             message: `Document Date cannot be moved across financial periods. Cancel this document and create a new one in the target period.`
+           });
+           return;
+         }
+       }
+     }
+
+     // Rule 4: Block duplicate purchase booking on Freight Jobs (PI / Purchase Invoices)
+     if (String(header.doc_type || '').toUpperCase() === 'PI' && Array.isArray(details)) {
+       const jobNos = Array.from(new Set(
+         details.map((d: any) => String(d.job_no || '').trim()).filter(Boolean)
+       ));
+
+       for (const jNo of jobNos) {
+         const checkBooked: any = await connection!.execute(
+           `SELECT h.doc_no, d.remarks, d.amount, d.lcur_amount
+            FROM TR_AC_DETAIL d
+            JOIN TR_AC_HEADER h
+              ON h.company_code = d.company_code
+             AND h.doc_type = d.doc_type
+             AND h.doc_no = d.doc_no
+             AND NVL(h.canceled, 'N') = 'N'
+            WHERE h.company_code = :cc
+              AND h.doc_type = 'PI'
+              AND d.job_no = :job_no
+              AND d.serial_no < 9000
+              AND (:cur_doc_no IS NULL OR :cur_doc_no = '0' OR h.doc_no <> :cur_doc_no)`,
+           {
+             cc: header.company_code,
+             job_no: String(jNo),
+             cur_doc_no: String(header.doc_no || '0'),
+           },
+           { outFormat: oracledb.OUT_FORMAT_OBJECT }
+         );
+
+         if (checkBooked.rows && checkBooked.rows.length > 0) {
+           const bookedDoc = checkBooked.rows[0].DOC_NO;
+           res.status(400).json({
+             success: false,
+             message: `Job ${jNo} has already been booked in Purchase Invoice (${bookedDoc}). Duplicate purchase booking is completely blocked.`
+           });
+           return;
+         }
+       }
+     }
+   }
 
     const safeDetails = normalizeUniqueSerials(details, String(header.doc_no || "0"));
     const safeInvoiceDetail = normalizeChildSequences(invoiceDetail, String(header.doc_no || "0"));

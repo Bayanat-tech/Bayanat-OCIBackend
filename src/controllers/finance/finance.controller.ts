@@ -286,10 +286,14 @@ export const getFinanceListData = async (
 
         const dataResult = await connection.execute(
           `
-          SELECT fy_period AS "fy_period"
+          SELECT 
+            fy_period AS "fy_period",
+            date_from AS "date_from",
+            date_to AS "date_to",
+            sort_order AS "sort_order"
           FROM MS_FY_PERIOD
           ${whereClause}
-          ORDER BY fy_period
+          ORDER BY sort_order, fy_period
           `,
           binds,
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
