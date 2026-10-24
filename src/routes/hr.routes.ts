@@ -12,12 +12,20 @@ import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRec
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
 import { getEmployeeMasterPrint } from "../controllers/HR/Hr-Reports/employeeMasterReport";
-import { getMobileLeaveBucket } from "../controllers/HR/mobileLeave.controller";
+import { getMobileLeaveBucket, getLeaveWorkflowIdentity } from "../controllers/HR/mobileLeave.controller";
+import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowAction } from "../controllers/HR/leaveWorkflowAction.controller";
 
 // Initialize the Express router
 const router = express.Router();
 
 console.log("HR Routes Loaded");
+
+const workflowAuth = [passport.authenticate('jwt', { session: false }), tenantContextMiddleware, checkUserAuthorization];
+router.get('/workflow/identity', ...workflowAuth, getLeaveWorkflowIdentity);
+router.get('/workflow/leave/request/:requestNumber', ...workflowAuth, getLeaveWorkflowRequest);
+router.get('/workflow/leave/:requestNumber/targets', ...workflowAuth, getLeaveWorkflowTargets);
+router.post('/workflow/leave/:requestNumber/action', ...workflowAuth, saveLeaveWorkflowAction);
+router.get('/workflow/leave/:bucket', ...workflowAuth, getMobileLeaveBucket);
 
 router.get('/mobile/leave/:bucket',
   passport.authenticate('jwt', { session: false }),
