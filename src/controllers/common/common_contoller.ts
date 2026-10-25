@@ -151,6 +151,11 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
+
     const result = await connection.execute(
       `
       DECLARE
@@ -320,6 +325,11 @@ export const proc_build_dynamic_ins_upd_common = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
+
     const result = await connection.execute(
       `
       DECLARE
@@ -444,6 +454,54 @@ export const proc_build_dynamic_ins_upd_common = async (
 };
 
 
+
+async function handleCityDropdown(connection: oracledb.Connection, req: Request, res: Response): Promise<boolean> {
+  const param = String(req.body.parameter || "").trim();
+  if (param.toUpperCase() !== "DROP_DOWN_CITY") return false;
+
+  let countryCode = String(
+    req.body.country_code ||
+    req.body.COUNTRY_CODE ||
+    (req.body.code1 && req.body.code1 !== req.body.company_code && req.body.code1 !== "01" ? req.body.code1 : req.body.code2) ||
+    ""
+  ).trim().toUpperCase();
+
+  if (countryCode && countryCode.includes("-")) {
+    countryCode = countryCode.split("-")[0].trim();
+  }
+
+  let query = `
+    SELECT CITY_NAME AS "label", CITY_NAME AS "value", MIN(CITY_CODE) AS "city_code", MIN(COUNTRY_CODE) AS "country_code", MIN(STATE_PROVINCE) AS "state"
+    FROM CUSTOMERS.MS_CITY
+    WHERE IS_ACTIVE = 'Y'
+  `;
+  const binds: any = {};
+  if (countryCode) {
+    query += ` AND (
+      UPPER(COUNTRY_CODE) = :cc
+      OR UPPER(COUNTRY_CODE) = SUBSTR(:cc, 1, 2)
+      OR UPPER(COUNTRY_CODE) IN (SELECT UPPER(COUNTRY_CODE) FROM MS_COUNTRY WHERE UPPER(COUNTRY_CODE) = :cc OR UPPER(COUNTRY_NAME) = :cc)
+    )`;
+    binds.cc = countryCode;
+  }
+  query += ` GROUP BY CITY_NAME ORDER BY CITY_NAME ASC`;
+
+  try {
+    const cityRes = await connection.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const rows = (cityRes.rows as any[]) || [];
+    res.json({
+      success: true,
+      data: rows,
+      totalCount: rows.length,
+    });
+    return true;
+  } catch (err: any) {
+    console.error("Error executing DROP_DOWN_CITY query:", err);
+    res.status(500).json({ success: false, error: "Failed to load cities", details: err.message });
+    return true;
+  }
+}
+
 export const proc_build_dynamic_sql_common = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
@@ -489,6 +547,10 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
 
     const result = await connection.execute(
       `
@@ -658,6 +720,10 @@ export const proc_build_dynamic_sql_common20 = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
 
     const result = await connection.execute(
 

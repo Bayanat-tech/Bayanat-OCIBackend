@@ -102,7 +102,7 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.DOC_REFNO
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.REF_NO AS DOC_REFNO
            FROM TR_AC_DETAIL d
            LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
            WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO = :job_no`,
