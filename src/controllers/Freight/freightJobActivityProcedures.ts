@@ -15,6 +15,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
            :p_transport_mode,
            :p_job_type,
            :p_search,
+           :p_supplier_code,
            :p_result
          );
        END;`,
@@ -23,6 +24,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
         p_transport_mode: req.body.transport_mode ?? req.body.TRANSPORT_MODE,
         p_job_type: req.body.job_type ?? req.body.JOB_TYPE,
         p_search: req.body.search ?? req.body.SEARCH ?? null,
+        p_supplier_code: req.body.supplier_code ?? req.body.SUPPLIER_CODE ?? null,
         p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
