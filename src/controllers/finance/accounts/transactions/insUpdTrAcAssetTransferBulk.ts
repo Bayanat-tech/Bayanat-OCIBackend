@@ -35,69 +35,80 @@ export const insUpdTrAcAssetTransferBulk = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
- console.log("DOC_NO:", header.doc_no);
-    await connection.execute(
-      
-      `
-      BEGIN
-        PROC_INS_UPD_ASSET_TRANSFER(:p_header, :p_details);
-      END;
-      `,
-      {
-        p_header: {
-          type: "TR_AC_ASSET_TRANSFER_HDR_TAB",
-          val: [
-            {
-              COMPANY_CODE: header.company_code,
-              DOC_TYPE: header.doc_type,
-            DOC_NO: header.doc_no != null && header.doc_no !== 0 
-  ? String(header.doc_no) 
-  : null,
-              DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
-              SITE_FROM: header.site_from,
-              SITE_TO: header.site_to,
-              REMARKS: header.remarks,
-              USER_ID: header.user_id,
-              USER_DT: header.user_dt ? new Date(header.user_dt) : null,
-              LAST_SERIAL_NO: header.last_serial_no,
-              CONFIRMED: header.confirmed,
-              DIV_CODE: header.div_code,
-            },
-          ],
-         
+    console.log("DOC_NO:", header.doc_no);
+    
+  const result = await connection.execute(
+  `
+  BEGIN
+    PROC_INS_UPD_ASSET_TRANSFER(:p_header, :p_details, :p_doc_no);
+  END;
+  `,
+  {
+    p_header: {
+      type: "TR_AC_ASSET_TRANSFER_HDR_TAB",
+      val: [
+        {
+          COMPANY_CODE: header.company_code,
+          DOC_TYPE: header.doc_type,
+          DOC_NO:
+            header.doc_no != null && header.doc_no !== 0
+              ? String(header.doc_no)
+              : null,
+          DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
+          SITE_FROM: header.site_from,
+          SITE_TO: header.site_to,
+          REMARKS: header.remarks,
+          USER_ID: header.user_id,
+          USER_DT: header.user_dt ? new Date(header.user_dt) : null,
+          LAST_SERIAL_NO: header.last_serial_no,
+          CONFIRMED: header.confirmed,
+          DIV_CODE: header.div_code,
         },
-        
-        p_details: {
-          type: "TR_AC_ASSET_TRANSFER_DET_TAB",
-          val: details.map((d: any) => ({
-            COMPANY_CODE: d.company_code,
-            DOC_TYPE: d.doc_type,
-         DOC_NO: d.doc_no && d.doc_no !== 0 
-  ? String(d.doc_no) 
-  : null,
-            SERIAL_NO: d.serial_no,
-            ASSET_ID: d.asset_id,
-            SITE_FROM: d.site_from,
-            SITE_TO: d.site_to,
-            EMP_ID_FROM: d.emp_id_from,
-            EMP_ID_TO: d.emp_id_to,
-            REMARKS: d.remarks,
-            USER_ID: d.user_id,
-            USER_DT: d.user_dt ? new Date(d.user_dt) : null,
-            DIV_CODE: d.div_code,
-          })),
-        },
-        
-      },
-      { autoCommit: false }
-    );
+      ],
+    },
 
-    await connection.commit();
+    p_details: {
+      type: "TR_AC_ASSET_TRANSFER_DET_TAB",
+      val: details.map((d: any) => ({
+        COMPANY_CODE: d.company_code,
+        DOC_TYPE: d.doc_type,
+        DOC_NO:
+          d.doc_no != null && d.doc_no !== 0
+            ? String(d.doc_no)
+            : null,
+        SERIAL_NO: d.serial_no,
+        ASSET_ID: d.asset_id,
+        SITE_FROM: d.site_from,
+        SITE_TO: d.site_to,
+        EMP_ID_FROM: d.emp_id_from,
+        EMP_ID_TO: d.emp_id_to,
+        REMARKS: d.remarks,
+        USER_ID: d.user_id,
+        USER_DT: d.user_dt ? new Date(d.user_dt) : null,
+        DIV_CODE: d.div_code,
+      })),
+    },
 
-    res.json({
-      success: true,
-      message: "Asset transfer saved successfully",
-    });
+    // FIX: Bind the OUT parameter
+    p_doc_no: {
+      dir: oracledb.BIND_OUT,
+      type: oracledb.STRING,
+      maxSize: 30,
+    },
+  },
+  { autoCommit: false }
+);
+
+await connection.commit();
+
+res.json({
+  success: true,
+  message: "Asset transfer saved successfully",
+  doc_no: (result.outBinds as any)?.p_doc_no ?? null,
+});
+
+
+
   } catch (err: any) {
     console.error("Oracle Error:", err);
     if (connection) {
