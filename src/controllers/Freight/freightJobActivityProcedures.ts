@@ -7,6 +7,7 @@ type Connection = oracledb.Connection;
 
 export const frtJobActivityJobList = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_JOB_ACTIVITY_JOB_LIST(
@@ -18,7 +19,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
          );
        END;`,
       {
-        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_company_code: companyCode,
         p_transport_mode: req.body.transport_mode ?? req.body.TRANSPORT_MODE,
         p_job_type: req.body.job_type ?? req.body.JOB_TYPE,
         p_search: req.body.search ?? req.body.SEARCH ?? null,
@@ -28,12 +29,48 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
     );
 
     const rows = await rowsFromCursor((result.outBinds as any).p_result);
+
+    // Fetch summary of Purchase Invoices booked against jobs to support PB unbooked-only filtering
+    try {
+      if (rows.length > 0 && companyCode) {
+        const piSummary = await connection.execute(
+          `SELECT JOB_NO, COUNT(*) AS PI_LINE_COUNT, SUM(AMOUNT) AS PI_BOOKED_AMOUNT, MAX(DOC_NO) AS LAST_PI_NO
+           FROM TR_AC_DETAIL
+           WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'PI' AND JOB_NO IS NOT NULL
+           GROUP BY JOB_NO`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const piMap = new Map<string, any>();
+        ((piSummary.rows as any[]) || []).forEach((r: any) => {
+          if (r.JOB_NO) piMap.set(String(r.JOB_NO).toUpperCase(), r);
+        });
+
+        rows.forEach((job: any) => {
+          const jNo = String(job.job_no || job.JOB_NO || "").toUpperCase();
+          const piInfo = piMap.get(jNo);
+          const expense = Number(job.expense || job.EXPENSE || 0);
+          const bookedAmt = Number(piInfo?.PI_BOOKED_AMOUNT || 0);
+          job.pi_booked_amount = bookedAmt;
+          job.pi_line_count = Number(piInfo?.PI_LINE_COUNT || 0);
+          job.last_pi_no = piInfo?.LAST_PI_NO || null;
+          job.is_fully_booked = expense > 0 && bookedAmt >= expense;
+        });
+      }
+    } catch (piErr) {
+      console.warn("frtJobActivityJobList: error fetching PI booking summary", piErr);
+    }
+
     res.json({ success: true, data: rows, totalCount: rows.length });
   });
 };
 
 export const frtJobActivityGet = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
+    const prinCode = req.body.prin_code ?? req.body.PRIN_CODE;
+    const jobNo = req.body.job_no ?? req.body.JOB_NO;
+
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_JOB_ACTIVITY_GET(
@@ -45,9 +82,9 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
          );
        END;`,
       {
-        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
-        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
-        p_job_no: req.body.job_no ?? req.body.JOB_NO,
+        p_company_code: companyCode,
+        p_prin_code: prinCode,
+        p_job_no: jobNo,
         p_header: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
         p_lines: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
       },
@@ -57,7 +94,26 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     const outBinds = result.outBinds as any;
     const headerRows = await rowsFromCursor(outBinds.p_header);
     const lines = await rowsFromCursor(outBinds.p_lines);
-    res.json({ success: true, data: { header: headerRows[0] ?? null, lines } });
+
+    // Fetch individual PI lines booked for this job
+    let bookedPI: any[] = [];
+    try {
+      if (companyCode && jobNo) {
+        const piRes = await connection.execute(
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.DOC_REFNO
+           FROM TR_AC_DETAIL d
+           LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO = :job_no`,
+          { cc: companyCode, job_no: jobNo },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        bookedPI = (piRes.rows as any[]) || [];
+      }
+    } catch (piErr) {
+      console.warn("frtJobActivityGet: error fetching booked PI details", piErr);
+    }
+
+    res.json({ success: true, data: { header: headerRows[0] ?? null, lines, booked_pi: bookedPI } });
   });
 };
 

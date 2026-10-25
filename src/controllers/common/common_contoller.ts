@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
+import { scopeAlmsApprovalQuery } from "../../utils/workflowVisibility";
 
 export const procBuildCommonProcedurewmc = async (
   req: Request,
@@ -547,7 +548,8 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
 
     console.log("Generated SQL:", rawSql);
 
-    const dataResult = await connection.execute<any[]>(rawSql, [], {
+    const scoped = scopeAlmsApprovalQuery(param, rawSql, (req as any).user);
+    const dataResult = await connection.execute<any[]>(scoped.sql, scoped.binds, {
       outFormat: oracledb.OUT_FORMAT_ARRAY
     });
 

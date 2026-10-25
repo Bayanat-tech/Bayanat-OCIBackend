@@ -172,7 +172,7 @@ async function startServer() {
       // Non-fatal: continue running server even if schedulers fail
     }
     console.log(`Listening on port ${PORT}...`);
-    app.listen(PORT, () => {
+    app.listen(Number(PORT), process.env.HOST || '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log("Health check: http://localhost:" + PORT + "/health");
     });

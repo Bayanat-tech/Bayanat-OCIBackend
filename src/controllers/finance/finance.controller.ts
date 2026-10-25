@@ -286,10 +286,14 @@ export const getFinanceListData = async (
 
         const dataResult = await connection.execute(
           `
-          SELECT fy_period AS "fy_period"
+          SELECT 
+            fy_period AS "fy_period",
+            date_from AS "date_from",
+            date_to AS "date_to",
+            sort_order AS "sort_order"
           FROM MS_FY_PERIOD
           ${whereClause}
-          ORDER BY fy_period
+          ORDER BY sort_order, fy_period
           `,
           binds,
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -664,6 +668,8 @@ export const getFinanceListData = async (
         const voucherType = String(extra_param2 || "").toUpperCase();
         const isReceipt = ["BR", "CR", "RJV", "CN"].includes(voucherType);
         const isPayment = ["BP", "CP", "PJV", "DN"].includes(voucherType);
+        const isInvoicePI = voucherType === "PI";
+        const isInvoiceSI = ["SI", "SV"].includes(voucherType);
 
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
@@ -679,6 +685,13 @@ export const getFinanceListData = async (
                h.ref_no,
                h.doc_date AS inv_date,
                NVL((
+                 SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+                 FROM TR_AC_INVDETAIL invd
+                 WHERE invd.company_code = h.company_code
+                   AND invd.doc_type     = h.doc_type
+                   AND invd.doc_no       = h.doc_no
+                   AND invd.indicator_origin = 'Y'
+               ), NVL((
                  SELECT ABS(NVL(d.lcur_amount, d.amount))
                  FROM TR_AC_DETAIL d
                  WHERE d.company_code = h.company_code
@@ -686,13 +699,14 @@ export const getFinanceListData = async (
                    AND d.doc_no       = h.doc_no
                    AND d.serial_no    = 9001
                ), (
-                 SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                            SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
                  FROM TR_AC_DETAIL d
                  WHERE d.company_code = h.company_code
                    AND d.doc_type     = h.doc_type
                    AND d.doc_no       = h.doc_no
                    AND d.serial_no    <> 9001
-               )) AS inv_amt,
+               ))) AS inv_amt,
                h.curr_code AS c_curr_code_origin,
                h.ex_rate AS c_ex_rate_origin,
                h.div_code,
@@ -715,13 +729,15 @@ export const getFinanceListData = async (
                ), 0) AS amount
              FROM TR_AC_HEADER h
              WHERE h.company_code = :company_code
-               AND h.div_code     = :div_code
+               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR h.div_code = :div_code)
                AND h.ac_code      = :ac_code
                AND NVL(h.canceled, 'N') = 'N'
                AND (
-                 (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+                 (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
                  OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
-                 OR (:is_receipt = 0 AND :is_payment = 0)
+                 OR (:is_invoice_pi = 1 AND h.doc_type IN ('BP', 'CP', 'PJV', 'DN'))
+                 OR (:is_invoice_si = 1 AND h.doc_type IN ('BR', 'CR', 'RJV', 'CN'))
+                 OR (:is_receipt = 0 AND :is_payment = 0 AND :is_invoice_pi = 0 AND :is_invoice_si = 0)
                )`,
             {
               company_code: req.user.company_code,
@@ -730,6 +746,8 @@ export const getFinanceListData = async (
               invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
               is_receipt: isReceipt ? 1 : 0,
               is_payment: isPayment ? 1 : 0,
+              is_invoice_pi: isInvoicePI ? 1 : 0,
+              is_invoice_si: isInvoiceSI ? 1 : 0,
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
@@ -782,7 +800,7 @@ export const getFinanceListData = async (
           const cancelledRes = await connection.execute(
             `SELECT UPPER(TRIM(doc_no)) AS doc_no, UPPER(TRIM(ref_no)) AS ref_no 
              FROM TR_AC_HEADER 
-             WHERE company_code = :company_code AND div_code = :div_code AND NVL(canceled, 'N') = 'Y'`,
+             WHERE company_code = :company_code AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR div_code = :div_code) AND NVL(canceled, 'N') = 'Y'`,
             { company_code: req.user.company_code, div_code: extra_param1 },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
@@ -817,7 +835,17 @@ export const getFinanceListData = async (
           } else if (isPayment) {
             rawInvoices = rawInvoices.filter((row: any) => {
               const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
-              return !["SI", "SV", "BR", "CR", "RJV"].includes(dt);
+              return !["SI", "SV", "IV", "BR", "CR", "RJV"].includes(dt);
+            });
+          } else if (isInvoicePI) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return ["BP", "CP", "PJV", "DN"].includes(dt);
+            });
+          } else if (isInvoiceSI) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return ["BR", "CR", "RJV", "CN"].includes(dt);
             });
           }
 

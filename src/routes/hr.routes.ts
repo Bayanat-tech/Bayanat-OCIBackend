@@ -11,6 +11,9 @@ import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
 import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
+import { getEmployeeMasterPrint } from "../controllers/HR/Hr-Reports/employeeMasterReport";
+import { getMobileLeaveBucket, getLeaveWorkflowIdentity } from "../controllers/HR/mobileLeave.controller";
+import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowAction } from "../controllers/HR/leaveWorkflowAction.controller";
 import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
 import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
 
@@ -18,6 +21,20 @@ import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademast
 const router = express.Router();
 
 console.log("HR Routes Loaded");
+
+const workflowAuth = [passport.authenticate('jwt', { session: false }), tenantContextMiddleware, checkUserAuthorization];
+router.get('/workflow/identity', ...workflowAuth, getLeaveWorkflowIdentity);
+router.get('/workflow/leave/request/:requestNumber', ...workflowAuth, getLeaveWorkflowRequest);
+router.get('/workflow/leave/:requestNumber/targets', ...workflowAuth, getLeaveWorkflowTargets);
+router.post('/workflow/leave/:requestNumber/action', ...workflowAuth, saveLeaveWorkflowAction);
+router.get('/workflow/leave/:bucket', ...workflowAuth, getMobileLeaveBucket);
+
+router.get('/mobile/leave/:bucket',
+  passport.authenticate('jwt', { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getMobileLeaveBucket,
+);
 
 // Define a common GET API endpoint to retrieve HR master data based on the master name
 router.get(
@@ -120,7 +137,13 @@ router.all("/reports/:type/:report",
   getHrReport);
 
 router.post("/leave-entitlement/save", upsertHrEmpLeaveEntitle);
-
+router.post(
+  "/hr-reports/employee-master/print/:type", 
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getEmployeeMasterPrint
+);
 
 // Export the router as the default module
 export default router;

@@ -82,32 +82,84 @@ export class PartnerService {
   }
 
   // Create new broker
-  static async createBroker(brokerData: Partial<BrokerMaster>): Promise<BrokerMaster> {
-    const cols = Object.keys(brokerData);
+  static async createBroker(brokerData: any): Promise<BrokerMaster> {
+    const VALID_BROKER_COLUMNS = new Set([
+      "company_code", "broker_code", "broker_name", "curr_code", "country_code",
+      "broker_addr1", "broker_addr2", "broker_addr3", "broker_addr4", "broker_city",
+      "broker_contact1", "broker_telno1", "broker_faxno1", "broker_email1",
+      "broker_contact2", "broker_telno2", "broker_faxno2", "broker_email2",
+      "broker_contact3", "broker_telno3", "broker_faxno3", "broker_email3",
+      "broker_ref1", "broker_ref2", "broker_ref3", "service_date",
+      "broker_acref", "broker_credit", "broker_stat", "broker_imp_code",
+      "broker_lic_no", "broker_lic_type", "user_id", "date_time", "price_check",
+      "payment_terms", "importer_code", "partner_type", "tax_country_code",
+      "tax_registrd", "prin_infze", "trn_no", "territory_code"
+    ]);
+
+    const sanitized: Record<string, any> = {};
+    for (const [k, v] of Object.entries(brokerData)) {
+      const lower = k.toLowerCase();
+      if (VALID_BROKER_COLUMNS.has(lower)) {
+        sanitized[lower] = v === "" ? null : v;
+      }
+    }
+    if (brokerData.created_by || brokerData.user_id) {
+      sanitized.user_id = brokerData.created_by || brokerData.user_id;
+    }
+    sanitized.date_time = new Date();
+
+    const cols = Object.keys(sanitized);
     const values = cols.map((_, i) => `:val${i}`).join(", ");
     const sql = `INSERT INTO MS_BROKER (${cols.join(", ")}) VALUES (${values})`;
     
     const bindObj: Record<string, any> = {};
     cols.forEach((col, i) => {
-      bindObj[`val${i}`] = (brokerData as any)[col];
+      bindObj[`val${i}`] = sanitized[col];
     });
     
     await executeMutation(sql, bindObj);
-    return brokerData as BrokerMaster;
+    return sanitized as BrokerMaster;
   }
 
   // Update existing broker
   static async updateBroker(
     broker_code: string,
-    updateData: Partial<BrokerMaster>
+    updateData: any
   ): Promise<boolean> {
-    const cols = Object.keys(updateData);
+    const VALID_BROKER_COLUMNS = new Set([
+      "company_code", "broker_name", "curr_code", "country_code",
+      "broker_addr1", "broker_addr2", "broker_addr3", "broker_addr4", "broker_city",
+      "broker_contact1", "broker_telno1", "broker_faxno1", "broker_email1",
+      "broker_contact2", "broker_telno2", "broker_faxno2", "broker_email2",
+      "broker_contact3", "broker_telno3", "broker_faxno3", "broker_email3",
+      "broker_ref1", "broker_ref2", "broker_ref3", "service_date",
+      "broker_acref", "broker_credit", "broker_stat", "broker_imp_code",
+      "broker_lic_no", "broker_lic_type", "user_id", "date_time", "price_check",
+      "payment_terms", "importer_code", "partner_type", "tax_country_code",
+      "tax_registrd", "prin_infze", "trn_no", "territory_code"
+    ]);
+
+    const sanitized: Record<string, any> = {};
+    for (const [k, v] of Object.entries(updateData)) {
+      const lower = k.toLowerCase();
+      if (lower !== "broker_code" && VALID_BROKER_COLUMNS.has(lower)) {
+        sanitized[lower] = v === "" ? null : v;
+      }
+    }
+    if (updateData.updated_by || updateData.user_id) {
+      sanitized.user_id = updateData.updated_by || updateData.user_id;
+    }
+    sanitized.date_time = new Date();
+
+    const cols = Object.keys(sanitized);
+    if (cols.length === 0) return true;
+
     const setClause = cols.map((col, i) => `${col} = :val${i}`).join(", ");
     const sql = `UPDATE MS_BROKER SET ${setClause} WHERE broker_code = :broker_code`;
     
     const bindObj: Record<string, any> = { broker_code };
     cols.forEach((col, i) => {
-      bindObj[`val${i}`] = (updateData as any)[col];
+      bindObj[`val${i}`] = sanitized[col];
     });
     
     await executeMutation(sql, bindObj);
