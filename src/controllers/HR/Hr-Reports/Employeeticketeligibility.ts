@@ -147,6 +147,7 @@ async function fetchTicketRows(body: any): Promise<{ rows: TicketRow[]; connecti
         const binds: Record<string, any> = {};
         const where: string[] = [
             "E.EMPLOYEE_ID = V.EMPLOYEE_ID",
+             "E.COMPANY_CODE = V.COMPANY_CODE",
             "E.TICKET_ELIGIBILITY = 'Y'",
             "E.EMP_STATUS IN ('C', 'P')",
         ];

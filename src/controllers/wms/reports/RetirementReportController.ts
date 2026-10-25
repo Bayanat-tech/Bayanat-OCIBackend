@@ -83,6 +83,12 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Returns "YYYY-MM-DD" (first 10 chars) if the value looks like an ISO date, else "". */
+function isoDateStr(value: unknown): string {
+  const v = text(value).trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
+}
+
 // ─── Param Parser ────────────────────────────────────────────────────────────
 
 function allIfBlank(value: unknown): string {
@@ -105,6 +111,9 @@ function parseParams(req: RequestWithUser) {
     employeeCode: allIfBlank(src.employee_code),
     fromDate: parseDate(src.from_date),
     toDate: parseDate(src.to_date),
+    // 'YYYY-MM-DD' text – the procedure's P_DATE1..4 are VARCHAR2 and parse this exact format
+    fromDateStr: isoDateStr(src.from_date),
+    toDateStr: isoDateStr(src.to_date),
     loginId: text(req.user?.loginid || (req.user as any)?.username || ""),
   };
 }
@@ -122,15 +131,17 @@ async function loadRetirementData(req: RequestWithUser): Promise<ReportRow[]> {
     deptCode: params.deptCode,
     sectCode: params.sectCode,
     employeeCode: params.employeeCode,
-    fromDate: params.fromDate?.toISOString(),
-    toDate: params.toDate?.toISOString(),
+    fromDate: params.fromDateStr,
+    toDate: params.toDateStr,
   });
 
   if (!params.companyCode) {
     throw Object.assign(new Error("company_code is required"), { status: 400 });
   }
-  if (!params.fromDate || !params.toDate) {
-    throw Object.assign(new Error("from_date and to_date are required"), { status: 400 });
+  if (!params.fromDate || !params.toDate || !params.fromDateStr || !params.toDateStr) {
+    throw Object.assign(new Error("from_date and to_date are required (YYYY-MM-DD)"), {
+      status: 400,
+    });
   }
   if (params.fromDate > params.toDate) {
     throw Object.assign(new Error("'From Date' cannot be greater than 'To Date'"), {
@@ -144,14 +155,15 @@ async function loadRetirementData(req: RequestWithUser): Promise<ReportRow[]> {
     const binds: Record<string, any> = {
       p_parameter: REPORT_PARAMETER,
       p_loginid: params.loginId,
-      p_number1: null,
-      p_number2: null,
-      p_number3: null,
-      p_number4: null,
-      p_date1: { val: params.fromDate, type: oracledb.DATE },
-      p_date2: { val: params.toDate, type: oracledb.DATE },
-      p_date3: { val: null, type: oracledb.DATE },
-      p_date4: { val: null, type: oracledb.DATE },
+      p_number1: { val: null, type: oracledb.NUMBER },
+      p_number2: { val: null, type: oracledb.NUMBER },
+      p_number3: { val: null, type: oracledb.NUMBER },
+      p_number4: { val: null, type: oracledb.NUMBER },
+      // Procedure params are VARCHAR2 ('YYYY-MM-DD') – send text, NOT oracledb.DATE
+      p_date1: { val: params.fromDateStr, type: oracledb.STRING },
+      p_date2: { val: params.toDateStr, type: oracledb.STRING },
+      p_date3: { val: null, type: oracledb.STRING },
+      p_date4: { val: null, type: oracledb.STRING },
       p_return_string: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
