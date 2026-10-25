@@ -668,6 +668,8 @@ export const getFinanceListData = async (
         const voucherType = String(extra_param2 || "").toUpperCase();
         const isReceipt = ["BR", "CR", "RJV", "CN"].includes(voucherType);
         const isPayment = ["BP", "CP", "PJV", "DN"].includes(voucherType);
+        const isInvoicePI = voucherType === "PI";
+        const isInvoiceSI = ["SI", "SV"].includes(voucherType);
 
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
@@ -733,7 +735,9 @@ export const getFinanceListData = async (
                AND (
                  (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
                  OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
-                 OR (:is_receipt = 0 AND :is_payment = 0)
+                 OR (:is_invoice_pi = 1 AND h.doc_type IN ('BP', 'CP', 'PJV', 'DN'))
+                 OR (:is_invoice_si = 1 AND h.doc_type IN ('BR', 'CR', 'RJV', 'CN'))
+                 OR (:is_receipt = 0 AND :is_payment = 0 AND :is_invoice_pi = 0 AND :is_invoice_si = 0)
                )`,
             {
               company_code: req.user.company_code,
@@ -742,6 +746,8 @@ export const getFinanceListData = async (
               invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
               is_receipt: isReceipt ? 1 : 0,
               is_payment: isPayment ? 1 : 0,
+              is_invoice_pi: isInvoicePI ? 1 : 0,
+              is_invoice_si: isInvoiceSI ? 1 : 0,
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
@@ -830,6 +836,16 @@ export const getFinanceListData = async (
             rawInvoices = rawInvoices.filter((row: any) => {
               const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
               return !["SI", "SV", "IV", "BR", "CR", "RJV"].includes(dt);
+            });
+          } else if (isInvoicePI) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return ["BP", "CP", "PJV", "DN"].includes(dt);
+            });
+          } else if (isInvoiceSI) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return ["BR", "CR", "RJV", "CN"].includes(dt);
             });
           }
 

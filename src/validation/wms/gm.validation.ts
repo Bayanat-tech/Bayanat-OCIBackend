@@ -657,21 +657,52 @@ export const airlineSchema = (data: IAirLine) => {
   return schema.validate(data);
 };
 
-export const partnerSchema = (data: IPartner) => {
+export const partnerSchema = (data: any) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
     broker_code: Joi.string().required(),
     broker_name: Joi.string().required(),
+    partner_type: Joi.string().allow("", null),
+    broker_stat: Joi.string().allow("", null),
+    country_code: Joi.string().allow("", null),
+    broker_city: Joi.string().allow("", null),
+    territory_code: Joi.string().allow("", null),
+    price_check: Joi.string().allow("", null),
+    curr_code: Joi.string().allow("", null),
+    broker_acref: Joi.string().allow("", null),
+    payment_terms: Joi.alternatives().try(Joi.number(), Joi.string().allow("", null)),
+    broker_credit: Joi.alternatives().try(Joi.number(), Joi.string().allow("", null)),
+    trn_no: Joi.string().allow("", null),
+    tax_registrd: Joi.string().allow("", null),
+    tax_country_code: Joi.string().allow("", null),
+    prin_infze: Joi.string().allow("", null),
     broker_addr1: Joi.string().allow("", null),
     broker_addr2: Joi.string().allow("", null),
     broker_addr3: Joi.string().allow("", null),
-    broker_city: Joi.string().allow("", null),
+    broker_addr4: Joi.string().allow("", null),
     broker_contact1: Joi.string().allow("", null),
     broker_telno1: Joi.string().allow("", null),
+    broker_faxno1: Joi.string().allow("", null),
     broker_email1: Joi.string().allow("", null),
-    curr_code : Joi.string().allow("", null),
-    //broker_stat: Joi.string().allow("",null),
-  });
+    broker_contact2: Joi.string().allow("", null),
+    broker_telno2: Joi.string().allow("", null),
+    broker_faxno2: Joi.string().allow("", null),
+    broker_email2: Joi.string().allow("", null),
+    broker_contact3: Joi.string().allow("", null),
+    broker_telno3: Joi.string().allow("", null),
+    broker_faxno3: Joi.string().allow("", null),
+    broker_email3: Joi.string().allow("", null),
+    broker_imp_code: Joi.string().allow("", null),
+    broker_lic_no: Joi.string().allow("", null),
+    broker_lic_type: Joi.string().allow("", null),
+    importer_code: Joi.string().allow("", null),
+    broker_ref1: Joi.string().allow("", null),
+    broker_ref2: Joi.string().allow("", null),
+    broker_ref3: Joi.string().allow("", null),
+    service_date: Joi.alternatives().try(Joi.date(), Joi.string().allow("", null)),
+    user_id: Joi.string().allow("", null),
+    date_time: Joi.alternatives().try(Joi.date(), Joi.string().allow("", null)),
+  }).unknown(true);
   return schema.validate(data);
 };
 

@@ -31,8 +31,14 @@ import { getEmployeeHeadCountReportHtml } from "../../../controllers/wms/reports
 import { getSalaryRegisterHtml } from "../../../controllers/wms/reports/SalaryRegister.controller";
 import { getHrVarianceReportHtml } from "../../../controllers/wms/reports/VarianceReport.controller";
 import { getHrEmployeeDetailsHtml } from "../../../controllers/wms/reports/EmployeeDetails.controller";
-// NEW IMPORT ADDED HERE
 import { getHrEmployeeWiseCostHtml } from "../../../controllers/wms/reports/EmployeeWiseCostReport.controller";
+
+
+import { getSectionMasterReportHtml } from "../../../controllers/wms/reports/HrSectionMasterReport.controller";
+
+import { getFormalDesignationReportHtml } from "../../../controllers/wms/reports/HrFormalDesignationReport.controller";
+
+import { getCategoryReportHtml } from "../../../controllers/wms/reports/HrCategoryReport.controller";
 
 const router = express.Router();
 
@@ -150,6 +156,15 @@ router.post(
   getAbsentMemoReportHtml
 );
 
+// 👇 NEW SECTION MASTER REPORT ROUTE ADDED HERE
+router.post(
+  "/section-master/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSectionMasterReportHtml
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Retirement Report ────────────────────────────────────────────────────────
 
 router.get(
@@ -215,7 +230,7 @@ router.post(
 );
 
 // ─── Employee Wise Cost Report ────────────────────────────────────────────────
-// NEW ROUTE ADDED HERE
+
 router.get(
   "/hr/employee-wise-cost/html",
   passport.authenticate("jwt", { session: false }),
@@ -229,7 +244,6 @@ router.post(
   checkUserAuthorization,
   getHrEmployeeWiseCostHtml
 );
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Absence Report ───────────────────────────────────────────────────────────
 
@@ -293,6 +307,20 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getEmployeeHeadCountReportHtml
+);
+
+router.post(
+  "/formal-designation/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFormalDesignationReportHtml
+);
+
+router.post(
+  "/category/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getCategoryReportHtml
 );
 
 export default router;
