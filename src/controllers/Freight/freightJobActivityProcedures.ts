@@ -15,6 +15,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
            :p_transport_mode,
            :p_job_type,
            :p_search,
+           :p_supplier_code,
            :p_result
          );
        END;`,
@@ -23,6 +24,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
         p_transport_mode: req.body.transport_mode ?? req.body.TRANSPORT_MODE,
         p_job_type: req.body.job_type ?? req.body.JOB_TYPE,
         p_search: req.body.search ?? req.body.SEARCH ?? null,
+        p_supplier_code: req.body.supplier_code ?? req.body.SUPPLIER_CODE ?? null,
         p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -100,7 +102,7 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.DOC_REFNO
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.REF_NO AS DOC_REFNO
            FROM TR_AC_DETAIL d
            LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
            WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO = :job_no`,
