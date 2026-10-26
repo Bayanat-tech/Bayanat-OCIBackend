@@ -4,10 +4,10 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import TenantManager from "../../../database/TenantManager";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import {
-    buildReportDocument,
-    reportAppliedFilters,
-    reportFooter,
-    reportHeader,
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
 } from "../../common/report_common";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -19,85 +19,85 @@ const text = (v: any): string => (v == null ? "" : String(v));
 
 // Empty / placeholder dates (null, 01/01/1970 epoch) show as a dash
 const formatDateStr = (v: any): string => {
-    if (!v) return "";
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return String(v);
-    if (d.getFullYear() <= 1970) return "";
-    return d.toLocaleDateString("en-GB");
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  if (d.getFullYear() <= 1970) return "";
+  return d.toLocaleDateString("en-GB");
 };
 
 const dateOrDash = (v: any): string => formatDateStr(v) || DASH;
 
 const escapeHtml = (v: unknown): string =>
-    text(v)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+  text(v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VisaRow {
-    employee_code:   string;
-    rpt_name:        string;
-    div_name:        string;
-    dept_name:       string;
-    section_name:    string;
-    desg_name:       string;
-    sponsor_name:    string;
-    visa_valid_from: string;
-    visa_valid_to:   string;
-    days_remaining:  number;
+  employee_code: string;
+  rpt_name: string;
+  div_name: string;
+  dept_name: string;
+  section_name: string;
+  desg_name: string;
+  sponsor_name: string;
+  visa_valid_from: string;
+  visa_valid_to: string;
+  days_remaining: number;
 }
 
 interface VisaReportParams {
-    parameter:   string;
-    loginid:     string;
-    companyCode: string;
-    division:    string;
-    department:  string;
-    date_from:   string;
-    date_to:     string;
-    emp_type:    string;
+  parameter: string;
+  loginid: string;
+  companyCode: string;
+  division: string;
+  department: string;
+  date_from: string;
+  date_to: string;
+  emp_type: string;
 }
 
 // ─── Shared: fetch rows from DB ───────────────────────────────────────────────
 
 async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: any }> {
-    const {
-        parameter, loginid,
-        code1, code2, code3, code4, code5,
-        code6, code7, code8, code9,
-        date1, date2,
-    } = body;
+  const {
+    parameter, loginid,
+    code1, code2, code3, code4, code5,
+    code6, code7, code8, code9,
+    date1, date2,
+  } = body;
 
-    let tenantId = getCurrentTenantId();
-    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
-    if (!tenantId) throw new Error("Tenant not found");
+  let tenantId = getCurrentTenantId();
+  if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+  if (!tenantId) throw new Error("Tenant not found");
 
-    const connection = await TenantManager.getConnection(tenantId);
+  const connection = await TenantManager.getConnection(tenantId);
 
-    try {
-        const binds: any = {
-            parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
-            loginid:   loginid   || "ADMIN",
-            code1: code1 || null, code2: code2 || null, code3: code3 || null,
-            code4: code4 || null, code5: code5 || null, code6: code6 || null,
-            code7: code7 || null, code8: code8 || null, code9: code9 || null,
-            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
-        };
+  try {
+    const binds: any = {
+      parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+      loginid: loginid || "ADMIN",
+      code1: code1 || null, code2: code2 || null, code3: code3 || null,
+      code4: code4 || null, code5: code5 || null, code6: code6 || null,
+      code7: code7 || null, code8: code8 || null, code9: code9 || null,
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
+    };
 
-        for (let i = 10; i <= 20; i++) binds[`code${i}`] = body[`code${i}`] || null;
-        for (let i = 1;  i <= 4;  i++) binds[`number${i}`] = body[`number${i}`] || null;
+    for (let i = 10; i <= 20; i++) binds[`code${i}`] = body[`code${i}`] || null;
+    for (let i = 1; i <= 4; i++) binds[`number${i}`] = body[`number${i}`] || null;
 
-        binds["date1"] = date1 ? new Date(date1) : null;
-        binds["date2"] = date2 ? new Date(date2) : null;
-        binds["date3"] = body["date3"] || null;
-        binds["date4"] = body["date4"] || null;
+    binds["date1"] = date1 ? new Date(`${String(date1).slice(0, 10)}T00:00:00`) : null;
+    binds["date2"] = date2 ? new Date(`${String(date2).slice(0, 10)}T00:00:00`) : null;
+    binds["date3"] = body["date3"] || null;
+    binds["date4"] = body["date4"] || null;
 
-        const result = await connection.execute(
-            `DECLARE v_sql VARCHAR2(32767);
+    const result = await connection.execute(
+      `DECLARE v_sql VARCHAR2(32767);
              BEGIN
                PROC_BUILD_DYNAMIC_SQL_COMMON20(
                  :parameter, :loginid,
@@ -109,55 +109,55 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
                );
                :out_sql := v_sql;
              END;`,
-            binds
-        );
+      binds
+    );
 
-        const rawSql = (result.outBinds as any).out_sql;
-        console.log("[VisaExpiryReport] Generated SQL:", rawSql);
-        if (!rawSql) throw new Error("PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL.");
+    const rawSql = (result.outBinds as any).out_sql;
+    console.log("[VisaExpiryReport] Generated SQL:", rawSql);
+    if (!rawSql) throw new Error("PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL.");
 
-        const dataResult = await connection.execute(rawSql, [], {
-            outFormat: oracledb.OUT_FORMAT_OBJECT,
-        });
+    const dataResult = await connection.execute(rawSql, [], {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
+    });
 
-        const rows: VisaRow[] = (dataResult.rows as any[]).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => {
-                acc[key.toLowerCase()] = row[key];
-                return acc;
-            }, {})
-        );
+    const rows: VisaRow[] = (dataResult.rows as any[]).map((row) =>
+      Object.keys(row).reduce((acc: any, key) => {
+        acc[key.toLowerCase()] = row[key];
+        return acc;
+      }, {})
+    );
 
-        return { rows, connection };
-    } catch (err) {
-        // close here – caller never receives the connection when we throw
-        try { await connection.close(); } catch (e) { console.error(e); }
-        throw err;
-    }
+    return { rows, connection };
+  } catch (err) {
+    // close here – caller never receives the connection when we throw
+    try { await connection.close(); } catch (e) { console.error(e); }
+    throw err;
+  }
 }
 
 // ─── Excel HTML (standalone .xls export – same colours as the PDF) ───────────
 
 function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): string {
-    const reportDate  = formatDateStr(new Date());
-    const generatedBy = text(params.loginid) || "Unknown User";
+  const reportDate = formatDateStr(new Date());
+  const generatedBy = text(params.loginid) || "Unknown User";
 
-    let totalExpired  = 0;
-    let totalExpiring = 0;
-    let totalValid    = 0;
+  let totalExpired = 0;
+  let totalExpiring = 0;
+  let totalValid = 0;
 
-    const excelRows = rows.map((r, i) => {
-        const daysNum = Number(r.days_remaining);
-        // Same as Freight: every row uses the same background (#fafcfe)
-        const dayColor = daysNum < 0
-            ? "color:#b91c1c;font-weight:bold"
-            : daysNum <= 30
-                ? "color:#b45309;font-weight:bold"
-                : "";
-        if (daysNum < 0) totalExpired++;
-        else if (daysNum <= 30) totalExpiring++;
-        else totalValid++;
+  const excelRows = rows.map((r, i) => {
+    const daysNum = Number(r.days_remaining);
+    // Same as Freight: every row uses the same background (#fafcfe)
+    const dayColor = daysNum < 0
+      ? "color:#b91c1c;font-weight:bold"
+      : daysNum <= 30
+        ? "color:#b45309;font-weight:bold"
+        : "";
+    if (daysNum < 0) totalExpired++;
+    else if (daysNum <= 30) totalExpiring++;
+    else totalValid++;
 
-        return `<tr style="background:#fafcfe">
+    return `<tr style="background:#fafcfe">
           <td style="text-align:center">${i + 1}</td>
           <td style="font-weight:bold;color:#00378c">${escapeHtml(r.employee_code)}</td>
           <td>${escapeHtml(r.rpt_name)}</td>
@@ -170,9 +170,9 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
           <td style="text-align:center;${dayColor}">${dateOrDash(r.visa_valid_to)}</td>
           <td style="text-align:center;${dayColor}">${Number.isNaN(daysNum) ? DASH : daysNum}</td>
         </tr>`;
-    }).join("");
+  }).join("");
 
-    return `
+  return `
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:x="urn:schemas-microsoft-com:office:excel"
       xmlns="http://www.w3.org/TR/REC-html40">
@@ -381,18 +381,18 @@ const VISA_EXTRA_CSS = `
 const COL_WIDTHS = [11.5, 12, 11, 9, 9, 12, 9, 10.3, 10.3, 5.9];
 
 function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
-    let totalExpired  = 0;
-    let totalExpiring = 0;
-    let totalValid    = 0;
+  let totalExpired = 0;
+  let totalExpiring = 0;
+  let totalValid = 0;
 
-    let tableRows = rows.map((r) => {
-        const daysNum = Number(r.days_remaining);
-        let daysCls = "";
-        if (daysNum < 0)        { totalExpired++;  daysCls = "days-exp";  }
-        else if (daysNum <= 30) { totalExpiring++; daysCls = "days-warn"; }
-        else                    { totalValid++; }
+  let tableRows = rows.map((r) => {
+    const daysNum = Number(r.days_remaining);
+    let daysCls = "";
+    if (daysNum < 0) { totalExpired++; daysCls = "days-exp"; }
+    else if (daysNum <= 30) { totalExpiring++; daysCls = "days-warn"; }
+    else { totalValid++; }
 
-        return `
+    return `
         <tr class="data-row">
           <td class="left nw primary-text">${escapeHtml(r.employee_code)}</td>
           <td class="left">${escapeHtml(r.rpt_name)}</td>
@@ -405,13 +405,13 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
           <td class="center nw ${daysCls}">${escapeHtml(dateOrDash(r.visa_valid_to))}</td>
           <td class="center nw ${daysCls}">${Number.isNaN(daysNum) ? DASH : daysNum}</td>
         </tr>`;
-    }).join("");
+  }).join("");
 
-    if (!rows.length) {
-        tableRows = `<tr class="empty-row"><td colspan="10">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
-    } else {
-        const sep = `<span class="t-sep">|</span>`;
-        tableRows += `
+  if (!rows.length) {
+    tableRows = `<tr class="empty-row"><td colspan="10">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
+  } else {
+    const sep = `<span class="t-sep">|</span>`;
+    tableRows += `
         <tr class="grand-total-row">
           <td colspan="10">
             Total: ${rows.length} Records ${sep}
@@ -420,18 +420,18 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
             <span class="t-ok">Valid: ${totalValid}</span>
           </td>
         </tr>`;
-    }
+  }
 
-    const filtersHtml = reportAppliedFilters([
-        { label: "Period",     value: `${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}` },
-        { label: "Division",   value: params.division   || "All" },
-        { label: "Department", value: params.department || "All" },
-        { label: "Emp. Type",  value: params.emp_type === "A" ? "Active Employees" : "All Employees" },
-    ]);
+  const filtersHtml = reportAppliedFilters([
+    { label: "Period", value: `${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}` },
+    { label: "Division", value: params.division || "All" },
+    { label: "Department", value: params.department || "All" },
+    { label: "Emp. Type", value: params.emp_type === "A" ? "Active Employees" : "All Employees" },
+  ]);
 
-    const colgroup = COL_WIDTHS.map((w) => `<col style="width:${w}%"/>`).join("");
+  const colgroup = COL_WIDTHS.map((w) => `<col style="width:${w}%"/>`).join("");
 
-    return `
+  return `
     <h1 class="report-title">Visa Expiry Listing Report</h1>
     ${filtersHtml}
 
@@ -461,17 +461,17 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
 // ─── Resolve request body into VisaReportParams ──────────────────────────────
 
 function resolveParams(body: any): VisaReportParams {
-    const { parameter, loginid, company_code, code1, code2, code3, date1, date2, code9 } = body;
-    return {
-        parameter:   parameter || "Hr_Report_VISA_EXPIRY_REPORT",
-        loginid:     loginid   || "ADMIN",
-        companyCode: text(company_code || code1),
-        division:    code2     || "",
-        department:  code3     || "",
-        date_from:   date1     || "",
-        date_to:     date2     || "",
-        emp_type:    code9     || "A",
-    };
+  const { parameter, loginid, company_code, code1, code2, code3, date1, date2, code9 } = body;
+  return {
+    parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+    loginid: loginid || "ADMIN",
+    companyCode: text(company_code || code1),
+    division: code2 || "",
+    department: code3 || "",
+    date_from: date1 || "",
+    date_to: date2 || "",
+    emp_type: code9 || "A",
+  };
 }
 
 // ─── HTML Controller ──────────────────────────────────────────────────────────
@@ -479,73 +479,73 @@ function resolveParams(body: any): VisaReportParams {
 // "No records found for the selected criteria." (same as DN Summary).
 
 export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): Promise<void> => {
-    let connection: any;
-    try {
-        const { rows, connection: conn } = await fetchVisaRows(req.body);
-        connection = conn;
+  let connection: any;
+  try {
+    const { rows, connection: conn } = await fetchVisaRows(req.body);
+    connection = conn;
 
-        const params = resolveParams(req.body);
-        const companyCode = params.companyCode || req.user?.company_code || "";
+    const params = resolveParams(req.body);
+    const companyCode = params.companyCode || req.user?.company_code || "";
 
-        const printed    = new Date().toLocaleString("en-US");
-        const headerHtml = await reportHeader({ company_code: companyCode, req });
-        const bodyHtml   = renderVisaBody(rows, params);
-        const footerHtml = reportFooter({
-            reportName: "Visa Expiry Listing Report",
-            userName:   params.loginid,
-            endLabel:   "Powered by Bayanat Technology",
-            extraLeft:  `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
-        });
+    const printed = new Date().toLocaleString("en-US");
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderVisaBody(rows, params);
+    const footerHtml = reportFooter({
+      reportName: "Visa Expiry Listing Report",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+      extraLeft: `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
+    });
 
-        const html = buildReportDocument({
-            title: "Visa Expiry Listing Report",
-            headerHtml,
-            bodyHtml,
-            footerHtml,
-            extraCss: VISA_EXTRA_CSS,
-            autoPrint: req.query.print !== "false",
-            showPrintButton: true,
-            fontMode: "native",
-        });
+    const html = buildReportDocument({
+      title: "Visa Expiry Listing Report",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: VISA_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+      showPrintButton: true,
+      fontMode: "native",
+    });
 
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        res.status(200).send(html);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
 
-    } catch (error: any) {
-        console.error("Visa Expiry Report Error:", error);
-        res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
-    } finally {
-        if (connection) try { await connection.close(); } catch (e) { console.error(e); }
-    }
+  } catch (error: any) {
+    console.error("Visa Expiry Report Error:", error);
+    res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
+  } finally {
+    if (connection) try { await connection.close(); } catch (e) { console.error(e); }
+  }
 };
 
 // ─── Excel Controller ─────────────────────────────────────────────────────────
 
 export const exportVisaExpiryReportExcel = async (req: Request, res: Response): Promise<void> => {
-    let connection: any;
-    try {
-        const { rows, connection: conn } = await fetchVisaRows(req.body);
-        connection = conn;
+  let connection: any;
+  try {
+    const { rows, connection: conn } = await fetchVisaRows(req.body);
+    connection = conn;
 
-        // Nothing to export -> friendly message, no file (same as DN Summary Excel)
-        if (!rows.length) {
-            res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-            return;
-        }
-
-        const excelHtml = buildVisaExpiryExcelHtml(rows, resolveParams(req.body));
-
-        res.setHeader("Content-Type", "application/vnd.ms-excel");
-        res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls"`
-        );
-        res.status(200).send(excelHtml);
-
-    } catch (error: any) {
-        console.error("Visa Expiry Report Excel Error:", error);
-        res.status(500).json({ success: false, message: "Unable to export report", details: error.message });
-    } finally {
-        if (connection) try { await connection.close(); } catch (e) { console.error(e); }
+    // Nothing to export -> friendly message, no file (same as DN Summary Excel)
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
     }
+
+    const excelHtml = buildVisaExpiryExcelHtml(rows, resolveParams(req.body));
+
+    res.setHeader("Content-Type", "application/vnd.ms-excel");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls"`
+    );
+    res.status(200).send(excelHtml);
+
+  } catch (error: any) {
+    console.error("Visa Expiry Report Excel Error:", error);
+    res.status(500).json({ success: false, message: "Unable to export report", details: error.message });
+  } finally {
+    if (connection) try { await connection.close(); } catch (e) { console.error(e); }
+  }
 };

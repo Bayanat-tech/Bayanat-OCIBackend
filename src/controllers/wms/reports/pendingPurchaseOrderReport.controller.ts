@@ -92,11 +92,18 @@ function formatDate(value: unknown): string {
   });
 }
 
+// function docLabel(docType: unknown, docNo: unknown): string {
+//   const t = text(docType).trim();
+//   const n = text(docNo).trim();
+//   if (t && n) return `${t} ${n}`;
+//   return t || n || "";
+
+// }
+
 function docLabel(docType: unknown, docNo: unknown): string {
   const t = text(docType).trim();
   const n = text(docNo).trim();
-  if (t && n) return `${t} ${n}`;
-  return t || n || "";
+  return n || t || "";
 }
 
 // ─── Request Param Parser ────────────────────────────────────────────────────
@@ -400,6 +407,21 @@ const PENDING_PO_EXTRA_CSS = `
     font-weight: 700;
     font-size: 13px;
   }
+
+  table.data-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table.data-table th,
+  table.data-table td {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  table.data-table td.right,
+  table.data-table th.right {
+    white-space: nowrap;
+  }  
 `;
 
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
@@ -449,15 +471,15 @@ function renderSummaryBody(rows: ReportRow[], loginId: string, dateFrom: string 
         ? `<div class="empty">No pending purchase orders found for the selected filters.</div>`
         : `
      <table class="data-table" style="margin-top: 3px !important;">
-        <thead>
+                <thead>
           <tr>
-            <th>Document No.</th>
-            <th>Doc Date</th>
-            <th>Supplier</th>
-            <th class="right">P.O Quantity</th>
-            <th class="right">Balance Quantity</th>
-            <th class="right">No. of Items</th>
-            <th>Remarks</th>
+            <th width="17%">Document No.</th>
+            <th width="10%">Doc Date</th>
+            <th width="22%">Supplier</th>
+            <th width="11%" class="right">P.O Quantity</th>
+            <th width="11%" class="right">Balance Quantity</th>
+            <th width="8%"  class="right">No. of Items</th>
+            <th width="21%">Remarks</th>
           </tr>
         </thead>
         <tbody>${lineRows}</tbody>
@@ -589,16 +611,16 @@ function renderDetailBody(rows: ReportRow[], loginId: string, dateFrom: string |
 
       
       <table class="data-table" style="margin-top: 3px !important;">
-      <thead>
+            <thead>
         <tr>
-          <th>Document No.</th>
-          <th>Doc Date</th>
-          <th>Supplier</th>
-          <th>Product</th>
-          <th>Required Date</th>
-          <th>Remarks</th>
-          <th class="right">P.O Qty</th>
-          <th>UOM</th>
+          <th width="14%">Document No.</th>
+          <th width="9%">Doc Date</th>
+          <th width="16%">Supplier</th>
+          <th width="19%">Product</th>
+          <th width="9%">Required Date</th>
+          <th width="14%">Remarks</th>
+          <th width="12%" class="right">P.O Qty</th>
+          <th width="7%">UOM</th>
         </tr>
       </thead>
       <tbody>${lineRows}</tbody>

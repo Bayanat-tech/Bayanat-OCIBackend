@@ -101,17 +101,17 @@ function resolveParams(body: any): TicketParams {
     const { loginid, company_code, code1, code2, code3, code4, code5, code6, code7, code8, date1, date2 } = body;
     const g = text(code8).toUpperCase() as GroupBy;
     return {
-        loginid:           loginid || "ADMIN",
-        companyCode:       text(company_code || code1),
-        division:          csvOrEmpty(code2),
-        department:        csvOrEmpty(code3),
-        section:           csvOrEmpty(code4),
-        grade:             csvOrEmpty(code5),
-        designation:       csvOrEmpty(code6),
+        loginid: loginid || "ADMIN",
+        companyCode: text(company_code || code1),
+        division: csvOrEmpty(code2),
+        department: csvOrEmpty(code3),
+        section: csvOrEmpty(code4),
+        grade: csvOrEmpty(code5),
+        designation: csvOrEmpty(code6),
         formalDesignation: csvOrEmpty(code7),
-        groupBy:           GROUP_LABEL[g] ? g : "DESIGNATION",
-        join_from:         text(date1).slice(0, 10),
-        join_to:           text(date2).slice(0, 10),
+        groupBy: GROUP_LABEL[g] ? g : "DESIGNATION",
+        join_from: text(date1).slice(0, 10),
+        join_to: text(date2).slice(0, 10),
     };
 }
 
@@ -147,6 +147,7 @@ async function fetchTicketRows(body: any): Promise<{ rows: TicketRow[]; connecti
         const binds: Record<string, any> = {};
         const where: string[] = [
             "E.EMPLOYEE_ID = V.EMPLOYEE_ID",
+             "E.COMPANY_CODE = V.COMPANY_CODE",
             "E.TICKET_ELIGIBILITY = 'Y'",
             "E.EMP_STATUS IN ('C', 'P')",
         ];
@@ -155,12 +156,12 @@ async function fetchTicketRows(body: any): Promise<{ rows: TicketRow[]; connecti
             binds.as_companycode = p.companyCode;
             where.push("E.COMPANY_CODE = :as_companycode");
         }
-        addInClause("E.DIV_CODE",          p.division,          "div",  binds, where);
-        addInClause("E.DEPT_CODE",         p.department,        "dept", binds, where);
-        addInClause("E.SECTION_CODE",      p.section,           "sect", binds, where);
-        addInClause("E.GRADE_CODE",        p.grade,             "grd",  binds, where);
-        addInClause("E.DESG_CODE",         p.designation,       "desg", binds, where);
-        addInClause("E.LABOUR_DESG_CODE",  p.formalDesignation, "ldes", binds, where);
+        addInClause("E.DIV_CODE", p.division, "div", binds, where);
+        addInClause("E.DEPT_CODE", p.department, "dept", binds, where);
+        addInClause("E.SECTION_CODE", p.section, "sect", binds, where);
+        addInClause("E.GRADE_CODE", p.grade, "grd", binds, where);
+        addInClause("E.DESG_CODE", p.designation, "desg", binds, where);
+        addInClause("E.LABOUR_DESG_CODE", p.formalDesignation, "ldes", binds, where);
 
         if (p.join_from) {
             binds.adt_join_from = p.join_from;
@@ -183,14 +184,18 @@ async function fetchTicketRows(body: any): Promise<{ rows: TicketRow[]; connecti
                    V.GRADE_NAME,
                    V.DESG_NAME,
                    E.DESG_CODE,
-                   (SELECT ADULT_TICKET_FAIR  FROM MS_HR_AIRPORT WHERE AIRPORT_CODE = E.AIRPORT_CODE) ADULT_FAIR,
-                   E.TC_NO CHILD,
-                   (SELECT CHILD_TICKET_FAIR  FROM MS_HR_AIRPORT WHERE AIRPORT_CODE = E.AIRPORT_CODE) CHILD_FAIR,
-                   E.TI_NO INFANT,
-                   (SELECT INFANT_TICKET_FAIR FROM MS_HR_AIRPORT WHERE AIRPORT_CODE = E.AIRPORT_CODE) INFANT_FAIR,
-                   E.TICKET_ELIGIBLE_PERIOD,
-                   E.AIRPORT_CODE,
-                   (SELECT AIRPORT_NAME       FROM MS_HR_AIRPORT WHERE AIRPORT_CODE = E.AIRPORT_CODE) AIRPORT_NAME
+                   (SELECT ADULT_TICKET_FAIR  FROM MS_HR_AIRPORT
+  WHERE AIRPORT_CODE = E.AIRPORT_CODE AND COMPANY_CODE = E.COMPANY_CODE) ADULT_FAIR,
+E.TC_NO CHILD,
+(SELECT CHILD_TICKET_FAIR  FROM MS_HR_AIRPORT
+  WHERE AIRPORT_CODE = E.AIRPORT_CODE AND COMPANY_CODE = E.COMPANY_CODE) CHILD_FAIR,
+E.TI_NO INFANT,
+                  (SELECT INFANT_TICKET_FAIR FROM MS_HR_AIRPORT
+  WHERE AIRPORT_CODE = E.AIRPORT_CODE AND COMPANY_CODE = E.COMPANY_CODE) INFANT_FAIR,
+TICKET_ELIGIBLE_PERIOD,
+E.AIRPORT_CODE,
+             (SELECT AIRPORT_NAME       FROM MS_HR_AIRPORT
+  WHERE AIRPORT_CODE = E.AIRPORT_CODE AND COMPANY_CODE = E.COMPANY_CODE) AIRPORT_NAME
               FROM MS_HR_EMPLOYEE E,
                    VW_HR_EMPLOYEE V
              WHERE ${where.join("\n               AND ")}
@@ -227,8 +232,8 @@ const emptyTotals = (): Totals => ({
 
 /** Per-row figures. Fare columns = number of tickets x airport fare. Airfare = all three combined. */
 function rowFigures(r: TicketRow): Totals {
-    const adultNo = num(r.adult),   adultFare  = adultNo  * num(r.adult_fair);
-    const childNo = num(r.child),   childFare  = childNo  * num(r.child_fair);
+    const adultNo = num(r.adult), adultFare = adultNo * num(r.adult_fair);
+    const childNo = num(r.child), childFare = childNo * num(r.child_fair);
     const infantNo = num(r.infant), infantFare = infantNo * num(r.infant_fair);
     return {
         adultNo, adultFare, childNo, childFare, infantNo, infantFare,
@@ -245,10 +250,10 @@ function groupLabel(r: TicketRow, g: GroupBy): string {
     const v = (s: any) => text(s).trim() || DASH;
     switch (g) {
         case "GRADE_DESIGNATION": return `${v(r.grade_name)} / ${v(r.desg_name)}`;
-        case "DIVISION":          return v(r.div_name);
-        case "DEPARTMENT":        return v(r.dept_name);
-        case "SECTION":           return v(r.section_name);
-        default:                  return v(r.desg_name);
+        case "DIVISION": return v(r.div_name);
+        case "DEPARTMENT": return v(r.dept_name);
+        case "SECTION": return v(r.section_name);
+        default: return v(r.desg_name);
     }
 }
 
@@ -276,14 +281,14 @@ function buildGroups(rows: TicketRow[], g: GroupBy): { groups: Group[]; grand: T
 }
 
 const filterRows = (p: TicketParams): { label: string; value: string }[] => [
-    { label: "Join Date",         value: `${dateOrAll(p.join_from)} – ${dateOrAll(p.join_to)}` },
-    { label: "Division",          value: p.division          || ALL },
-    { label: "Department",        value: p.department        || ALL },
-    { label: "Section",           value: p.section           || ALL },
-    { label: "Grade",             value: p.grade             || ALL },
-    { label: "Designation",       value: p.designation       || ALL },
-    { label: "Formal Desg.",      value: p.formalDesignation || ALL },
-    { label: "Group By",          value: GROUP_LABEL[p.groupBy] },
+    { label: "Join Date", value: `${dateOrAll(p.join_from)} – ${dateOrAll(p.join_to)}` },
+    { label: "Division", value: p.division || ALL },
+    { label: "Department", value: p.department || ALL },
+    { label: "Section", value: p.section || ALL },
+    { label: "Grade", value: p.grade || ALL },
+    { label: "Designation", value: p.designation || ALL },
+    { label: "Formal Desg.", value: p.formalDesignation || ALL },
+    { label: "Group By", value: GROUP_LABEL[p.groupBy] },
 ];
 
 // ─── Excel HTML (.xls) ────────────────────────────────────────────────────────
@@ -510,17 +515,17 @@ export const getEmployeeTicketEligibilityReport = async (req: RequestWithUser, r
         const { rows, connection: conn } = await fetchTicketRows(req.body);
         connection = conn;
 
-        const params      = resolveParams(req.body);
+        const params = resolveParams(req.body);
         const companyCode = params.companyCode || req.user?.company_code || "";
 
-        const printed    = new Date().toLocaleString("en-US");
+        const printed = new Date().toLocaleString("en-US");
         const headerHtml = await reportHeader({ company_code: companyCode, req });
-        const bodyHtml   = renderBody(rows, params);
+        const bodyHtml = renderBody(rows, params);
         const footerHtml = reportFooter({
             reportName: REPORT_TITLE,
-            userName:   params.loginid,
-            endLabel:   "Powered by Bayanat Technology",
-            extraLeft:  `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
+            userName: params.loginid,
+            endLabel: "Powered by Bayanat Technology",
+            extraLeft: `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
         });
 
         const html = buildReportDocument({

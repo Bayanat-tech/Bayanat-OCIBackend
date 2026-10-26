@@ -303,8 +303,8 @@ router.post('/reports/SalesDNReport/excel', getSalesDNReportExcel);
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   
 
-router.post('/reports/getEmployeeAssessmentReport/html', getEmployeeAssessmentReport);
-router.post('/reports/exportEmployeeAssessmentReportExcel/excel', exportEmployeeAssessmentReportExcel); 
+router.post('/reports/getEmployeeAssessmentReport/html',  getEmployeeAssessmentReport);
+router.post('/reports/getEmployeeAssessmentReport/excel', exportEmployeeAssessmentReportExcel);
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
@@ -313,8 +313,8 @@ router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
 router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
-router.post('/reports/getEmployeeTicketEligibilityReportHtml/html', getEmployeeTicketEligibilityReport);
-router.post('/reports/exportEmployeeTicketEligibilityReportExcel/excel', exportEmployeeTicketEligibilityReportExcel); 
+router.post('/reports/getEmployeeTicketEligibilityReport/html',  getEmployeeTicketEligibilityReport);
+router.post('/reports/getEmployeeTicketEligibilityReport/excel', exportEmployeeTicketEligibilityReportExcel);
 
 
 router.post('/reports/getVacationSeparationReportHtml/html',  getVacationSeparationReport);
@@ -326,8 +326,11 @@ router.post('/reports/getYearlyLeaveBalanceReportHtml/html',   getYearlyLeaveBal
 router.post('/reports/exportYearlyLeaveBalanceReportExcel/excel', exportYearlyLeaveBalanceReportExcel);
 
 
-router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
-router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+// router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
+// router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+
+router.post("/reports/getMonthlySalarySummaryReportHtml/html", getMonthlySalarySummaryReport);
+router.post("/reports/getMonthlySalarySummaryReportExcel/excel", exportMonthlySalarySummaryReportExcel);
 
 
 router.post('/reports/getEmployeeSalaryNotProcessedReportHtml/html',   getEmployeeSalaryNotProcessedReport);
