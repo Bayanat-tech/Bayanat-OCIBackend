@@ -25,6 +25,23 @@ const mutationSlots = [
 
 type BindValue = string | number | Date | null | undefined | oracledb.BindParameter;
 
+function formatExecutableSql(rawSql: string): string {
+  let sql = rawSql.trim();
+  if (!sql) return sql;
+
+  // If already a PL/SQL block, return as is
+  if (/^\s*(BEGIN|DECLARE)/i.test(sql)) {
+    return sql;
+  }
+
+  // Wrap in BEGIN ... END; to ensure single or multi-statement DML (MERGE, INSERT, UPDATE, DELETE)
+  // executes cleanly in Oracle without ORA-00933 (command not properly ended) caused by semicolons
+  if (!sql.endsWith(";")) {
+    sql += ";";
+  }
+  return `BEGIN\n${sql}\nEND;`;
+}
+
 export const proc_build_dynamic_sql_FREIGHT = async (req: Request, res: Response): Promise<void> => {
   try {
     const rawSql = await callSqlBuilder("PROC_BUILD_DYNAMIC_SQL_FREIGHT", req.body, selectSlots);
@@ -60,7 +77,9 @@ export const proc_build_dynamic_ins_upd_FREIGHT = async (req: Request, res: Resp
       return;
     }
 
-    await QueryExecutor.executeRawQuery(dynamicSql, []);
+    const executableSql = formatExecutableSql(dynamicSql);
+    console.log("Executing Freight DML SQL:\n", executableSql);
+    await QueryExecutor.executeRawQuery(executableSql, []);
     res.json({ success: true, message: "Record saved successfully" });
   } catch (error: any) {
     console.error("Freight save procedure error:", error);
@@ -77,7 +96,9 @@ export const proc_build_dynamic_del_FREIGHT = async (req: Request, res: Response
       return;
     }
 
-    await QueryExecutor.executeRawQuery(dynamicSql, []);
+    const executableSql = formatExecutableSql(dynamicSql);
+    console.log("Executing Freight DEL SQL:\n", executableSql);
+    await QueryExecutor.executeRawQuery(executableSql, []);
     res.json({ success: true, message: "Record deleted successfully" });
   } catch (error: any) {
     console.error("Freight delete procedure error:", error);
