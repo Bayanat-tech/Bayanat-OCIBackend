@@ -51,7 +51,7 @@ export const countrySchema = (
     company_code: Joi.string().valid(userCompany).required(),
     country_code: Joi.required(),
     country_name: Joi.string().required(),
-    country_gcc: Joi.string().valid("Y", "N").required(),
+    country_gcc: Joi.string().valid("Y", "N").default("N").optional().allow("", null),
     short_desc: Joi.string().allow("", null),
     nationality: Joi.string().allow("", null),
   });
@@ -88,8 +88,9 @@ export const producttypeSchema = (
 ) => {
   const baseSchema = Joi.object().keys({
     company_code: Joi.string().valid(userCompany).required(),
-    prodtype_code: Joi.string().required(),
-    prodtype_desc: Joi.string().required(),
+    prodtype_code: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
+    prodtype_desc: Joi.string().allow("", null),
+    prodtype_name: Joi.string().allow("", null),
   });
   const schema = Joi.array().items(baseSchema);
   return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
@@ -123,7 +124,7 @@ export const productSchema = (data: any) => {
   const schema = Joi.object({
     prod_code: Joi.string().optional().allow(null, ''), // Make optional for create
     company_code: Joi.string().required(),
-    prin_code: Joi.string().required(),
+    prin_code: Joi.string().allow("", null).optional(),
     prod_name: Joi.string().required(),
 
     // Required Number Fields
@@ -366,7 +367,8 @@ export const portSchema = (data: IPort) => {
 // export const manufactureSchema = (data: IManufacture) => {
 //   const schema = Joi.object().keys({
 //     company_code: Joi.string().required(),
-//     manu_code: Joi.string().required(),
+//     manu_code: Joi.string().allow("", null),
+    manufacture_code: Joi.string().allow("", null),
 //     manu_name: Joi.string().required(),
 //     prin_code: Joi.string().allow("", null),
 //   });
@@ -376,7 +378,8 @@ export const manufactureSchema = (data: IManufacture) => {
   const schema = Joi.object({
     company_code: Joi.string().required(),
 
-    manu_code: Joi.string().required(),
+    manu_code: Joi.string().allow("", null),
+    manufacture_code: Joi.string().allow("", null),
     manu_name: Joi.string().required(),
     prin_code: Joi.string().allow("", null),
 
@@ -425,7 +428,7 @@ export const groupSchema = (data: IGroup) => {
 export const brandSchema = (data: IBrand) => {
   const schema = Joi.object().keys({
     brand_code: Joi.string().allow("", null),
-    prin_code: Joi.string().required(),
+    prin_code: Joi.string().allow("", null).optional(),
     group_code: Joi.string().required(),
     brand_name: Joi.string().allow("", null),
     pref_site: Joi.string().allow(null, ""),
@@ -727,7 +730,7 @@ export const currencySchema = (data: ICurrency) => {
   const schema = Joi.object().keys({
     curr_code: Joi.string().required(),
     curr_name: Joi.string().required(),
-    ex_rate: Joi.string().allow("", null),
+    ex_rate: Joi.alternatives().try(Joi.string(), Joi.number()).allow("", null),
     division: Joi.string().allow(null, ""),
     subdivision: Joi.number().allow(null, ""),
     company_code: Joi.string().required(),
@@ -856,7 +859,8 @@ export const activitysubgroupSchema = (data: IActivitysubgroup) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
     activity_subgroup_code: Joi.string().required(),
-    act_subgroup_name: Joi.string().required(),
+    act_subgroup_name: Joi.string().allow("", null),
+    activity_subgroup_desc: Joi.string().allow("", null),
     //mandatory_flag:Joi.string().allow(null,""),
     act_group_code: Joi.string().required(),
     //validate_flag: Joi.string().allow(null,""),
@@ -1168,7 +1172,8 @@ export const LocationtypeSchema = (data: ILocationType) => {
     // user_id: Joi.string().required(),
     user_dt: Joi.date().allow("", null),
     company_code: Joi.string().required(),
-    loc_name: Joi.string().required(),
+    loc_name: Joi.string().allow("", null),
+    loc_desc: Joi.string().allow("", null),
   });
   return schema.validate(data);
 };
@@ -1178,7 +1183,7 @@ export const customerSchemaWms = (data: ICustomer) => {
   cust_code: Joi.string().allow(""),
   company_code: Joi.string().required(),
   cust_name: Joi.string().required(),
-  prin_code: Joi.string().required(),
+  prin_code: Joi.string().allow("", null).optional(),
   curr_code: Joi.string().allow("", null),
   country_code: Joi.string().allow("", null),
   cust_addr1: Joi.string().allow("", null),

@@ -20,7 +20,11 @@ export const createManufacture = async (
       return;
     }
     
-    const { manu_code, company_code, prin_code, manu_name, ...otherFields } = req.body;
+    const manu_code = req.body.manu_code || req.body.manufacture_code;
+    const manu_name = req.body.manu_name || req.body.manufacture_name;
+    const company_code = req.body.company_code;
+    const prin_code = req.body.prin_code;
+    const otherFields = req.body;
 
     // Check if manufacturer already exists - only use prinCode and manuCode
     const manufacturerExists = await ManufacturerService.checkManufacturerExists(
