@@ -113,6 +113,32 @@ async function callSqlBuilder(procedureName: string, body: Record<string, unknow
     throw new Error("Missing required parameter 'parameter'");
   }
 
+  // Auto-correct shifted slots for freight_transporter if transporter_type was sent in val1s3
+  if (String(parameter).toLowerCase() === "freight_transporter") {
+    if (
+      body.val1s3 === "SUBCON" ||
+      body.val1s3 === "OWN" ||
+      (typeof body.val1s3 === "string" && body.val1s3.length > 5)
+    ) {
+      body.val1s3 = body.val1s4; // country_code
+      body.val1s4 = body.val1s5; // trns_city
+      body.val1s15 = body.val1s6; // territory_code
+      body.val1s13 = body.val1s7; // ac_code
+      body.val1s14 = body.val1s8; // trn_no
+      body.val1s9 = body.val1s12; // trns_addr1
+      body.val1s10 = body.val1s13; // trns_addr2
+      body.val1s11 = body.val1s14; // trns_addr3
+      body.val1s12 = body.val1s15; // trns_addr4
+      body.val1s5 = body.val1s16; // trns_contact1
+      body.val1s6 = body.val1s17; // trns_telno1
+      body.val1s7 = body.val1s18; // trns_faxno1
+      body.val1s8 = body.val1s19; // trns_email1
+    }
+    if (typeof body.val1s3 === "string") {
+      body.val1s3 = body.val1s3.slice(0, 5);
+    }
+  }
+
   const bindNames = ["parameter", "loginid", ...slots];
   const bindPlaceholders = bindNames.map((name) => `:${name}`).join(",\n          ");
   const binds = bindNames.reduce<Record<string, BindValue>>(
