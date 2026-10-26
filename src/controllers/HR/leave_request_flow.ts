@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
-import { HrService } from "./MHDL/mh_hr.service";
 import { LeaveRequestFlow } from "../../interfaces/leaveRequestFlow.interface"; // adjust path
+import { HrService } from "../../services/hr.service";
 
 /** Request body for saving (insert / update) a leave request. */
 interface SaveLeaveRequestBody {
@@ -72,8 +72,6 @@ const rowToLeaveRequest = (row: Record<string, any>): LeaveRequestFlow => {
     const camel = key.toLowerCase().replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
     out[camel] = value instanceof Date ? dateToLocalString(value) : value;
   }
-  out.finalApproved = "YES";
-  out.leaveReason = out.leaveReason ?? out.remarks; // the table stores the reason in REMARKS
   return out as LeaveRequestFlow;
 };
 
@@ -83,7 +81,7 @@ export const leaveRequestFlow = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection : oracledb.Connection;
+  let connection: oracledb.Connection | undefined;
 
   try {
     const body = (req.body ?? {}) as SaveLeaveRequestBody;
@@ -101,7 +99,9 @@ export const leaveRequestFlow = async (
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) { }
+    } catch {
+      // no tenant in request context; fall back to the loginId lookup below
+    }
     if (!tenantId) {
       tenantId = await TenantManager.getTenantForUser(body.loginId);
     }
@@ -111,10 +111,12 @@ export const leaveRequestFlow = async (
       return;
     }
 
-    connection = await TenantManager.getConnection(tenantId);
+    // `conn` is a const so TypeScript keeps it non-undefined inside the closures below
+    const conn: oracledb.Connection = await TenantManager.getConnection(tenantId);
+    connection = conn;
 
     // 1) Ask the procedure to build the INSERT / UPDATE SQL
-    const result = await connection.execute(
+    const result = await conn.execute(
       `
       DECLARE
         v_sql CLOB;
@@ -207,7 +209,10 @@ export const leaveRequestFlow = async (
       }
     );
 
-    const outBinds = result.outBinds as { outSql: string | null; outRequestNumber: string | null };
+    const outBinds = result.outBinds as unknown as {
+      outSql: string | null;
+      outRequestNumber: string | null;
+    };
     const dynamicSql = outBinds?.outSql;
     const savedRequestNumber = outBinds?.outRequestNumber ?? "";
 
@@ -217,38 +222,33 @@ export const leaveRequestFlow = async (
     }
 
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
+    await conn.execute(dynamicSql, [], { autoCommit: true });
 
-    const fetchLeaveRow = async () => {
-      const r = await connection.execute(
-        `SELECT * FROM LEAVE_REQUEST_FLOW WHERE COMPANY_CODE = :companyCode AND REQUEST_NUMBER = :requestNumber`,
-        { companyCode: body.companyCode, requestNumber: savedRequestNumber },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT, fetchAsString: [oracledb.CLOB] }
-      );
-      return r.rows?.[0];
-    };
+    console.log("Leave request saved successfully. Request Number:", savedRequestNumber);
 
-    // 2) Status before this save, so HR is only called when this save flips it to YES
-    let wasApproved = false;
+    // Push to HR only when the request is fully approved
     if (savedRequestNumber) {
-      const before = await fetchLeaveRow(); // undefined for a brand-new request
-      wasApproved = String(before?.FINAL_APPROVED ?? "").toUpperCase() === "YES";
-    }
+      try {
+        const fetchSql = `SELECT * FROM LEAVE_REQUEST_FLOW WHERE COMPANY_CODE = :companyCode AND REQUEST_NUMBER = :requestNumber`;
+        const fetchResult = await conn.execute<any>( 
+            fetchSql,
+            { companyCode: body.companyCode, requestNumber: savedRequestNumber },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const row = fetchResult.rows?.[0];
 
-    // 3) Execute INSERT / UPDATE (the trigger sets FINAL_APPROVED on update)
-    await connection.execute(dynamicSql, [], { autoCommit: true });
-
-    // 4) If this save made the request fully approved, push it to the HR API
-    if (savedRequestNumber && !wasApproved) {
-      const row = await fetchLeaveRow();
-
-      if (row && String(row.FINAL_APPROVED ?? "").toUpperCase() === "YES") {
-        console.log("Sending approved leave request to HR API:", savedRequestNumber);
-        try {
-          await HrService.insertLeaveRequest(rowToLeaveRequest(row));
-        } catch (hrErr: any) {
-          // DB save already committed; don't fail the user's request
-          console.error("HR insertLeaveRequest failed:", hrErr.message);
+        if (row && String(row.FINAL_APPROVED ?? "").toUpperCase() === "YES") {
+          console.log("Sending approved leave request to HR API:", savedRequestNumber);
+          try {
+            await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+            console.log("HR insertLeaveRequest succeeded for", savedRequestNumber);
+          } catch (hrErr: any) {
+            // DB already committed – log but do not fail the client response
+            console.error("HR insertLeaveRequest failed:", hrErr?.message ?? hrErr);
+          }
         }
+      } catch (fetchErr: any) {
+        console.error("Failed to fetch leave request for HR push:", fetchErr?.message ?? fetchErr);
       }
     }
 

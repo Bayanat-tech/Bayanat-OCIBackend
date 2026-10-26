@@ -6627,3 +6627,722 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:06:05 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m230[0m:[93m28[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m230[0m       const r = await conn.execute<any>(
+[7m   [0m [91m                           ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m255[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m230[0m:[93m28[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m230[0m       const r = await conn.execute<any>(
+[7m   [0m [91m                           ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m255[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m230[0m:[93m28[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m230[0m       const r = await conn.execute<any>(
+[7m   [0m [91m                           ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m255[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:26:09 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:26:40 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(r.rows?.[0]));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(r.rows?.[0]));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(r.rows?.[0]));
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m286[0m:[93m22[0m - [91merror[0m[90m TS2304: [0mCannot find name 'savedRequestNumber'.
+
+[7m286[0m       requestNumber: savedRequestNumber,
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m290[0m:[93m5[0m - [91merror[0m[90m TS2304: [0mCannot find name 'res'.
+
+[7m290[0m     res.status(500).json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m296[0m:[93m9[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m296[0m     if (connection) {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m298[0m:[93m15[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m298[0m         await connection.close();
+[7m   [0m [91m              ~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m283[0m:[93m5[0m - [91merror[0m[90m TS1472: [0m'catch' or 'finally' expected.
+
+[7m283[0m     res.json({
+[7m   [0m [91m    ~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m288[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m288[0m   } catch (error: any) {
+[7m   [0m [91m    ~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m304[0m:[93m1[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m304[0m };
+[7m   [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:30:43 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m240[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m240[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m257[0m:[93m29[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m257[0m             await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m240[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m240[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m257[0m:[93m29[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m257[0m             await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m240[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m240[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m257[0m:[93m29[0m - [91merror[0m[90m TS2339: [0mProperty 'insertLeaveRequest' does not exist on type '{ getEmployeesUnder: (supervisor_empid: string) => Promise<any>; getLeaveEntitle: (employeeId: string) => Promise<any>; LeaveDaysCount: (params: { company_code: string; ... 4 more ...; leaveType: string; }) => Promise<...>; MHvalidateLeave: (params: { ...; }) => Promise<...>; }'.
+
+[7m257[0m             await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:34:24 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m242[0m:[93m64[0m - [91merror[0m[90m TS2304: [0mCannot find name 'row'.
+
+[7m242[0m           await HrService.insertLeaveRequest(rowToLeaveRequest(row));
+[7m   [0m [91m                                                               ~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:35:41 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m235[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m235[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m235[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m235[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m235[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m235[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 17:50:34 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m354[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m354[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m390[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m390[0m           mapped.leaveStartDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m392[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m392[0m           mapped.leaveEndDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                 ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                                   ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m409[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m409[0m           mapped.travelDate = mapped.travelDate || body.travelDate || null;
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m410[0m:[93m18[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m410[0m           mapped.travelEndDate =
+[7m   [0m [91m                 ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m411[0m:[93m20[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m411[0m             mapped.travelEndDate || body.travelEndDate || null;
+[7m   [0m [91m                   ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m418[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m418[0m           mapped.dutyResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m420[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m420[0m           mapped.actualResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m354[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m354[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m390[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m390[0m           mapped.leaveStartDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m392[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m392[0m           mapped.leaveEndDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                 ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                                   ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m409[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m409[0m           mapped.travelDate = mapped.travelDate || body.travelDate || null;
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m410[0m:[93m18[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m410[0m           mapped.travelEndDate =
+[7m   [0m [91m                 ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m411[0m:[93m20[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m411[0m             mapped.travelEndDate || body.travelEndDate || null;
+[7m   [0m [91m                   ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m418[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m418[0m           mapped.dutyResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m420[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m420[0m           mapped.actualResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m354[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 10, '(sql: string, bindParams: BindParameters, options: ExecuteOptions): Promise<Result<any>>', gave the following error.
+    Object literal may only specify known properties, and 'fetchAsString' does not exist in type 'ExecuteOptions'.
+  Overload 2 of 10, '(sql: string, bindParams: BindParameters, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Object literal may only specify known properties, and 'outFormat' does not exist in type '(error: DBError, result: Result<any>) => void'.
+  Overload 3 of 10, '(sql: object, options: ExecuteOptions, callback: (error: DBError, result: Result<any>) => void): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'object'.
+
+[7m354[0m         const fetchResult = await conn.execute<any>(
+[7m   [0m [91m                                       ~~~~~~~[0m
+
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m390[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m390[0m           mapped.leaveStartDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m392[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m392[0m           mapped.leaveEndDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m18[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                 ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m408[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'airRoute' does not exist on type 'LeaveRequestFlow'.
+
+[7m408[0m           mapped.airRoute = mapped.airRoute || body.airRoute || "";
+[7m   [0m [91m                                   ~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m409[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m409[0m           mapped.travelDate = mapped.travelDate || body.travelDate || null;
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m410[0m:[93m18[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m410[0m           mapped.travelEndDate =
+[7m   [0m [91m                 ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m411[0m:[93m20[0m - [91merror[0m[90m TS2551: [0mProperty 'travelEndDate' does not exist on type 'LeaveRequestFlow'. Did you mean 'travelDate'?
+
+[7m411[0m             mapped.travelEndDate || body.travelEndDate || null;
+[7m   [0m [91m                   ~~~~~~~~~~~~~[0m
+
+  [96msrc/interfaces/leaveRequestFlow.interface.ts[0m:[93m6[0m:[93m3[0m
+    [7m6[0m   travelDate?: Date;
+    [7m [0m [96m  ~~~~~~~~~~[0m
+    'travelDate' is declared here.
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m418[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m418[0m           mapped.dutyResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m420[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'string | Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+
+[7m420[0m           mapped.actualResumeDate =
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-26 18:06:13 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0075.AREP273.PROD.OUTLOOK.COM 2026-10-26T12:36:13.643Z 08DF32598142E423] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0075.AREP273.PROD.OUTLOOK.COM 2026-10-26T12:36:13.643Z 08DF32598142E423]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
