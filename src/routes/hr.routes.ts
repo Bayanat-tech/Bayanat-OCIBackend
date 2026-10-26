@@ -16,6 +16,7 @@ import { getMobileLeaveBucket, getLeaveWorkflowIdentity } from "../controllers/H
 import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowAction } from "../controllers/HR/leaveWorkflowAction.controller";
 import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
 import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
+import { leaveRequestFlow } from "../controllers/HR/leave_request_flow";
 
 // Initialize the Express router
 const router = express.Router();
@@ -23,6 +24,7 @@ const router = express.Router();
 console.log("HR Routes Loaded");
 
 const workflowAuth = [passport.authenticate('jwt', { session: false }), tenantContextMiddleware, checkUserAuthorization];
+router.post('/workflow/leaveRequestFlow', ...workflowAuth, leaveRequestFlow); // /api/hr/workflow/leaveRequestFlow
 router.get('/workflow/identity', ...workflowAuth, getLeaveWorkflowIdentity);
 router.get('/workflow/leave/request/:requestNumber', ...workflowAuth, getLeaveWorkflowRequest);
 router.get('/workflow/leave/:requestNumber/targets', ...workflowAuth, getLeaveWorkflowTargets);
