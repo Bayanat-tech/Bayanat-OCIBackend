@@ -230,22 +230,38 @@ const STOCK_EXTRA_CSS = `
   }
 `;
 
-function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printDateTime)}</div>
-        <div>Print User: ${escapeHtml(loginId)}</div>
-      </div>
-    </div>`;
-}
+const S_TITLE_ROW = "margin:0 0 4px 0 !important;padding:0 !important;gap:0 !important;";
+const S_H1 = "margin:0 !important;padding:0 !important;line-height:1.2 !important;";
+const S_SUB = "margin:2px 0 0 0 !important;padding:0 !important;line-height:1.3 !important;";
+const S_TABLE = "margin-top:0 !important;";
+
+// function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+//   return `
+//     <div class="doc-title-row">
+//       <div>
+//         <h1>${escapeHtml(title)}</h1>
+//         <div class="doc-sub">${escapeHtml(subtitle)}</div>
+//       </div>
+//       <div class="print-meta">
+//         <div>Print Date: ${escapeHtml(printDateTime)}</div>
+//         <div>Print User: ${escapeHtml(loginId)}</div>
+//       </div>
+//     </div>`;
+// }
 
 // ─── Report 1: Stock Summary ────────────────────────────────────────────────
 
+
+
+function docTitleRowHtml(title: string, subtitle: string, _printDateTime: string, _loginId: string): string {
+  return `
+    <div class="doc-title-row" style="${S_TITLE_ROW}">
+      <div>
+        <h1 style="${S_H1}">${escapeHtml(title)}</h1>
+        <div class="doc-sub" style="${S_SUB}">${escapeHtml(subtitle)}</div>
+      </div>
+    </div>`;
+}
 /** Body only – no full HTML document */
 function renderStockSummaryBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
