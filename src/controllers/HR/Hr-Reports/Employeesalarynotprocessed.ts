@@ -14,6 +14,7 @@ import {
 
 const NO_DATA_MESSAGE = "No records found for the selected criteria.";
 const ALL = "All";
+const DASH = "\u2014";
 const REPORT_TITLE = "Employee Payroll Process Fail List";
 const REPORT_CODE = "rpt_emp_sal_process_fail";
 const ALL_MONTHS = 0;
@@ -21,6 +22,7 @@ const ALL_YEARS = 0;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const text = (v: any): string => (v == null ? "" : String(v));
+const valueOrDash = (v: any): string => (text(v).trim() ? text(v) : DASH);
 
 const formatDateStr = (v: any): string => {
     if (!v) return "";
@@ -247,8 +249,13 @@ const filterRows = (p: FailParams): { label: string; value: string }[] => [
     { label: "Section",     value: p.section    || ALL },
 ];
 
+// Label, code and name sit in three separate aligned columns (no "Division:16BAYANAT" run-together)
 const orgLine = (label: string, code: string, name: string) =>
-    `<div class="org-line"><span class="org-lbl">${label}:</span><span class="org-code">${escapeHtml(code)}</span><span class="org-name">${escapeHtml(name)}</span></div>`;
+    `<div class="org-line">
+        <span class="org-lbl">${label}</span>
+        <span class="org-code">${escapeHtml(code) || DASH}</span>
+        <span class="org-name">${escapeHtml(name) || DASH}</span>
+     </div>`;
 
 // ─── Excel HTML (.xls) ────────────────────────────────────────────────────────
 
@@ -259,12 +266,12 @@ function buildExcelHtml(rows: FailRow[], p: FailParams): string {
     let body = "";
     let sl = 0;
     groups.forEach((g) => {
-        body += `<tr><td colspan="7" style="font-weight:bold;background:#eef3fb;color:#00378c">
-            Division: ${escapeHtml(g.div_code)} ${escapeHtml(g.div_name)} &nbsp;|&nbsp;
-            Department: ${escapeHtml(g.dept_code)} ${escapeHtml(g.dept_name)} &nbsp;|&nbsp;
-            Section: ${escapeHtml(g.section_code)} ${escapeHtml(g.section_name)}</td></tr>`;
+        body += `<tr><td colspan="7" style="font-weight:bold;background:#eaf0f8;color:#00378c">
+            Division: ${escapeHtml(g.div_code)} - ${escapeHtml(g.div_name)}<br>
+            Department: ${escapeHtml(g.dept_code)} - ${escapeHtml(g.dept_name)}<br>
+            Section: ${escapeHtml(g.section_code)} - ${escapeHtml(g.section_name)}</td></tr>`;
         g.periods.forEach((per) => {
-            body += `<tr><td colspan="7" style="font-weight:bold;background:#f1f5f9">Period: ${escapeHtml(per.label)}</td></tr>`;
+            body += `<tr><td colspan="7" style="font-weight:bold;background:#f8fafc;color:#475569">Period: ${escapeHtml(per.label)}</td></tr>`;
             per.rows.forEach((r) => {
                 sl += 1;
                 body += `<tr>
@@ -274,7 +281,7 @@ function buildExcelHtml(rows: FailRow[], p: FailParams): string {
           <td>${escapeHtml(r.grade_name)}</td>
           <td>${escapeHtml(r.desg_name)}</td>
           <td style="text-align:center">${escapeHtml(formatDateStr(r.join_date))}</td>
-          <td>${escapeHtml(r.remarks)}</td>
+          <td>${escapeHtml(valueOrDash(r.remarks))}</td>
         </tr>`;
             });
         });
@@ -352,18 +359,30 @@ const FAIL_EXTRA_CSS = `
     text-transform: none; white-space: normal !important; text-align: center;
   }
 
+  /* Division / Department / Section block: navy left bar, 3 aligned columns */
   table.data-table tbody tr.org-row td {
-    background: #eef3fb !important; padding: 8px 6px; border-bottom: 1px solid #cbd5e1 !important; text-align: left;
+    background: #eaf0f8 !important;
+    padding: 8px 10px;
+    border-left: 3px solid #00378c !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    text-align: left;
   }
-  .org-line { display: flex; gap: 10px; font-size: 10.5px; font-weight: 700; color: #00378c; line-height: 1.55; }
-  .org-lbl  { width: 78px; }
-  .org-code { width: 48px; }
-  .org-name { flex: 1; }
+  .org-line { display: flex; align-items: baseline; gap: 12px; font-size: 10.5px; line-height: 1.6; }
+  .org-lbl  { width: 80px; flex: none; font-weight: 600; color: #64748b; text-transform: uppercase; font-size: 9.5px; letter-spacing: .3px; }
+  .org-code { width: 44px; flex: none; font-weight: 700; color: #00378c; }
+  .org-name { flex: 1; font-weight: 600; color: #1e293b; }
 
+  /* Period sub-heading: lighter and indented, reads as a level below the org block */
   table.data-table tbody tr.period-row td {
-    background: #f1f5f9 !important; color: #1e293b !important; font-weight: 700;
-    font-size: 10.5px; padding: 6px; border-bottom: 1px solid #cbd5e1 !important; text-align: left;
+    background: #f8fafc !important;
+    color: #475569 !important;
+    font-weight: 600;
+    font-size: 10px;
+    padding: 6px 10px 6px 24px;
+    border-bottom: 1px solid #e2e8f0 !important;
+    text-align: left;
   }
+
   table.data-table tbody tr.data-row td {
     background: #fafcfe !important; font-size: 10px; padding: 6px 4px;
     border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; vertical-align: middle;
@@ -408,7 +427,7 @@ function renderBody(rows: FailRow[], p: FailParams): string {
             </td></tr>`;
 
             g.periods.forEach((per) => {
-                tableRows += `<tr class="period-row"><td colspan="7">Period: &nbsp; ${escapeHtml(per.label)}</td></tr>`;
+                tableRows += `<tr class="period-row"><td colspan="7">Period: ${escapeHtml(per.label)}</td></tr>`;
                 per.rows.forEach((r) => {
                     sl += 1;
                     tableRows += `
@@ -419,7 +438,7 @@ function renderBody(rows: FailRow[], p: FailParams): string {
           <td class="left">${escapeHtml(r.grade_name)}</td>
           <td class="left">${escapeHtml(r.desg_name)}</td>
           <td class="center nw">${escapeHtml(formatDateStr(r.join_date))}</td>
-          <td class="left">${escapeHtml(r.remarks)}</td>
+          <td class="left">${escapeHtml(valueOrDash(r.remarks))}</td>
         </tr>`;
                 });
             });

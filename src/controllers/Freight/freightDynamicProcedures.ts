@@ -113,8 +113,13 @@ async function callSqlBuilder(procedureName: string, body: Record<string, unknow
     throw new Error("Missing required parameter 'parameter'");
   }
 
-  // Auto-correct shifted slots for freight_transporter if transporter_type was sent in val1s3
+  // Handle freight_transporter null code & slot alignment for table trigger
   if (String(parameter).toLowerCase() === "freight_transporter") {
+    if (!body.val1s1 || String(body.val1s1).trim() === "" || body.val1s1 === "null") {
+      body.val1s1 = null;
+    }
+
+    // Auto-correct shifted slots if transporter_type was sent in val1s3
     if (
       body.val1s3 === "SUBCON" ||
       body.val1s3 === "OWN" ||

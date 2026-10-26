@@ -14,6 +14,8 @@ import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_enti
 import { getEmployeeMasterPrint } from "../controllers/HR/Hr-Reports/employeeMasterReport";
 import { getMobileLeaveBucket, getLeaveWorkflowIdentity } from "../controllers/HR/mobileLeave.controller";
 import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowAction } from "../controllers/HR/leaveWorkflowAction.controller";
+import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
+import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
 
 // Initialize the Express router
 const router = express.Router();
@@ -61,6 +63,26 @@ router.use(
   checkUserAuthorization,
   employeeHrRoutes
 );
+
+
+router.get(
+  "/reports/grade_master",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getGradeMasterReportHtml
+);
+
+router.get(
+  "/reports/:master",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getHrMasterReportHtml
+);
+
+
+
 
 // Define a DELETE API endpoint to delete HR master data
 router.delete(

@@ -69,9 +69,26 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
 
 export const frtJobActivityGet = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
-    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
-    const prinCode = req.body.prin_code ?? req.body.PRIN_CODE;
+    let companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
+    let prinCode = req.body.prin_code ?? req.body.PRIN_CODE;
     const jobNo = req.body.job_no ?? req.body.JOB_NO;
+
+    if ((!prinCode || !companyCode) && jobNo) {
+      try {
+        const lookup = await connection.execute(
+          `SELECT COMPANY_CODE, PRIN_CODE FROM TI_JOB WHERE TRIM(JOB_NO) = TRIM(:job_no) AND ROWNUM = 1`,
+          { job_no: jobNo },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const match = (lookup.rows as any[])?.[0];
+        if (match) {
+          if (!companyCode) companyCode = match.COMPANY_CODE;
+          if (!prinCode) prinCode = match.PRIN_CODE;
+        }
+      } catch (lkErr) {
+        console.warn("frtJobActivityGet: error looking up job header fallback", lkErr);
+      }
+    }
 
     const result = await connection.execute(
       `BEGIN
