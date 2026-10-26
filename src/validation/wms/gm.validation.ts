@@ -368,7 +368,7 @@ export const portSchema = (data: IPort) => {
 //   const schema = Joi.object().keys({
 //     company_code: Joi.string().required(),
 //     manu_code: Joi.string().allow("", null),
-    manufacture_code: Joi.string().allow("", null),
+//     manufacture_code: Joi.string().allow("", null),
 //     manu_name: Joi.string().required(),
 //     prin_code: Joi.string().allow("", null),
 //   });

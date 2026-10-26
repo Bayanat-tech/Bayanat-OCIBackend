@@ -10,17 +10,20 @@ import { buildReportDocument, reportFooter, reportHeader } from "../common/repor
 
 type ReportRow = Record<string, any>;
 
+type Orientation = "portrait" | "landscape";
+
 interface ReqParams {
-  loginid: string;
-  company_code: string;
+  loginid:        string;
+  company_code:   string;
   request_number: string;
+  orientation:    Orientation;
 }
 
-
+// Single dispatch key handled by PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS (one CASE branch)
 const PARAM_FORM = "PR_REGISTER_FORM";
 
 const REPORT_TITLE = "PURCHASE REQUEST";
-const REPORT_NAME = "rpt_purchase_request_form";
+const REPORT_NAME  = "rpt_purchase_request_form";
 
 // ─── DB helpers ─────────────────────────────────────────────────────────────
 
@@ -89,9 +92,9 @@ function fmt(value: unknown, decimals: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-const amtFmt = (v: unknown) => fmt(v, 3);
+const amtFmt  = (v: unknown) => fmt(v, 3);
 const rateFmt = (v: unknown) => fmt(v, 4);
-const pctFmt = (v: unknown) => fmt(v, 2);
+const pctFmt  = (v: unknown) => fmt(v, 2);
 
 function qtyFmt(value: unknown): string {
   const n = Number(value);
@@ -104,13 +107,15 @@ function qtyFmt(value: unknown): string {
 
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
+  const q: any = req.query || {};
+  const raw = text(b.orientation || b.page_orientation || q.orientation || q.page_orientation).toLowerCase();
   return {
-    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
-    company_code: text(b.company_code),
+    loginid:        text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    company_code:   text(b.company_code),
     request_number: text(b.request_number).trim(),
+    orientation:    raw === "portrait" ? "portrait" : "landscape",
   };
 }
-
 // ─── Data loader ────────────────────────────────────────────────────────────
 
 /** Builds the SQL through the procedure, runs it and returns normalized rows. */
@@ -174,27 +179,29 @@ interface FormData {
 async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormData> {
   const conn = await getConn(req);
   try {
-
+    // One query: item rows from VW_PURCHASE_DETAILS_TXN, each row also carries the
+    // header columns (Created By, Flow, Description, Remarks, Division ...) from
+    // VW_PURCHASE_REQUEST_SUMMARY.
     const items = await runProcSql(conn, PARAM_FORM, p);
 
     const f = items[0];
     const header: ReportRow | null = f
       ? {
-        request_number: f.request_number,
-        request_date: f.request_date,
-        create_user: f.create_user,
-        flow_code: f.flow_code,
-        description: f.description,
-        remarks: f.remarks,
-        amount: f.hdr_amount,
-        req_div_code: f.req_div_code,
-        currency_rate: f.currency_rate,
-        currency_code: f.curr_code,
-        tx_cat_code: f.tx_cat_code,
-        tx_compntcat_code_1: f.tx_compntcat_code_1,
-        final_approved: f.hdr_final_approved ?? f.final_approved,
-        last_action: f.hdr_last_action ?? f.last_action,
-      }
+          request_number: f.request_number,
+          request_date: f.request_date,
+          create_user: f.create_user,
+          flow_code: f.flow_code,
+          description: f.description,
+          remarks: f.remarks,
+          amount: f.hdr_amount,
+          req_div_code: f.req_div_code,
+          currency_rate: f.currency_rate,
+          currency_code: f.curr_code,
+          tx_cat_code: f.tx_cat_code,
+          tx_compntcat_code_1: f.tx_compntcat_code_1,
+          final_approved: f.hdr_final_approved ?? f.final_approved,
+          last_action: f.hdr_last_action ?? f.last_action,
+        }
       : null;
 
     // Approval history needs its own table/query, so it is not part of the single-case form yet.
@@ -208,225 +215,28 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
 
 const PR_FORM_EXTRA_CSS = `
   @page { size: A4 portrait; margin: 6mm; }
-
-  table.pr-items {
-    width: 100% !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
-    border-collapse: collapse !important;
-  }
-  table.pr-items th,
-  table.pr-items td {
-    padding: 3px 2px !important;
-    font-size: 7.5px !important;
-    min-width: 0 !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-  }
-  table.pr-items th { font-size: 7px !important; }
-  table.pr-items tr { page-break-inside: avoid; }
 `;
 
 const S = {
-  wrap: "font-size:9.5px;line-height:1.3;color:#1e293b;",
-  title: "margin:0 0 8px 0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;text-align:center;letter-spacing:.5px;",
-  lbl: "padding:3px 6px 3px 0;font-weight:700;font-size:9.5px;vertical-align:top;white-space:nowrap;width:34%;",
-  val: "padding:3px 0;font-size:9.5px;vertical-align:top;word-break:break-word;",
+  wrap:   "font-size:9.5px;line-height:1.3;color:#1e293b;",
+  title:  "margin:0 0 8px 0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;text-align:center;letter-spacing:.5px;",
+  lbl:    "padding:3px 6px 3px 0;font-weight:700;font-size:9.5px;vertical-align:top;white-space:nowrap;width:34%;",
+  val:    "padding:3px 0;font-size:9.5px;vertical-align:top;word-break:break-word;",
   valBig: "padding:3px 0;font-size:13px;font-weight:800;vertical-align:top;color:#0b3d91;",
-  th: "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:8px !important;padding:4px 2px !important;text-align:center;border:1px solid #9fb6d6;overflow-wrap:anywhere;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  td: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;overflow-wrap:anywhere;",
-  tdR: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;text-align:right;overflow-wrap:anywhere;",
-  tdC: "padding:4px 2px !important;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:8.5px !important;text-align:center;overflow-wrap:anywhere;",
-  total: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:5px 2px !important;border-top:2px solid #0b4ca1;font-size:9px !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  totalR: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:5px 2px !important;border-top:2px solid #0b4ca1;font-size:9px !important;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  histBox: "margin-top:14px;border:1px solid #334155;padding:10px 16px;",
-  badge: "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  th:     "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:8.5px;padding:4px 3px;text-align:center;border:1px solid #9fb6d6;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  td:     "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;word-break:break-word;overflow-wrap:anywhere;",
+  tdR:    "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:right;word-break:break-word;",
+  tdC:    "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:center;",
+  hdrTh:  "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:6px 8px;text-align:left;width:50%;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  hdrTd:  "background:#f4f7fb !important;color:#1e293b;font-size:9.5px;padding:6px 8px;border-bottom:1px solid #dce6f4;vertical-align:top;width:50%;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  sub:    "display:block;font-size:8px;color:#64748b;",
+  total:  "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  totalR: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  histBox:"margin-top:14px;border:1px solid #334155;padding:10px 16px;",
+  badge:  "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
 };
 
-// function renderFormBody(data: FormData, requestNumber: string): string {
-//   const { items, history } = data;
-//   const { left, right } = formHeaderPairs(data, requestNumber);
-
-
-
-//   const HDR_TH = "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:5px 8px;text-align:left;border:1px solid #9fb6d6;-webkit-print-color-adjust:exact;print-color-adjust:exact;";
-//   const HDR_TD = "font-size:9.5px;padding:4px 8px;text-align:left;vertical-align:top;word-break:break-word;border-left:1px solid #9fb6d6;border-right:1px solid #9fb6d6;border-top:none;border-bottom:none;";
-//   const HDR_TD_LAST = HDR_TD.replace("border-bottom:none;", "border-bottom:1px solid #9fb6d6;");
-//   const HDR_GAP = "width:2% !important;padding:0 !important;border:none !important;background:none !important;";
-
-//   const pairText = (p?: [string, string], bold = false) =>
-//     p ? `${escapeHtml(p[0])}: ${bold ? `<b>${escapeHtml(p[1])}</b>` : escapeHtml(p[1])}` : "";
-
-//   const hdrCount = Math.max(left.length, right.length);
-//   const hdrRows = Array.from({ length: hdrCount }, (_, i) => {
-//     const st = i === hdrCount - 1 ? HDR_TD_LAST : HDR_TD;
-//     return `
-//   <tr>
-//    <td style="${st}width:49% !important;">${pairText(left[i], i === 0)}</td>
-// <td style="${HDR_GAP}"></td>
-// <td style="${st}width:49% !important;">${pairText(right[i], i === 0)}</td>
-//   </tr>`;
-//   }).join("");
-
-//   const headerBlockHtml = `
-//    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 10px 0;">
-//   <tr>
-//     <th width="49%" style="${HDR_TH}">Request Details</th>
-//     <th width="2%"  style="${HDR_GAP}"></th>
-//     <th width="49%" style="${HDR_TH}">Other Details</th>
-//   </tr>
-//   ${hdrRows}
-// </table>`;
-//   const SUB = "font-size:8px;color:#64748b;";
-//   let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
-//   const lines = items
-//     .map((r) => {
-//       const amount = num(r.amount);                 // Total Amt (E.T)
-//       const tax = num(r.tx_compnt_amt_1);           // Tax Amt
-//       const lineTotal = amount + tax;               // Total Amt (I.T)
-//       const rate = num(r.currency_rate) || 1;
-//       const lcurrAfterTax = lineTotal * rate;
-//       const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
-//       const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
-//       totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
-
-//       return `
-//   <tr>
-//     <td style="${S.tdC}">${escapeHtml(r.sr_no)}</td>
-//     <td style="${S.td}">${escapeHtml(r.item_code)}<br/>${escapeHtml(r.item_desp)}${r.supplier_part_code ? `<br/>Part: ${escapeHtml(r.supplier_part_code)}` : ""
-//         }${(r.supplier_name || r.supplier) ? `<br/>Supplier: ${escapeHtml(r.supplier_name || r.supplier)}` : ""
-//         }</td>
-//     <td style="${S.tdR}">${qtyFmt(r.item_qty)}<br/>Appr: ${qtyFmt(r.allocated_approved_quantity)}</td>
-//     <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
-//     <td style="${S.tdR}">${amtFmt(discAmt)}</td>
-//     <td style="${S.tdR}">${amtFmt(amount)}</td>
-//     <td style="${S.tdR}">${escapeHtml(r.tx_compntcat_code_1)}<br/>${pctFmt(r.tx_compnt_perc_1)}%</td>
-//     <td style="${S.tdR}">${amtFmt(tax)}</td>
-//     <td style="${S.tdR}">${amtFmt(lineTotal)}</td>
-//     <td style="${S.tdC}">${escapeHtml(r.curr_code)}<br/>${rateFmt(r.currency_rate)}</td>
-//     <td style="${S.tdR}">${amtFmt(lcurrAfterTax)}</td>
-//   </tr>`;
-//     })
-//     .join("");
-
-
-//   const ZOOM = 0.72; // portrait la cut hotay tar 0.68 kara, jaga urli tar 0.78 kara
-//   const PX = (p: number) => `width:${p}px;min-width:${p}px;max-width:${p}px;`;
-//   const SUM_L = "padding:4px 6px !important;font-size:9px !important;color:#0b3d91;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;";
-//   const SUM_R = "padding:4px 6px !important;font-size:9px !important;text-align:right;border-bottom:1px solid #e2e8f0;";
-
-
-
-
-
-//   const itemsHtml = items.length === 0
-//     ? `<div style="padding:28px;font-size:11px;text-align:center;color:#64748b;">No items found for this request.</div>`
-//     : `
-//   <table class="pr-items" width="100%" cellpadding="0" cellspacing="0" style="width:100%;table-layout:fixed;border-collapse:collapse;margin-top:8px;">
-//     <colgroup>
-//       <col width="3%"/><col width="25%"/><col width="7%"/><col width="8%"/><col width="7%"/>
-//       <col width="10%"/><col width="7%"/><col width="8%"/><col width="10%"/><col width="8%"/><col width="15%"/>
-//     </colgroup>
-//     <thead>
-//       <tr>
-//         <th style="${S.th}">Sr</th>
-//         <th style="${S.th}">Item / Description</th>
-//         <th style="${S.th}">Req Qty</th>
-//         <th style="${S.th}">Item Rate</th>
-//         <th style="${S.th}">Disc Amt</th>
-//         <th style="${S.th}">Total Amt (E.T)</th>
-//         <th style="${S.th}">Tax Type / %</th>
-//         <th style="${S.th}">Tax Amt</th>
-//         <th style="${S.th}">Total Amt (I.T)</th>
-//         <th style="${S.th}">Curr / Ex Rate</th>
-//         <th style="${S.th}">LCURR Amt After Tax</th>
-//       </tr>
-//     </thead>
-//     <tbody>
-//       ${lines}
-//       <tr>
-//         <td colspan="5" style="${S.total}">Total Amount</td>
-//         <td style="${S.totalR}">${amtFmt(totAmount)}</td>
-//         <td style="${S.total}"></td>
-//         <td style="${S.totalR}">${amtFmt(totTax)}</td>
-//         <td style="${S.totalR}">${amtFmt(totLine)}</td>
-//         <td style="${S.total}"></td>
-//         <td style="${S.totalR}">${amtFmt(totLcurr)}</td>
-//       </tr>
-//       <tr>
-//         <td colspan="8" style="${SUM_L}">Total Discount</td>
-//         <td colspan="3" style="${SUM_R}">${amtFmt(totDisc)}</td>
-//       </tr>
-//       <tr>
-//         <td colspan="8" style="${SUM_L}">Total Amount Excluding Tax</td>
-//         <td colspan="3" style="${SUM_R}">${amtFmt(totAmount)}</td>
-//       </tr>
-//       <tr>
-//         <td colspan="8" style="${SUM_L}font-weight:800;">Total Amount Including Tax</td>
-//         <td colspan="3" style="${SUM_R}font-weight:800;">${amtFmt(totLine)}</td>
-//       </tr>
-//     </tbody>
-//   </table>`;
-
-//   // ── Approval history (only when a history query is wired up) ──
-//   const historyHtml = history.length === 0
-//     ? ""
-//     : `
-//     <div style="${S.histBox}">
-//       <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Request Number: ${escapeHtml(left[0]?.[1] ?? requestNumber)}</div>
-//       ${history
-//       .map(
-//         (r) => `
-//         <div style="margin:8px 0 2px 0;"><b>${escapeHtml(r.action_status)}</b></div>
-//         <div style="font-size:10px;">Last Updated : ${escapeHtml(r.last_updated_by)}</div>
-//         <div style="font-size:10px;">Last Updated Dt : ${escapeHtml(dateTimeText(r.last_updated_dt))}</div>`
-//       )
-//       .join("")}
-//     </div>`;
-
-//    return `
-// <div class="pr-form" style="${S.wrap}">
-//   <style>
-//     .pr-form table.pr-items {
-//       width: 100% !important;
-//       max-width: 100% !important;
-//       table-layout: fixed !important;
-//       border-collapse: collapse !important;
-//     }
-//     .pr-form table.pr-items th,
-//     .pr-form table.pr-items td {
-//       min-width: 0 !important;
-//       padding: 3px 1px !important;
-//       font-size: 7px !important;
-//       white-space: normal !important;
-//       word-break: break-all !important;
-//       overflow-wrap: anywhere !important;
-//     }
-//     .pr-form table.pr-items th:nth-child(1)  { width: 3% !important; }
-//     .pr-form table.pr-items th:nth-child(2)  { width: 17% !important; }
-//     .pr-form table.pr-items th:nth-child(3)  { width: 7% !important; }
-//     .pr-form table.pr-items th:nth-child(4)  { width: 8% !important; }
-//     .pr-form table.pr-items th:nth-child(5)  { width: 7% !important; }
-//     .pr-form table.pr-items th:nth-child(6)  { width: 10% !important; }
-//     .pr-form table.pr-items th:nth-child(7)  { width: 7% !important; }
-//     .pr-form table.pr-items th:nth-child(8)  { width: 8% !important; }
-//     .pr-form table.pr-items th:nth-child(9)  { width: 10% !important; }
-//     .pr-form table.pr-items th:nth-child(10) { width: 8% !important; }
-//     .pr-form table.pr-items th:nth-child(11) { width: 15% !important; }
-//   </style>
-
-//   <h1 style="margin:0 0 8px 0;padding:0;font-size:15px;font-weight:800;color:#0b4ca1;">${escapeHtml(REPORT_TITLE)}</h1>
-
-//   ${headerBlockHtml}
-
-//   ${itemsHtml}
-//   ${historyHtml}
-// </div>`;
-// }
-
-
-function renderFormBody(data: FormData, requestNumber: string): string {
+function renderFormBody(data: FormData, requestNumber: string, orientation: Orientation = "portrait"): string {
   const { items, history } = data;
   const { left, right } = formHeaderPairs(data, requestNumber);
 
@@ -438,7 +248,7 @@ function renderFormBody(data: FormData, requestNumber: string): string {
   const hdrRows = Array.from({ length: hdrCount }, (_, i) => `
     <tr>
       <td>${pairText(left[i], i === 0)}</td>
-      <td>${pairText(right[i], i === 0)}</td>
+      <td>${pairText(right[i])}</td>
     </tr>`).join("");
 
   const headerBlockHtml = `
@@ -452,82 +262,134 @@ function renderFormBody(data: FormData, requestNumber: string): string {
     <tbody>${hdrRows}</tbody>
   </table>`;
 
-  // ── Items: ONE table, 11 columns ──
-  let totAmount = 0, totTax = 0, totLine = 0, totLcurr = 0, totDisc = 0;
-
-  const lines = items.map((r) => {
+  // ── Per-line numbers (shared by both layouts) ──
+  const calc = items.map((r) => {
     const amount = num(r.amount);                 // Total Amt (E.T)
+    const base = num(r.lcurr_amt);                // Base Amount
     const tax = num(r.tx_compnt_amt_1);           // Tax Amt
     const lineTotal = amount + tax;               // Total Amt (I.T)
     const lcurrAfterTax = lineTotal * (num(r.currency_rate) || 1);
     const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
+    // DISCOUNT_AMOUNT is a percentage in the entry form -> amount = rate x qty x % / 100
     const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
-    totAmount += amount; totTax += tax; totLine += lineTotal; totLcurr += lcurrAfterTax; totDisc += discAmt;
+    return { r, amount, base, tax, lineTotal, lcurrAfterTax, discAmt };
+  });
 
-    return `
+  const sum = (k: "amount" | "base" | "tax" | "lineTotal" | "lcurrAfterTax" | "discAmt") =>
+    calc.reduce((t, c) => t + c[k], 0);
+  const totAmount = sum("amount");
+  const totBase = sum("base");
+  const totTax = sum("tax");
+  const totLine = sum("lineTotal");
+  const totLcurr = sum("lcurrAfterTax");
+  const totDisc = sum("discAmt");
+
+  // ── Items: PORTRAIT = 7 columns (pairs share a cell) so it fits the page ──
+  const portraitLines = calc.map(({ r, amount, tax, lineTotal, lcurrAfterTax, discAmt }) => `
     <tr>
-      <td class="center">${escapeHtml(r.sr_no)}</td>
-      <td>${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${
+      <td>${escapeHtml(r.sr_no)}. ${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${
         r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""
       }${
         (r.supplier_name || r.supplier) ? `<br/><span class="muted">Supplier: ${escapeHtml(r.supplier_name || r.supplier)}</span>` : ""
       }</td>
       <td class="num">${qtyFmt(r.item_qty)}<br/><span class="muted">Appr: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
-      <td class="num">${amtFmt(r.item_rate)}</td>
-      <td class="num">${amtFmt(discAmt)}</td>
+      <td class="num">${amtFmt(r.item_rate)}<br/><span class="muted">Disc: ${amtFmt(discAmt)}</span></td>
       <td class="num">${amtFmt(amount)}</td>
-      <td class="num">${escapeHtml(r.tx_compntcat_code_1)}<br/><span class="muted">${pctFmt(r.tx_compnt_perc_1)}%</span></td>
-      <td class="num">${amtFmt(tax)}</td>
+      <td class="num">${amtFmt(tax)}<br/><span class="muted">${escapeHtml(r.tx_compntcat_code_1)} @ ${pctFmt(r.tx_compnt_perc_1)}%</span></td>
       <td class="num">${amtFmt(lineTotal)}</td>
-      <td class="center">${escapeHtml(r.curr_code)}<br/><span class="muted">${rateFmt(r.currency_rate)}</span></td>
-      <td class="num">${amtFmt(lcurrAfterTax)}</td>
-    </tr>`;
-  }).join("");
+      <td class="num">${amtFmt(lcurrAfterTax)}<br/><span class="muted">${escapeHtml(r.curr_code)} @ ${rateFmt(r.currency_rate)}</span></td>
+    </tr>`).join("");
 
-  const itemsHtml = items.length === 0
-    ? `<div class="empty">No items found for this request.</div>`
-    : `
-  <table class="data-table" width="100%">
+  const portraitTable = `
+    <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
     <thead>
       <tr>
-        <th class="center">Sr</th>
-        <th>Item / Description</th>
-        <th class="right">Req Qty</th>
-        <th class="right">Item Rate</th>
-        <th class="right">Disc Amt</th>
-        <th class="right">Total Amt (E.T)</th>
-        <th class="right">Tax Type / %</th>
-        <th class="right">Tax Amt</th>
-        <th class="right">Total Amt (I.T)</th>
-        <th class="center">Curr / Ex Rate</th>
-        <th class="right">LCURR Amt After Tax</th>
+        <th width="23%">Sr. / Item / Description</th>
+        <th width="9%"  class="right">Req Qty</th>
+        <th width="13%" class="right">Item Rate / Disc</th>
+        <th width="13%" class="right">Total Amt (E.T)</th>
+        <th width="15%" class="right">Tax Amt / Type</th>
+        <th width="13%" class="right">Total Amt (I.T)</th>
+        <th width="14%" class="right">LCURR After Tax</th>
       </tr>
     </thead>
     <tbody>
-      ${lines}
+      ${portraitLines}
       <tr class="grand-total-row">
-        <td colspan="5">Total Amount</td>
+        <td colspan="3">Total Amount</td>
         <td class="num">${amtFmt(totAmount)}</td>
-        <td></td>
         <td class="num">${amtFmt(totTax)}</td>
         <td class="num">${amtFmt(totLine)}</td>
-        <td></td>
         <td class="num">${amtFmt(totLcurr)}</td>
       </tr>
-            <tr class="subtotal-row">
-        <td colspan="10" class="right">Total Discount</td>
+      <tr class="subtotal-row">
+        <td colspan="6" class="right">Total Discount</td>
         <td class="num">${amtFmt(totDisc)}</td>
-      </tr>
-      <tr class="subtotal-row">
-        <td colspan="10" class="right">Total Amount Excluding Tax</td>
-        <td class="num">${amtFmt(totAmount)}</td>
-      </tr>
-      <tr class="subtotal-row">
-        <td colspan="10" class="right">Total Amount Including Tax</td>
-        <td class="num">${amtFmt(totLine)}</td>
       </tr>
     </tbody>
   </table>`;
+
+  // ── Items: LANDSCAPE = all 15 columns of the reference form, each in its own column ──
+  const landscapeLines = calc.map(({ r, amount, base, tax, lineTotal, discAmt }) => `
+    <tr>
+      <td class="center">${escapeHtml(r.sr_no)}</td>
+      <td>${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span></td>
+      <td>${escapeHtml(r.supplier_part_code)}</td>
+      <td class="num">${qtyFmt(r.item_qty)}</td>
+      <td class="num">${amtFmt(r.item_rate)}</td>
+      <td class="num">${amtFmt(discAmt)}</td>
+      <td class="num">${amtFmt(r.final_rate)}</td>
+      <td class="center">${escapeHtml(r.curr_code)}</td>
+      <td class="num">${rateFmt(r.currency_rate)}</td>
+      <td class="num">${amtFmt(amount)}<br/><span class="muted">${escapeHtml(r.supplier_name || r.supplier)}</span></td>
+      <td class="num">${amtFmt(base)}</td>
+      <td>${escapeHtml(r.tx_compntcat_code_1)}<br/><span class="muted">${escapeHtml(r.tx_cat_code)}</span></td>
+      <td class="num">${pctFmt(r.tx_compnt_perc_1)}</td>
+      <td class="num">${amtFmt(tax)}</td>
+      <td class="num">${amtFmt(lineTotal)}<br/><span class="muted">Appr Qty: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
+    </tr>`).join("");
+
+  const landscapeTable = `
+  <table class="data-table" width="100%">
+    <thead>
+      <tr>
+        <th width="4%"  class="center">Sr. No.</th>
+        <th width="13%">Item Code</th>
+        <th width="8%">Supplier Part Code</th>
+        <th width="6%"  class="right">Request Qty</th>
+        <th width="6%"  class="right">Item Rate</th>
+        <th width="6%"  class="right">Discount Amt</th>
+        <th width="6%"  class="right">Final Rate</th>
+        <th width="5%"  class="center">Currency</th>
+        <th width="5%"  class="right">Ex Rate</th>
+        <th width="8%"  class="right">Amount</th>
+        <th width="8%"  class="right">Base Amount</th>
+        <th width="7%">Tax Code</th>
+        <th width="5%"  class="right">TAX %</th>
+        <th width="6%"  class="right">Tax Amt</th>
+        <th width="7%"  class="right">Total Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${landscapeLines}
+      <tr class="grand-total-row">
+        <td colspan="9">Total Amount</td>
+        <td class="num">${amtFmt(totAmount)}</td>
+        <td class="num">${amtFmt(totBase)}</td>
+        <td colspan="2"></td>
+        <td class="num">${amtFmt(totTax)}</td>
+        <td class="num">${amtFmt(totLine)}</td>
+      </tr>
+      <tr class="subtotal-row">
+        <td colspan="14" class="right">Total Discount</td>
+        <td class="num">${amtFmt(totDisc)}</td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  const itemsHtml = items.length === 0
+    ? `<div class="empty">No items found for this request.</div>`
+    : orientation === "landscape" ? landscapeTable : portraitTable;
 
   // ── Approval history (only when a history query is wired up) ──
   const historyHtml = history.length === 0
@@ -886,7 +748,6 @@ function formHeaderPairs(data: FormData, requestNumber: string): { left: [string
     ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
     ["Currency", text(h.currency_code ?? first.curr_code)],
     ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
-    //  ["Tax Code", text(h.tx_cat_code ?? first.tx_cat_code)],
     ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
     ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
     ["Request Date", dateText(reqDate)],
@@ -958,7 +819,6 @@ function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: st
   rows_.push(heads.map((t) => xlCell(t, "header")));
 
   // Item lines
-  // Item lines
   let totAmount = 0, totBase = 0, totTax = 0, totLine = 0;
   data.items.forEach((r) => {
     const amount = num(r.amount);
@@ -1015,8 +875,10 @@ function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: st
 // ─── Route handler ──────────────────────────────────────────────────────────
 
 export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+  console.log(">>> PR FORM V6 (default landscape 15 cols, portrait 7 cols on request) LOADED <<<");
   try {
     const params = extractParams(req);
+        console.log("PR FORM orientation:", params.orientation, "body:", JSON.stringify(req.body), "query:", JSON.stringify(req.query));
     if (!params.request_number) {
       res.status(400).json({ success: false, message: "Request number is required." });
       return;
@@ -1040,19 +902,20 @@ export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Res
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderFormBody(data, params.request_number);
+    const bodyHtml = renderFormBody(data, params.request_number, params.orientation);
 
-   const html = buildReportDocument({
-  title: `${REPORT_TITLE} - ${params.request_number}`,
-  headerHtml,
-  bodyHtml,
-  footerHtml,
-  autoPrint: false,
-  showPrintButton: true,
-  orientation: "portrait",
-});
+    const html = buildReportDocument({
+      title: `${REPORT_TITLE} - ${params.request_number}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      autoPrint: false,
+      showPrintButton: true,
+      orientation: params.orientation,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("X-Report-Version", "PR-FORM-V6");
     res.send(html);
   } catch (error: any) {
     console.error("PR Form HTML error:", error);
