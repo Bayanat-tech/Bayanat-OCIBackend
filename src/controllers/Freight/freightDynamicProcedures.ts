@@ -25,6 +25,23 @@ const mutationSlots = [
 
 type BindValue = string | number | Date | null | undefined | oracledb.BindParameter;
 
+function formatExecutableSql(rawSql: string): string {
+  let sql = rawSql.trim();
+  if (!sql) return sql;
+
+  // If already a PL/SQL block, return as is
+  if (/^\s*(BEGIN|DECLARE)/i.test(sql)) {
+    return sql;
+  }
+
+  // Wrap in BEGIN ... END; to ensure single or multi-statement DML (MERGE, INSERT, UPDATE, DELETE)
+  // executes cleanly in Oracle without ORA-00933 (command not properly ended) caused by semicolons
+  if (!sql.endsWith(";")) {
+    sql += ";";
+  }
+  return `BEGIN\n${sql}\nEND;`;
+}
+
 export const proc_build_dynamic_sql_FREIGHT = async (req: Request, res: Response): Promise<void> => {
   try {
     const rawSql = await callSqlBuilder("PROC_BUILD_DYNAMIC_SQL_FREIGHT", req.body, selectSlots);
@@ -60,7 +77,9 @@ export const proc_build_dynamic_ins_upd_FREIGHT = async (req: Request, res: Resp
       return;
     }
 
-    await QueryExecutor.executeRawQuery(dynamicSql, []);
+    const executableSql = formatExecutableSql(dynamicSql);
+    console.log("Executing Freight DML SQL:\n", executableSql);
+    await QueryExecutor.executeRawQuery(executableSql, []);
     res.json({ success: true, message: "Record saved successfully" });
   } catch (error: any) {
     console.error("Freight save procedure error:", error);
@@ -77,7 +96,9 @@ export const proc_build_dynamic_del_FREIGHT = async (req: Request, res: Response
       return;
     }
 
-    await QueryExecutor.executeRawQuery(dynamicSql, []);
+    const executableSql = formatExecutableSql(dynamicSql);
+    console.log("Executing Freight DEL SQL:\n", executableSql);
+    await QueryExecutor.executeRawQuery(executableSql, []);
     res.json({ success: true, message: "Record deleted successfully" });
   } catch (error: any) {
     console.error("Freight delete procedure error:", error);
@@ -90,6 +111,37 @@ async function callSqlBuilder(procedureName: string, body: Record<string, unknow
 
   if (!parameter) {
     throw new Error("Missing required parameter 'parameter'");
+  }
+
+  // Handle freight_transporter null code & slot alignment for table trigger
+  if (String(parameter).toLowerCase() === "freight_transporter") {
+    if (!body.val1s1 || String(body.val1s1).trim() === "" || body.val1s1 === "null") {
+      body.val1s1 = null;
+    }
+
+    // Auto-correct shifted slots if transporter_type was sent in val1s3
+    if (
+      body.val1s3 === "SUBCON" ||
+      body.val1s3 === "OWN" ||
+      (typeof body.val1s3 === "string" && body.val1s3.length > 5)
+    ) {
+      body.val1s3 = body.val1s4; // country_code
+      body.val1s4 = body.val1s5; // trns_city
+      body.val1s15 = body.val1s6; // territory_code
+      body.val1s13 = body.val1s7; // ac_code
+      body.val1s14 = body.val1s8; // trn_no
+      body.val1s9 = body.val1s12; // trns_addr1
+      body.val1s10 = body.val1s13; // trns_addr2
+      body.val1s11 = body.val1s14; // trns_addr3
+      body.val1s12 = body.val1s15; // trns_addr4
+      body.val1s5 = body.val1s16; // trns_contact1
+      body.val1s6 = body.val1s17; // trns_telno1
+      body.val1s7 = body.val1s18; // trns_faxno1
+      body.val1s8 = body.val1s19; // trns_email1
+    }
+    if (typeof body.val1s3 === "string") {
+      body.val1s3 = body.val1s3.slice(0, 5);
+    }
   }
 
   const bindNames = ["parameter", "loginid", ...slots];

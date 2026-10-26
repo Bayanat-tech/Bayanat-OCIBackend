@@ -15,6 +15,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
            :p_transport_mode,
            :p_job_type,
            :p_search,
+           :p_supplier_code,
            :p_result
          );
        END;`,
@@ -23,6 +24,7 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
         p_transport_mode: req.body.transport_mode ?? req.body.TRANSPORT_MODE,
         p_job_type: req.body.job_type ?? req.body.JOB_TYPE,
         p_search: req.body.search ?? req.body.SEARCH ?? null,
+        p_supplier_code: req.body.supplier_code ?? req.body.SUPPLIER_CODE ?? null,
         p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -67,9 +69,26 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
 
 export const frtJobActivityGet = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
-    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
-    const prinCode = req.body.prin_code ?? req.body.PRIN_CODE;
+    let companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
+    let prinCode = req.body.prin_code ?? req.body.PRIN_CODE;
     const jobNo = req.body.job_no ?? req.body.JOB_NO;
+
+    if ((!prinCode || !companyCode) && jobNo) {
+      try {
+        const lookup = await connection.execute(
+          `SELECT COMPANY_CODE, PRIN_CODE FROM TI_JOB WHERE TRIM(JOB_NO) = TRIM(:job_no) AND ROWNUM = 1`,
+          { job_no: jobNo },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const match = (lookup.rows as any[])?.[0];
+        if (match) {
+          if (!companyCode) companyCode = match.COMPANY_CODE;
+          if (!prinCode) prinCode = match.PRIN_CODE;
+        }
+      } catch (lkErr) {
+        console.warn("frtJobActivityGet: error looking up job header fallback", lkErr);
+      }
+    }
 
     const result = await connection.execute(
       `BEGIN
@@ -97,23 +116,40 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
 
     // Fetch individual PI lines booked for this job
     let bookedPI: any[] = [];
+    let salesInvoices: any[] = [];
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, h.DOC_REFNO
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO
            FROM TR_AC_DETAIL d
            LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
-           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO = :job_no`,
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')`,
           { cc: companyCode, job_no: jobNo },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         bookedPI = (piRes.rows as any[]) || [];
+
+        const siRes = await connection.execute(
+          `SELECT DISTINCT h.DOC_TYPE, h.DOC_NO, h.DOC_DATE, h.REF_NO, h.JOB_NO, h.PARTY_NAME
+           FROM TR_AC_HEADER h
+           WHERE h.COMPANY_CODE = :cc AND h.DOC_TYPE IN ('IV', 'SI')
+             AND (
+               TRIM(h.JOB_NO) = :job_no
+               OR TRIM(h.REF_NO) = :job_no
+               OR TRIM(h.REF_NO) IN (
+                 SELECT TRIM(d.CONSOLIDATED_INVNO) FROM TN_INVOICE_DET d WHERE d.COMPANY_CODE = :cc AND d.JOB_NO = :job_no AND d.CONSOLIDATED_INVNO IS NOT NULL
+               )
+             )`,
+          { cc: companyCode, job_no: jobNo },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        salesInvoices = (siRes.rows as any[]) || [];
       }
     } catch (piErr) {
-      console.warn("frtJobActivityGet: error fetching booked PI details", piErr);
+      console.warn("frtJobActivityGet: error fetching booked PI/SI details", piErr);
     }
 
-    res.json({ success: true, data: { header: headerRows[0] ?? null, lines, booked_pi: bookedPI } });
+    res.json({ success: true, data: { header: headerRows[0] ?? null, lines, booked_pi: bookedPI, sales_invoices: salesInvoices } });
   });
 };
 

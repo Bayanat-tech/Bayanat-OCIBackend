@@ -78,6 +78,8 @@ export const insUpdHrSalaryAdvDed = async (req: Request, res: Response): Promise
       BALANCE_AMT: d.balance_amt ?? 0,
       DEDUCT_FROM_LEAVE: d.deduct_from_leave ?? 'N',
       DEDUCT_NOOF_LEAVEDAYS: d.deduct_noof_leavedays ?? 0,
+      LEAVE_START_DATE: d.leave_start_date ? new Date(d.leave_start_date) : null,
+      LEAVE_END_DATE: d.leave_end_date ? new Date(d.leave_end_date) : null ,
       REF_LEAVE_DOC_NO: d.ref_leave_doc_no ?? null,
       REF_HDR_LVE_SLNO: d.ref_hdr_lve_slno ?? null,
       PAY_MONTH: d.pay_month ?? null,

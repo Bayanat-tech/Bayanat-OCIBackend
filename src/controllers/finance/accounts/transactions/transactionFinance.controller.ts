@@ -3087,12 +3087,16 @@ export const getCompanyFinanceSetup = async (req: RequestWithUser, res: Response
     const fyRows = fyCur ? await fyCur.getRows(1000) : [];
     if (fyCur) await fyCur.close();
 
+    const filteredFyPeriods = (fyRows || []).filter(
+      (p: any) => p && p.FY_PERIOD && String(p.FY_PERIOD).trim().toLowerCase() !== "all" && p.DATE_FROM && p.DATE_TO
+    );
+
     res.json({
       success: true,
       data: {
         company_info: compRows[0] || null,
         ac_setup: setupRows[0] || null,
-        fy_periods: fyRows || []
+        fy_periods: filteredFyPeriods
       }
     });
   } catch (err) {
@@ -3109,6 +3113,77 @@ export const saveCompanyFinanceSetup = async (req: RequestWithUser, res: Respons
     const body = req.body || {};
     const companyCode = String(body.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
     const userId = String(req.user.loginid || req.user.user_id || 'ADMIN').trim();
+
+    if (body.base_curr_code) {
+      const currCode = String(body.base_curr_code).trim().toUpperCase();
+      const currCheck = await conn.execute(
+        `SELECT COUNT(*) AS CNT FROM MS_CURRENCY WHERE UPPER(CURR_CODE) = :curr_code`,
+        { curr_code: currCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const cnt = (currCheck.rows as any[])?.[0]?.CNT || 0;
+      if (cnt === 0) {
+        res.status(400).json({ success: false, message: `Invalid Currency Code: "${currCode}". Please select a valid currency.` });
+        return;
+      }
+    }
+
+    if (body.ac_fy_period) {
+      const activePeriod = String(body.ac_fy_period).trim();
+      const periodRes = await conn.execute(
+        `SELECT TO_CHAR(DATE_FROM, 'YYYY-MM-DD') AS DF, TO_CHAR(DATE_TO, 'YYYY-MM-DD') AS DT 
+           FROM MS_FY_PERIOD 
+          WHERE COMPANY_CODE = :cc AND FY_PERIOD = :fp AND ROWNUM = 1`,
+        { cc: companyCode, fp: activePeriod },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const pRow: any = (periodRes.rows as any[])?.[0];
+      if (!pRow) {
+        res.status(400).json({ success: false, message: `Active Financial Period "${activePeriod}" does not exist in master.` });
+        return;
+      }
+
+      if (body.opn_fy_period) {
+        const opnPeriod = String(body.opn_fy_period).trim();
+        const opnRes = await conn.execute(
+          `SELECT TO_CHAR(DATE_FROM, 'YYYY-MM-DD') AS DF, TO_CHAR(DATE_TO, 'YYYY-MM-DD') AS DT 
+             FROM MS_FY_PERIOD 
+            WHERE COMPANY_CODE = :cc AND FY_PERIOD = :fp AND ROWNUM = 1`,
+          { cc: companyCode, fp: opnPeriod },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const opnRow: any = (opnRes.rows as any[])?.[0];
+        if (!opnRow) {
+          res.status(400).json({ success: false, message: `Opening Financial Period "${opnPeriod}" does not exist in master.` });
+          return;
+        }
+
+        const activeYear = pRow.DF ? pRow.DF.slice(0, 4) : null;
+        const opnYear = opnRow.DF ? opnRow.DF.slice(0, 4) : null;
+        if (activeYear && opnYear && activeYear !== opnYear) {
+          res.status(400).json({
+            success: false,
+            message: `Opening Financial Period (${opnPeriod}) belongs to year ${opnYear}, which cannot be used with Active Period (${activePeriod}) for year ${activeYear}.`
+          });
+          return;
+        }
+      }
+
+      if (body.doc_edit_from && body.doc_edit_to) {
+        if (body.doc_edit_from > body.doc_edit_to) {
+          res.status(400).json({ success: false, message: "Doc Edit From (Lock Date) cannot be after Doc Edit To (Max Date)." });
+          return;
+        }
+        if (pRow.DF && body.doc_edit_from < pRow.DF) {
+          res.status(400).json({ success: false, message: `Doc Edit From (${body.doc_edit_from}) cannot be earlier than Active Period Start (${pRow.DF}).` });
+          return;
+        }
+        if (pRow.DT && body.doc_edit_to > pRow.DT) {
+          res.status(400).json({ success: false, message: `Doc Edit To (${body.doc_edit_to}) cannot exceed Active Period End (${pRow.DT}).` });
+          return;
+        }
+      }
+    }
 
     const result = await conn.execute(
       `BEGIN
