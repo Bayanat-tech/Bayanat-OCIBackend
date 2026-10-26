@@ -49,14 +49,18 @@ export class PartnerService {
 
   // Check for duplicate broker by code or name
   static async findDuplicate(params: {
-    broker_code?: string | null;
-    broker_name?: string | null;
+    broker_code: string;
+    broker_name?: string;
   }): Promise<BrokerMaster | null> {
-    if (!params.broker_code || !String(params.broker_code).trim()) {
-      return null;
+    let sql = `SELECT * FROM MS_BROKER WHERE broker_code = :broker_code`;
+    const bindParams: Record<string, any> = { broker_code: params.broker_code };
+
+    if (params.broker_name) {
+      sql += ` AND broker_name = :broker_name`;
+      bindParams.broker_name = params.broker_name;
     }
-    const sql = "SELECT * FROM MS_BROKER WHERE broker_code = :broker_code";
-    return await executeSingleQuery<BrokerMaster>(sql, { broker_code: String(params.broker_code).trim() });
+
+    return await executeSingleQuery<BrokerMaster>(sql, bindParams);
   }
 
   // Get all brokers
@@ -114,15 +118,7 @@ export class PartnerService {
     });
     
     await executeMutation(sql, bindObj);
-    const created = await executeSingleQuery<BrokerMaster>(
-      `SELECT * FROM (
-         SELECT * FROM MS_BROKER
-         WHERE company_code = :company_code AND broker_name = :broker_name
-         ORDER BY date_time DESC NULLS LAST
-       ) WHERE ROWNUM = 1`,
-      { company_code: sanitized.company_code, broker_name: sanitized.broker_name }
-    );
-    return (created || sanitized) as BrokerMaster;
+    return sanitized as BrokerMaster;
   }
 
   // Update existing broker
