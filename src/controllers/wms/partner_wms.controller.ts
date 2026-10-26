@@ -61,6 +61,7 @@ export const createPartner = async (req: RequestWithUser, res: Response) => {
     return res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PARTNER_WMS.PARTNER_CREATED_SUCCESSFULLY,
+      data: newPartner,
     });
   } catch (error: any) {
     return res.status(constants.STATUS_CODES.BAD_REQUEST).json({

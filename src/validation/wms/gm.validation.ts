@@ -660,7 +660,7 @@ export const airlineSchema = (data: IAirLine) => {
 export const partnerSchema = (data: any) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    broker_code: Joi.string().required(),
+    broker_code: Joi.string().allow("", null).optional(),
     broker_name: Joi.string().required(),
     partner_type: Joi.string().allow("", null),
     broker_stat: Joi.string().allow("", null),
