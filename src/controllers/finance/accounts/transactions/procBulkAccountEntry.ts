@@ -182,10 +182,11 @@ export const procBulkAccountEntry = async (
      }
 
      // Rule 4: Block duplicate purchase booking on Freight Jobs (PI / Purchase Invoices)
+     // PowerBuilder ERP allows separate Purchase Invoices for Agent Cost vs Transporter Cost vs Other Cost.
+     // Duplicate check must match (job_no + cost_type + act_code) so Agent and Transporter can be booked separately.
      if (String(header.doc_type || '').toUpperCase() === 'PI' && Array.isArray(details)) {
-       const jobNos = Array.from(new Set(
-         details.map((d: any) => String(d.job_no || '').trim()).filter(Boolean)
-       ));
+       const freightLines = details.filter((d: any) => Boolean(d.job_no && String(d.job_no).trim()));
+       const jobNos = Array.from(new Set(freightLines.map((d: any) => String(d.job_no).trim())));
 
        for (const jNo of jobNos) {
          const checkBooked: any = await connection!.execute(
@@ -209,13 +210,58 @@ export const procBulkAccountEntry = async (
            { outFormat: oracledb.OUT_FORMAT_OBJECT }
          );
 
-         if (checkBooked.rows && checkBooked.rows.length > 0) {
-           const bookedDoc = checkBooked.rows[0].DOC_NO;
-           res.status(400).json({
-             success: false,
-             message: `Job ${jNo} has already been booked in Purchase Invoice (${bookedDoc}). Duplicate purchase booking is completely blocked.`
-           });
-           return;
+         const bookedRows: any[] = checkBooked.rows || [];
+         if (bookedRows.length > 0) {
+           const getCostType = (text: string) => {
+             const t = text.toUpperCase();
+             if (t.includes('AGENT') || t.includes('BROKER')) return 'AGENT';
+             if (t.includes('TRANS')) return 'TRANS';
+             if (t.includes('OTHER') || t.includes('ACTUAL')) return 'OTHER';
+             return 'UNKNOWN';
+           };
+
+           const getActCode = (text: string) => {
+             const m = text.match(/^([A-Z0-9_-]+)/i);
+             return m ? m[1].toUpperCase() : '';
+           };
+
+           for (const incomingLine of freightLines.filter((l: any) => String(l.job_no).trim() === jNo)) {
+             const incRem = String(incomingLine.remarks || '');
+             const incType = getCostType(incRem);
+             const incAct = getActCode(incRem);
+             const incAmt = Math.abs(Number(incomingLine.amount || 0));
+
+             const matchedDuplicate = bookedRows.find((booked: any) => {
+               const bRem = String(booked.REMARKS || '');
+               const bType = getCostType(bRem);
+               const bAct = getActCode(bRem);
+               const bAmt = Math.abs(Number(booked.AMOUNT || 0));
+
+               // Match by cost type + activity code
+               if (incType !== 'UNKNOWN' && bType !== 'UNKNOWN') {
+                 if (incType === bType) {
+                   if (incAct && bAct && incAct === bAct) return true;
+                   if (Math.abs(incAmt - bAmt) < 0.001) return true;
+                 }
+                 return false;
+               }
+
+               // Fallback if cost type unknown: match activity code & amount
+               if (incAct && bAct && incAct === bAct && Math.abs(incAmt - bAmt) < 0.001) {
+                 return true;
+               }
+               return false;
+             });
+
+             if (matchedDuplicate) {
+               const bookedDoc = matchedDuplicate.DOC_NO;
+               res.status(400).json({
+                 success: false,
+                 message: `Job ${jNo} activity line [${incAct || incRem}] (${incType}) has already been booked in Purchase Invoice (${bookedDoc}). Duplicate purchase booking for the same cost item is completely blocked.`
+               });
+               return;
+             }
+           }
          }
        }
      }
