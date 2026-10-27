@@ -53,7 +53,31 @@ export const frtJobAlertDelete = actionProc("PROC_FRT_JOB_ALERT_DELETE", ["p_com
 
 export const frtJobAlertSave = async (req: Request, res: Response): Promise<void> => {
   const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
-  await saveLines(res, req, "PROC_FRT_JOB_ALERT_SAVE", "FRT_JOB_ALERT_TAB", "p_lines", lines.map(toAlertObject), "Job alerts saved successfully");
+  const reqOpType = stringValue(bodyValue(req, "op_type")) || "IMP";
+  let maxCode = 100;
+  lines.forEach((l: any) => {
+    const c = numberValue(l.op_code ?? l.OP_CODE);
+    if (c && c > maxCode) maxCode = c;
+  });
+
+  const alertObjects = lines.map((l: any, idx: number) => {
+    let opCode = numberValue(l.op_code ?? l.OP_CODE);
+    if (!opCode) {
+      maxCode++;
+      opCode = maxCode;
+    }
+    const opType = stringValue(l.op_type ?? l.OP_TYPE) || reqOpType;
+    return {
+      OP_CODE: opCode,
+      OP_DATE: toDate(l.op_date ?? l.OP_DATE) || new Date(),
+      REMARKS: stringValue(l.remarks ?? l.REMARKS ?? l.op_remarks ?? l.OP_REMARKS)?.slice(0, 40) ?? null,
+      OP_TYPE: opType.slice(0, 3),
+      OP_COUNT: numberValue(l.op_count ?? l.OP_COUNT) ?? 1,
+      OP_YESNO: yesNoValue(l.op_yesno ?? l.OP_YESNO)?.slice(0, 5) ?? "Y",
+    };
+  });
+
+  await saveLines(res, req, "PROC_FRT_JOB_ALERT_SAVE", "FRT_JOB_ALERT_TAB", "p_lines", alertObjects, "Job alerts saved successfully");
 };
 
 export const frtJobDepositList = listProc("PROC_FRT_JOB_DEPOSIT_LIST", "p_result");
