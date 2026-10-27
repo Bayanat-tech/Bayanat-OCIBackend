@@ -781,7 +781,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     }
 
     const effectiveCurr = companyCurrency || companyBaseCurr || normalizedData.currency || normalizedData.base_curr_code || "INR";
-    let effectiveDecimals = lcurDecimalNos ?? amountDecimalNos ?? normalizedData.lcur_decimal_nos ?? normalizedData.amount_decimal_nos;
+    let effectiveDecimals = amountDecimalNos ?? lcurDecimalNos ?? normalizedData.amount_decimal_nos ?? normalizedData.lcur_decimal_nos;
     if (effectiveDecimals == null || isNaN(effectiveDecimals)) {
       if (["OMR", "BHD", "KWD"].includes(effectiveCurr)) {
         effectiveDecimals = 3;

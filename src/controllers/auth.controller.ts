@@ -232,6 +232,25 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
     console.log(`[login] ✅ LOGIN SUCCESSFUL for ${user.LOGINID}`);
 
+    let userDecimals = 2;
+    let baseCurr = "OMR";
+    try {
+      const acSetupRows = await AuthService.executeInUserTenant(
+        user.LOGINID,
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, PRICE_DECIMAL_NOS, LCUR_DECIMAL_NOS 
+         FROM MS_AC_SETUP 
+         WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc)) AND ROWNUM = 1`,
+        { cc: user.COMPANY_CODE }
+      );
+      if (acSetupRows && acSetupRows.length > 0) {
+        const acRow = acSetupRows[0] as any;
+        if (acRow.AMOUNT_DECIMAL_NOS != null) userDecimals = Number(acRow.AMOUNT_DECIMAL_NOS);
+        if (acRow.BASE_CURR_CODE) baseCurr = String(acRow.BASE_CURR_CODE).trim();
+      }
+    } catch (e) {
+      console.warn("[login] Could not load MS_AC_SETUP for user:", e);
+    }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: { 
@@ -244,6 +263,10 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
           company_code: user.COMPANY_CODE,
           company_name: companyName,
           tenant_name: tenantName,
+          decimals: userDecimals,
+          amount_decimal_nos: userDecimals,
+          base_curr_code: baseCurr,
+          currency: baseCurr,
         }
       },
     });
@@ -302,10 +325,40 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     const tenantConfig = await TenantManager.getTenantConfig(tenantId);
     const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
     const tenantName = tenantConfig?.TENANT_NAME || tenantId;
+
+    let userDecimals = 2;
+    let baseCurr = "OMR";
+    let priceDecimals = 2;
+    let lcurDecimals = 2;
+    try {
+      const acSetupRows = await AuthService.executeInUserTenant(
+        loginid,
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, PRICE_DECIMAL_NOS, LCUR_DECIMAL_NOS 
+         FROM MS_AC_SETUP 
+         WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc)) AND ROWNUM = 1`,
+        { cc: user.COMPANY_CODE }
+      );
+      if (acSetupRows && acSetupRows.length > 0) {
+        const acRow = acSetupRows[0] as any;
+        if (acRow.AMOUNT_DECIMAL_NOS != null) userDecimals = Number(acRow.AMOUNT_DECIMAL_NOS);
+        if (acRow.PRICE_DECIMAL_NOS != null) priceDecimals = Number(acRow.PRICE_DECIMAL_NOS);
+        if (acRow.LCUR_DECIMAL_NOS != null) lcurDecimals = Number(acRow.LCUR_DECIMAL_NOS);
+        if (acRow.BASE_CURR_CODE) baseCurr = String(acRow.BASE_CURR_CODE).trim();
+      }
+    } catch (e) {
+      console.warn("[me] Could not load MS_AC_SETUP for user:", e);
+    }
+
     const enrichedUser = {
       ...userWithoutPassword,
       company_name: companyName,
       tenant_name: tenantName,
+      decimals: userDecimals,
+      amount_decimal_nos: userDecimals,
+      price_decimal_nos: priceDecimals,
+      lcur_decimal_nos: lcurDecimals,
+      base_curr_code: baseCurr,
+      currency: baseCurr,
     };
 
     // Get permissions from user's tenant
