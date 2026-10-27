@@ -70,22 +70,22 @@ export const insUpdTrAcAssetTransferBulk = async (
     p_details: {
       type: "TR_AC_ASSET_TRANSFER_DET_TAB",
       val: details.map((d: any) => ({
-        COMPANY_CODE: d.company_code,
-        DOC_TYPE: d.doc_type,
+        COMPANY_CODE: d.company_code || header.company_code,
+        DOC_TYPE: d.doc_type || header.doc_type || "ATR",
         DOC_NO:
           d.doc_no != null && d.doc_no !== 0
             ? String(d.doc_no)
             : null,
         SERIAL_NO: d.serial_no,
         ASSET_ID: d.asset_id,
-        SITE_FROM: d.site_from,
-        SITE_TO: d.site_to,
+        SITE_FROM: d.site_from || header.site_from,
+        SITE_TO: d.site_to || header.site_to,
         EMP_ID_FROM: d.emp_id_from,
         EMP_ID_TO: d.emp_id_to,
         REMARKS: d.remarks,
-        USER_ID: d.user_id,
-        USER_DT: d.user_dt ? new Date(d.user_dt) : null,
-        DIV_CODE: d.div_code,
+        USER_ID: d.user_id || header.user_id,
+        USER_DT: d.user_dt ? new Date(d.user_dt) : (header.user_dt ? new Date(header.user_dt) : new Date()),
+        DIV_CODE: d.div_code || header.div_code || "10",
       })),
     },
 
