@@ -7,8 +7,57 @@ type Connection = oracledb.Connection;
 
 export const frtInvoiceList = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
-    const result = await runFreightInvoiceProcedure(connection, req, "LIST");
-    const rows = await rowsFromCursor((result.outBinds as any).p_result);
+    let rows: any[] = [];
+    try {
+      const result = await runFreightInvoiceProcedure(connection, req, "LIST");
+      rows = await rowsFromCursor((result.outBinds as any).p_result);
+    } catch (procErr) {
+      console.warn("runFreightInvoiceProcedure failed, falling back to direct SQL:", procErr);
+    }
+
+    if (!rows || rows.length === 0) {
+      const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE, "BSG");
+      const search = value(req.body.search ?? req.body.SEARCH);
+      let sql = `
+        SELECT h.company_code,
+               h.invoice_no,
+               h.invoice_date,
+               h.from_date,
+               h.to_date,
+               h.job_no,
+               h.prin_code,
+               p.prin_name,
+               h.cust_code,
+               h.inv_amount,
+               h.curr_code,
+               NVL(h.inv_status, 'Confirmed') inv_status,
+               COUNT(DISTINCT NVL(d.job_no, h.job_no)) job_count,
+               COUNT(d.srno) line_count,
+               MAX(h.user_dt) user_dt
+          FROM tn_invoice h
+          LEFT JOIN ms_principal p
+            ON p.company_code = h.company_code
+           AND p.prin_code = h.prin_code
+          LEFT JOIN tn_invoice_det d
+            ON d.company_code = h.company_code
+           AND (d.invoice_no = h.invoice_no OR d.consolidated_invno = h.invoice_no)
+         WHERE h.company_code = :company_code
+      `;
+      const binds: any = { company_code: companyCode };
+      if (search) {
+        sql += ` AND (UPPER(h.invoice_no || ' ' || NVL(h.invno_prefixed, '') || ' ' || NVL(h.prin_code, '') || ' ' || NVL(p.prin_name, '')) LIKE :search)`;
+        binds.search = `%${search.toUpperCase()}%`;
+      }
+      sql += `
+         GROUP BY h.company_code, h.invoice_no, h.invoice_date, h.from_date, h.to_date,
+                  h.job_no, h.prin_code, p.prin_name, h.cust_code, h.inv_amount,
+                  h.curr_code, h.inv_status
+         ORDER BY NVL(h.invoice_date, MAX(h.user_dt)) DESC NULLS LAST, h.invoice_no DESC
+      `;
+      const directRes = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      rows = (directRes.rows as any[]) || [];
+    }
+
     res.json({ success: true, data: rows, totalCount: rows.length });
   });
 };
