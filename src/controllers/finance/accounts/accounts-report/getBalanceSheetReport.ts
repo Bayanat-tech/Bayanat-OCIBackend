@@ -179,8 +179,8 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
       AND TR_AC_DETAIL.ac_code       = MS_ACCODES.ac_code
       AND MS_AC_BLSETUP.BL_TYPE     <> 'H'
       AND MS_AC_BLSETUP.company_code = :companyCode
-      AND TR_AC_DETAIL.CANCELLED    <> 'Y'
-      AND TR_AC_DETAIL.doc_date      < TO_DATE(:asOnDate, 'YYYY-MM-DD')
+      AND NVL(TR_AC_DETAIL.CANCELLED, 'N') <> 'Y'
+      AND TR_AC_DETAIL.doc_date      < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
       AND ${divFilter}
     GROUP BY
       TR_AC_DETAIL.div_code,
@@ -202,8 +202,8 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
        FROM   TR_AC_DETAIL d
        WHERE  SUBSTR(d.ac_code, 1, 1) IN ('4', '5')
          AND  d.company_code = MS_AC_BLSETUP.company_code
-         AND  d.CANCELLED   <> 'Y'
-         AND  d.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD')
+         AND  NVL(d.CANCELLED, 'N') <> 'Y'
+         AND  d.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
          AND  ${divFilterAlias}) lcur_amount,
       CAST(NULL AS VARCHAR2(20))   div_code
     FROM  MS_AC_BLSETUP

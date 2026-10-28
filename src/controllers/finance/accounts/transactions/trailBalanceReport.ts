@@ -6,6 +6,7 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../common/report_common";
+import { mergeTrialBalanceOpenings, previousReportDate } from "../accounts-report/trialBalanceOpening";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TLevel = "l2" | "l3" | "l4";
@@ -219,7 +220,7 @@ async function loadGroupData(
   const conn   = await getConn(req);
   const config = LEVEL_CONFIG[level];
   try {
-    return await execDynamicProc(
+    const rows = await execDynamicProc(
       conn,
       config.apiParameter,
       req.user?.loginid ?? "",
@@ -228,6 +229,9 @@ async function loadGroupData(
       codeFilter || "",
       `${fromDate}|${toDate}`,
     );
+    const openings = await execDynamicProc(conn, config.apiParameter, req.user?.loginid ?? "",
+      companyCode, divisionCode || "All", codeFilter || "", `0001-01-01|${previousReportDate(fromDate)}`);
+    return mergeTrialBalanceOpenings(rows, openings, config.codeField);
   } finally {
     await closeConn(conn);
   }
@@ -255,7 +259,7 @@ async function loadAcData(
   const code1WithFlag = `${code1}|${excludeZeroTxns ? "1" : "0"}`;
 
   try {
-    return await execDynamicProc(
+    const rows = await execDynamicProc(
       conn,
       config.apiParameter,
       req.user?.loginid ?? "",
@@ -264,6 +268,12 @@ async function loadAcData(
       code3,
       code4,
     );
+    const openings = await execDynamicProc(conn, config.apiParameter, req.user?.loginid ?? "",
+      code1WithFlag, `0001-01-01|${previousReportDate(fromDate)}`, code3, code4);
+    const merged = mergeTrialBalanceOpenings(rows, openings, config.codeField);
+    return excludeZeroTxns
+      ? merged.filter(row => amount(row.debit_amount) !== 0 || amount(row.credit_amount) !== 0)
+      : merged;
   } finally {
     await closeConn(conn);
   }

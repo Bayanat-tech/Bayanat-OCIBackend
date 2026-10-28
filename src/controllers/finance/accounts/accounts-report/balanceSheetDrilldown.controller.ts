@@ -494,10 +494,10 @@ async function loadAcRows(
     FROM TR_AC_DETAIL, MS_ACCODES
     WHERE TR_AC_DETAIL.ac_code      = MS_ACCODES.ac_code
       AND TR_AC_DETAIL.company_code = :companyCode
-      AND TR_AC_DETAIL.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD')
+      AND TR_AC_DETAIL.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
       AND ('All' IN (${blIn}) OR MS_ACCODES.pl_bl_code IN (${blIn}))
       AND TR_AC_DETAIL.doc_type    <> 'EJV'
-      AND TR_AC_DETAIL.CANCELLED   <> 'Y'
+      AND NVL(TR_AC_DETAIL.CANCELLED, 'N') <> 'Y'
       AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
     GROUP BY TR_AC_DETAIL.div_code, TR_AC_DETAIL.company_code, TR_AC_DETAIL.ac_code
     ORDER BY TR_AC_DETAIL.ac_code
@@ -681,8 +681,8 @@ async function loadDetailRows(
       AND TR_AC_DETAIL.bank_ac_code = MS_ACCODES_B.ac_code(+)
       AND TR_AC_DETAIL.company_code = :companyCode
       AND ('All' IN (${acIn}) OR TR_AC_DETAIL.ac_code IN (${acIn}))
-      AND TR_AC_DETAIL.doc_date    < TO_DATE(:asOnDate, 'YYYY-MM-DD')
-      AND TR_AC_DETAIL.cancelled  <> 'Y'
+      AND TR_AC_DETAIL.doc_date    < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
+      AND NVL(TR_AC_DETAIL.CANCELLED, 'N') <> 'Y'
       AND TR_AC_DETAIL.doc_type   <> 'UJV'
       AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
     ORDER BY TR_AC_DETAIL.ac_code, TR_AC_DETAIL.doc_date, TR_AC_DETAIL.doc_no
