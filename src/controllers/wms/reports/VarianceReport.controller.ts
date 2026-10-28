@@ -59,12 +59,21 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
-function fmtAmount(n: number): string {
-  const abs = Math.abs(n).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+// 3 decimals, minus sign for negatives, ".000" for zero (matches PowerBuilder)
+function fmtNum(n: number): string {
+  const s = Math.abs(n).toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   });
-  return n < 0 ? `(${abs})` : abs;
+  const body = s.startsWith("0.") ? s.slice(1) : s;
+  return n < 0 && Math.abs(n) >= 0.0005 ? `-${body}` : body;
+}
+
+const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+function monthLabel(value: string): string {
+  const m = Number(value);
+  return Number.isInteger(m) && m >= 1 && m <= 12 ? MONTH_NAMES[m - 1] : value;
 }
 
 // ─── Param Parser ────────────────────────────────────────────────────────────
@@ -96,6 +105,55 @@ function parseParams(req: RequestWithUser) {
   };
 }
 
+// ─── Populate staging table (SP_HR_PAYROLL_COMPARISON deletes, inserts and commits itself) ──
+
+async function populateComparisonTable(
+  conn: oracledb.Connection,
+  params: ReturnType<typeof parseParams>,
+): Promise<void> {
+  const payMonth = Number(params.currentPayMonth);
+  const payYear = Number(params.payYear);
+
+  if (!Number.isInteger(payMonth) || payMonth < 1 || payMonth > 12) {
+    throw Object.assign(new Error("Invalid current pay month"), { status: 400 });
+  }
+  if (!Number.isInteger(payYear)) {
+    throw Object.assign(new Error("Invalid pay year"), { status: 400 });
+  }
+
+  try {
+    await conn.execute(
+      `BEGIN
+         SP_HR_PAYROLL_COMPARISON(
+           VS_COMPANYCODE  => :vs_companycode,
+           VS_DIVCODE      => :vs_divcode,
+           VS_DEPT_CODE    => :vs_dept_code,
+           VS_SECTION_CODE => :vs_section_code,
+           VS_EMPLOYEE_ID  => :vs_employee_id,
+           VS_PAY_MONTH    => :vs_pay_month,
+           VS_PAY_YEAR     => :vs_pay_year,
+           VS_HISTORYYN    => :vs_historyyn
+         );
+       END;`,
+      {
+        vs_companycode: params.companyCode,
+        vs_divcode: params.divCode,
+        vs_dept_code: params.deptCode,
+        vs_section_code: params.sectCode,
+        vs_employee_id: params.employeeCode, // employee ID, or 'All'
+        vs_pay_month: payMonth,
+        vs_pay_year: payYear,
+        vs_historyyn: params.historyReport,
+      },
+    );
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {}
+    throw e;
+  }
+}
+
 // ─── Data Loader ─────────────────────────────────────────────────────────────
 
 async function loadVarianceReportData(req: RequestWithUser): Promise<ReportRow[]> {
@@ -110,10 +168,15 @@ async function loadVarianceReportData(req: RequestWithUser): Promise<ReportRow[]
   const conn = await getConn(req);
 
   try {
+    // Payroll Comparison only: fill REP_HR_PAYROLL_COMPARISON first
+    if (params.reportType.toUpperCase() === "PAYROLL") {
+      await populateComparisonTable(conn, params);
+    }
+
     const binds: Record<string, any> = {
       p_parameter: "Hr_Report_VARIANCE_REPORT", // Must match the WHEN block in your procedure
       p_loginid: params.loginId,
-      
+
       // Mapped per your procedure parameters
       p_code1: params.companyCode,
       p_code2: params.divCode,
@@ -189,16 +252,23 @@ const VARIANCE_EXTRA_CSS = `
   body, table.var-table { font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
   .doc-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0 10px 0; }
   body .doc-title-row h1 { margin: 0; font-size: 16px; font-weight: 800; color: #00378c !important; letter-spacing: 0; }
-  
-  table.var-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; margin-top: 6px; border: 0; }
+
+  table.var-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; margin-top: 6px; border: 0; }
   table.var-table thead th { background: #00378c !important; color: #ffffff !important; font-weight: 700; font-size: 10px; padding: 8px 6px; text-align: left; border: 0 !important; box-shadow: inset 0 0 0 1000px #00378c; }
   table.var-table thead th.num-head { text-align: right; }
-  
-  table.var-table tbody td { padding: 5px 6px; border: 0; border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; font-size: 10px; font-weight: 400; background: #fcfdfe; }
+
+  table.var-table tbody td { padding: 4px 6px; border: 0; color: #1e293b; font-size: 10px; font-weight: 400; background: #fcfdfe; }
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .center { text-align: center; }
-  
-  table.var-table tbody tr.grand-total-row td { background: #e2e8f0 !important; color: #00378c !important; font-weight: 800; border-bottom: 1px solid #cbd5e1 !important; }
+
+  table.var-table tbody tr.emp-row td { padding-top: 10px; font-weight: 800; font-size: 10.5px; color: #0f172a; border-top: 1px solid #e2e8f0; }
+  table.var-table tbody tr.grp-row td { padding-left: 24px; font-weight: 600; color: #334155; }
+  table.var-table tbody tr.comp-row td.comp { padding-left: 24px; }
+  table.var-table tbody tr.net-row td { font-weight: 800; color: #00378c !important; border-top: 1px solid #94a3b8; border-bottom: 1px solid #94a3b8; background: #f1f5f9 !important; }
+  table.var-table tbody tr.net-row td.net-label { text-align: right; }
+  table.var-table tbody tr.tot-row td { background: #e2e8f0 !important; color: #00378c !important; font-weight: 800; }
+  table.var-table tbody tr.tot-row td.net-label { text-align: right; }
+  table.var-table tbody tr.tot-first td { border-top: 2px solid #00378c; }
+  table.var-table tbody tr.tot-last td { border-bottom: 2px solid #00378c; }
 
   .var-empty { border: 1px dashed #cbd5e1; background: #f8fafc; text-align: center; padding: 40px 12px; margin-top: 14px; color: #64748b; font-weight: 700; }
 
@@ -211,66 +281,123 @@ const VARIANCE_EXTRA_CSS = `
 
 const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
 
-// ─── Column detection ────────────────────────────────────────────────────────
+// ─── Grouping ────────────────────────────────────────────────────────────────
 
-type ColKind = "text" | "date" | "amount";
-const NO_TOTAL_RE = /(^|_)(id|code|no|sno|year|month|days?|age)$/i;
+type EmpGroup = { code: string; name: string; rows: ReportRow[] };
 
-function detectColumns(rows: ReportRow[]) {
-  const keys = Object.keys(rows[0] || {});
-  return keys.map((key) => {
-    const sample = rows.map((r) => r[key]).filter((v) => v != null && v !== "");
-    let kind: ColKind = "text";
-    if (sample.length && sample.every((v) => typeof v === "number")) kind = "amount";
-    return {
-      key,
-      kind,
-      label: key.replace(/_/g, " ").toUpperCase(),
-      total: kind === "amount" && !NO_TOTAL_RE.test(key),
-    };
-  });
+const n = (v: unknown): number => Number(v) || 0;
+
+function groupByEmployee(rows: ReportRow[]): EmpGroup[] {
+  const map = new Map<string, EmpGroup>();
+  for (const r of rows) {
+    const id = text(r.employee_id);
+    let g = map.get(id);
+    if (!g) {
+      g = { code: text(r.emp_code), name: text(r.emp_name), rows: [] };
+      map.set(id, g);
+    }
+    g.rows.push(r);
+  }
+  return Array.from(map.values());
 }
+
+const earnDed = (r: ReportRow): string => text(r.earn_ded).trim().toUpperCase();
 
 // ─── Body Renderer ────────────────────────────────────────────────────────────
 
-function renderVarianceReportBody(rows: ReportRow[], filtersHtml = ""): string {
+function renderVarianceReportBody(
+  rows: ReportRow[],
+  filtersHtml: string,
+  currLabel: string,
+  prevLabel: string,
+): string {
   const heading = `${FONT_LINK}<div class="doc-title-row"><div><h1>HR Variance Report</h1></div></div>`;
 
   if (!rows.length) {
     return `${heading}${filtersHtml}<div class="var-empty">No data found</div>`;
   }
 
-  const cols = detectColumns(rows);
+  const numCells = (cur: number, pre: number, variance: number): string =>
+    `<td class="num">${fmtNum(cur)}</td><td class="num">${fmtNum(pre)}</td><td class="num">${fmtNum(variance)}</td>`;
 
-  const headCells =
-    `<th class="num-head">SNo.</th>` +
-    cols.map((c) => `<th class="${c.kind === "amount" ? "num-head" : ""}">${escapeHtml(c.label)}</th>`).join("");
+  // E and D first, then any other EARN_DED value in order of appearance
+  const sectionKeys: string[] = ["E", "D"];
+  for (const r of rows) {
+    const k = earnDed(r);
+    if (k && !sectionKeys.includes(k)) sectionKeys.push(k);
+  }
+  const sectionLabel = (k: string): string => (k === "E" ? "Earnings" : k === "D" ? "Deduction" : k);
 
-  const cell = (c: (typeof cols)[number], v: unknown): string => {
-    if (c.kind === "amount") return `<td class="num">${fmtAmount(Number(v) || 0)}</td>`;
-    return `<td>${escapeHtml(v)}</td>`;
-  };
+  let totEarnCur = 0;
+  let totEarnPre = 0;
+  let totDedCur = 0;
+  let totDedPre = 0;
+  let body = "";
 
-  const bodyRows = rows.map((r, i) => `
-      <tr>
-        <td class="num">${i + 1}</td>
-        ${cols.map((c) => cell(c, r[c.key])).join("")}
-      </tr>`).join("");
+  for (const g of groupByEmployee(rows)) {
+    body += `<tr class="emp-row"><td>${escapeHtml(g.code)}</td><td colspan="4">${escapeHtml(g.name)}</td></tr>`;
 
-  const totalCells = cols.map((c) => {
-    if (!c.total) return `<td></td>`;
-    const sum = rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0);
-    return `<td class="num">${fmtAmount(sum)}</td>`;
-  }).join("");
+    let netCur = 0;
+    let netPre = 0;
 
-  const grandTotal = `<tr class="grand-total-row"><td class="num">TOTAL (${rows.length})</td>${totalCells}</tr>`;
+    for (const key of sectionKeys) {
+      const secRows = g.rows.filter((r) => earnDed(r) === key);
+      if (!secRows.length) continue;
+
+      body += `<tr class="grp-row"><td colspan="5">${escapeHtml(sectionLabel(key))}</td></tr>`;
+
+      for (const r of secRows) {
+        const cur = n(r.cur_value);
+        const pre = n(r.pre_value);
+
+        if (key === "E") {
+          netCur += cur;
+          netPre += pre;
+          totEarnCur += cur;
+          totEarnPre += pre;
+        } else if (key === "D") {
+          netCur -= cur;
+          netPre -= pre;
+          totDedCur += cur;
+          totDedPre += pre;
+        } // other codes: shown, not in net or totals
+
+        body += `
+          <tr class="comp-row">
+            <td></td>
+            <td class="comp">${escapeHtml(text(r.pay_unit_name) || text(r.pay_unit))}</td>
+            ${numCells(cur, pre, cur - pre)}
+          </tr>`;
+      }
+    }
+
+    body += `<tr class="net-row"><td colspan="2" class="net-label">Net Salary :</td>${numCells(netCur, netPre, netCur - netPre)}</tr>`;
+  }
+
+  const totCur = totEarnCur - totDedCur;
+  const totPre = totEarnPre - totDedPre;
+
+  body += `<tr class="tot-row tot-first"><td colspan="2" class="net-label">Total Earnings :</td>${numCells(totEarnCur, totEarnPre, totEarnCur - totEarnPre)}</tr>`;
+  body += `<tr class="tot-row"><td colspan="2" class="net-label">Total Deduction :</td>${numCells(totDedCur, totDedPre, totDedCur - totDedPre)}</tr>`;
+  body += `<tr class="tot-row tot-last"><td colspan="2" class="net-label">Total :</td>${numCells(totCur, totPre, totCur - totPre)}</tr>`;
 
   return `
     ${heading}
     ${filtersHtml}
     <table class="var-table">
-      <thead><tr>${headCells}</tr></thead>
-      <tbody>${bodyRows}${grandTotal}</tbody>
+      <colgroup>
+        <col style="width:14%"><col style="width:38%"><col style="width:16%"><col style="width:16%"><col style="width:16%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>EMPLOYEE NAME</th>
+          <th>PAY COMPONENT</th>
+          <th class="num-head">${escapeHtml(currLabel)}</th>
+          <th class="num-head">${escapeHtml(prevLabel)}</th>
+          <th class="num-head">VARIANCE</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
     </table>
   `;
 }
@@ -286,7 +413,7 @@ export const getHrVarianceReportHtml = async (
     const rows = await loadVarianceReportData(req);
 
     const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    
+
     const filtersHtml = reportAppliedFilters([
       { label: "Division", value: [params.divCode] },
       { label: "Department", value: [params.deptCode] },
@@ -298,7 +425,12 @@ export const getHrVarianceReportHtml = async (
       { label: "Report Type", value: [params.reportType] },
     ]);
 
-    const bodyHtml = renderVarianceReportBody(rows, filtersHtml);
+    const bodyHtml = renderVarianceReportBody(
+      rows,
+      filtersHtml,
+      monthLabel(params.currentPayMonth),
+      monthLabel(params.previousPayMonth),
+    );
     const footerHtml = reportFooter({
       reportName: "rpt_hr_variance",
       userName: params.loginId,
