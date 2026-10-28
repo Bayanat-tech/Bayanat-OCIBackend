@@ -18,7 +18,8 @@ export const getInvoiceOutstandingBalance = async (
   connection: oracledb.Connection,
   company_code: string,
   inv_no: string,
-  div_code: string
+  div_code: string,
+  ac_code?: string
 ): Promise<IInvoiceBalance | null> => {
   try {
     const result = await connection.execute(
@@ -38,6 +39,8 @@ export const getInvoiceOutstandingBalance = async (
         inv_no: inv_no,
         company_code,
         div_code,
+        has_ac: ac_code ? 1 : 0,
+        ac_code: ac_code ? String(ac_code).trim() : '',
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -72,7 +75,8 @@ export const getMultipleInvoiceBalances = async (
   connection: oracledb.Connection,
   company_code: string,
   inv_nos: string[],
-  div_code: string
+  div_code: string,
+  ac_code?: string
 ): Promise<IInvoiceBalance[]> => {
   if (!inv_nos || inv_nos.length === 0) {
     return [];
@@ -83,6 +87,8 @@ export const getMultipleInvoiceBalances = async (
     const binds: any = {
       company_code,
       div_code,
+      has_ac: ac_code ? 1 : 0,
+      ac_code: ac_code ? String(ac_code).trim() : '',
     };
 
     inv_nos.forEach((inv, i) => {

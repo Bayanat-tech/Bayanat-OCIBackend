@@ -1,3 +1,4 @@
+import { taxReportContext, formatTaxReportMoney } from "./taxReportValues";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 // @ts-ignore
@@ -106,7 +107,8 @@ interface XlCell { v: unknown; s: number }
 function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
 
 // ─── Excel Buffer Builder ─────────────────────────────────────────────────────
-function buildTaxSummaryExcelBuffer(rows: any[], loginid: string, parameter: string): Buffer {
+function buildTaxSummaryExcelBuffer(rows: any[], loginid: string, parameter: string, companyName: string, decimals: number): Buffer {
+  const formatBalance = (value: number) => formatTaxReportMoney(value, decimals);
   type Row = (XlCell | null)[];
   const skip = null;
   const NCOLS = 5;
@@ -114,7 +116,7 @@ function buildTaxSummaryExcelBuffer(rows: any[], loginid: string, parameter: str
   const tableRows: Row[] = [];
 
   // Row 1 — Company
-  tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+  tableRows.push([xc(companyName, "company"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 2 — Report Title
   tableRows.push([xc("Tax Register Summary Report", "title"), ...Array(NCOLS - 1).fill(skip)]);
@@ -506,7 +508,8 @@ export const exportTaxInvoiceSummaryExcel = async (req: Request, res: Response):
     const { rows, connection: conn } = await fetchRows(req);
     connection = conn;
 
-    const buffer = buildTaxSummaryExcelBuffer(rows, text(loginid) || "ADMIN", text(parameter));
+    const context = await taxReportContext(conn, text(req.body.code1));
+    const buffer = buildTaxSummaryExcelBuffer(rows, text(loginid) || "ADMIN", text(parameter), context.companyName, context.decimals);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="TaxRegisterSummaryReport.xlsx"`);

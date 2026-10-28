@@ -214,7 +214,7 @@ async function spInsertDetailRows(
   let headerAc: string | null = null;
   try {
     const hdr: any = await conn.execute(
-      `SELECT ac_code FROM TR_AC_HEADER 
+      `SELECT ac_code FROM TR_AC_HEADER
        WHERE company_code = :cc AND doc_type = :dt AND doc_no = :dn`,
       { cc: company_code, dt: doc_type, dn: doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -1982,7 +1982,7 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
       const chqTrimmed = String(h.cheque_no).trim();
       const chqDupRes: any = await conn.execute(
         `SELECT doc_no, doc_date 
-         FROM TR_AC_HEADER 
+         FROM TR_AC_HEADER
          WHERE company_code = :cc
            AND doc_type = 'BP'
            AND bank_ac_code = :bk
@@ -2136,7 +2136,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       const chqTrimmed = String(h.cheque_no).trim();
       const chqDupRes: any = await conn.execute(
         `SELECT doc_no, doc_date 
-         FROM TR_AC_HEADER 
+         FROM TR_AC_HEADER
          WHERE company_code = :cc
            AND doc_type = 'BP'
            AND bank_ac_code = :bk
@@ -2316,6 +2316,27 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
           });
           return;
         }
+      }
+    }
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) for PI
+    if (v.doc_type === 'PI' && (v.ref_no?.trim() || v.inv_no?.trim())) {
+      const checkRef = (v.ref_no?.trim() || v.inv_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: v.ac_code, ref: checkRef },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
       }
     }
 
@@ -2674,6 +2695,28 @@ if (fyError) {
   return;
 }
 
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
     //  Call your SP safely
     await conn.execute(
       `BEGIN SP_UPDATE_LPO(
@@ -2954,6 +2997,30 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     }
 
     conn = await getConn(req);
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (h.doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(h.doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
+
 
     // Update header and delete existing child records
     await conn.execute(

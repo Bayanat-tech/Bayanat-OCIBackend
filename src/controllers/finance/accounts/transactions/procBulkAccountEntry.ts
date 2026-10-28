@@ -1,19 +1,11 @@
+import { normalizeAccountingSign, postingAmounts } from "./financePostingAmounts";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { IUser } from '../../../../interfaces/user.interface';
 
-const normalizeSignInd = (value: unknown, fallback = 1): 1 | -1 => {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "cr" || normalized === "credit") return 1;
-    if (normalized === "dr" || normalized === "debit") return -1;
-  }
-  const numeric = Number(value);
-  if (numeric === 1 || numeric === -1) return numeric as 1 | -1;
-  return fallback === -1 ? -1 : 1;
-};
+const normalizeSignInd = normalizeAccountingSign;
 
 const defaultDetailSign = (docType?: string): 1 | -1 =>
   docType === "PI" || docType === "PO" ? 1 : -1;
@@ -592,6 +584,7 @@ export const procBulkAccountEntry = async (
             QTY: d.qty,
             PRICE: d.price,
             SIGN_CODE: d.sign_code,
+            ...postingAmounts(d, header),
           }))
         },
 
