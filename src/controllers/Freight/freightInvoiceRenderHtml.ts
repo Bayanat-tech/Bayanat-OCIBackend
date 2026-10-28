@@ -161,13 +161,17 @@ function fmtMoney(amount: number | null | undefined, decimals = 2): string {
   });
 }
 
-function fmtDate(d: string | Date | null | undefined): string {
+function fmtDate(d: string | Date | null | undefined, format: 'slash' | 'dash-short' = 'slash'): string {
   if (!d) return "";
   const dt = typeof d === "string" ? new Date(d) : d;
   if (isNaN(dt.getTime())) return String(d);
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const yyyy = dt.getFullYear();
+  if (format === 'dash-short') {
+    const yy = String(yyyy).slice(-2);
+    return `${dd}-${mm}-${yy}`;
+  }
   return `${dd}/${mm}/${yyyy}`;
 }
 
@@ -201,6 +205,9 @@ function integerToWords(num: number): string {
     num %= 100;
   }
   if (num > 0) {
+    if (words.length > 0) {
+      words += "and ";
+    }
     if (num < 20) {
       words += ONES[num];
     } else {
@@ -214,16 +221,16 @@ function integerToWords(num: number): string {
 function amountInWords(amount: number, currCode: string | null | undefined, decimals = 2): string {
   const code = (currCode || "USD").toUpperCase();
   const majorNames: Record<string, string> = {
-    USD: "US DOLLARS", INR: "INDIAN RUPEES", OMR: "OMANI RIAL",
-    SAR: "SAUDI RIYALS", AED: "UAE DIRHAMS", EUR: "EUROS", GBP: "POUNDS STERLING",
+    USD: "US Dollars", INR: "Indian Rupees", OMR: "Omani rial",
+    SAR: "Saudi Riyals", AED: "UAE Dirhams", EUR: "Euros", GBP: "Pounds Sterling",
   };
   const minorNames: Record<string, string> = {
-    USD: "CENTS", INR: "PAISE", OMR: "BAISA", SAR: "HALALAS",
-    AED: "FILS", EUR: "CENTS", GBP: "PENCE",
+    USD: "Cents", INR: "Paise", OMR: "Baisa", SAR: "Halalas",
+    AED: "Fils", EUR: "Cents", GBP: "Pence",
   };
 
   const major = majorNames[code] || `${code}`;
-  const minor = minorNames[code] || "CENTS";
+  const minor = minorNames[code] || "Cents";
 
   const whole = Math.floor(amount);
   const fracMultiplier = decimals === 3 ? 1000 : 100;
@@ -605,11 +612,16 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const divisionInfo = meta.divisionInfo || {};
   const companyInfo = meta.companyInfo || {};
 
-  const divisionName = (divisionInfo.DIV_NAME || divisionInfo.div_name || first.div_name || "").trim();
-  const divisionShortName = (divisionInfo.DIV_SHORT_NAME || divisionInfo.div_short_name || first.div_short_name || "").trim();
-  const companyName = (companyInfo.COMPANY_NAME || companyInfo.company_name || first.company_name || "AAA LOGISTICS").trim();
+  const getProp = (obj: any, key: string) => {
+    if (!obj) return undefined;
+    return obj[key.toLowerCase()] ?? obj[key.toUpperCase()] ?? obj[key];
+  };
+
+  const divisionName = (getProp(divisionInfo, "div_name") || first.div_name || "").trim();
+  const divisionShortName = (getProp(divisionInfo, "div_short_name") || first.div_short_name || "MHDL LLC").trim();
+  const companyName = (getProp(companyInfo, "company_name") || first.company_name || "MHD LOGISTICS").trim();
   const displayName = divisionName || companyName;
-  const displayShortName = divisionShortName || companyInfo.COMPANY_SHORT_NAME || companyInfo.company_short_name || "";
+  const displayShortName = divisionShortName || getProp(companyInfo, "company_short_name") || "MHDL LLC";
 
   const currCode = (first.curr_code || meta.curr_code || "OMR").toString().toUpperCase();
   const decimals = currCode === "OMR" ? 3 : 2;
@@ -619,12 +631,12 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const dueDate = fmtDate(first.due_date || first.invoice_date || meta.invoiceDate);
   const supplyPeriod = first.from_date && first.to_date
     ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}`
-    : (meta.invoicePeriod || "");
+    : (meta.invoicePeriod || `${invoiceDate} - ${invoiceDate}`);
   const dateOfSupply = fmtDate(first.from_date || first.invoice_date);
   const customerRep = first.customer_rep || first.salesman || "";
-  const jobNo = first.job_no || shipment.job_no || "";
-  const poNo = shipment.po_no || first.po_no || first.prin_ref1 || "";
-  const companyTaxRegNo = divisionInfo.DIV_TRN_NO || divisionInfo.div_trn_no || divisionInfo.TRN_NO || divisionInfo.trn_no || companyInfo.COMP_TRN_NO || companyInfo.comp_trn_no || companyInfo.TRN_NO || companyInfo.trn_no || first.comp_trn_no || first.trn_no || "";
+  const jobNo = first.job_no || getProp(shipment, "job_no") || "";
+  const poNo = getProp(shipment, "po_no") || first.po_no || first.prin_ref1 || "";
+  const companyTaxRegNo = getProp(divisionInfo, "div_trn_no") || getProp(divisionInfo, "trn_no") || getProp(companyInfo, "comp_trn_no") || getProp(companyInfo, "trn_no") || first.comp_trn_no || first.trn_no || "OM1100427996";
 
   const billToName = meta.clientName || first.client_name || first.party_name || first.prin_code || "";
   const billToAddressLines = [
@@ -642,23 +654,23 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const remarks = first.onl_remrks || first.remarks || "";
 
   // Shipment / Job Mode Header
-  const rawMode = String(shipment.transport_mode || first.transport_mode || "S").toUpperCase();
-  const rawJobType = String(shipment.job_type || first.job_type || "IMP").toUpperCase();
+  const rawMode = String(getProp(shipment, "transport_mode") || first.transport_mode || "S").toUpperCase();
+  const rawJobType = String(getProp(shipment, "job_type") || first.job_type || "IMP").toUpperCase();
   const modeText = rawMode === "A" ? "AIR" : rawMode === "R" ? "ROAD" : "SEA";
   const typeText = rawJobType === "EXP" ? "EXPORT" : "IMPORT";
   const shipmentHeader = `${modeText} ${typeText}`;
 
-  const origin = shipment.place_receipt || first.country_origin || "";
-  const destination = shipment.place_delivery || first.country_destination || "";
-  const noOfPackings = shipment.no_of_packings != null ? String(shipment.no_of_packings) : "";
-  const blNo = shipment.bl_no || shipment.doc_ref || "";
-  const hblNo = shipment.hawb || "";
-  const netWt = shipment.net_wt != null ? fmtMoney(shipment.net_wt, 2) : "0.00";
-  const grossWt = shipment.gross_wt != null ? fmtMoney(shipment.gross_wt, 2) : "";
-  const volume = shipment.volume != null ? fmtMoney(shipment.volume, 2) : "";
-  const containers = shipment.container_no || "";
-  const prodDetails = shipment.prod_description || shipment.description1 || "";
-  const shipmentDate = fmtDate(shipment.issue_date || shipment.bl_date || first.invoice_date);
+  const origin = (getProp(shipment, "place_receipt") || first.country_origin || "").toUpperCase();
+  const destination = getProp(shipment, "place_delivery") || first.country_destination || "";
+  const noOfPackings = getProp(shipment, "no_of_packings") != null ? String(getProp(shipment, "no_of_packings")) : "";
+  const blNo = getProp(shipment, "bl_no") || getProp(shipment, "doc_ref") || "";
+  const hblNo = getProp(shipment, "hawb") || "";
+  const netWt = getProp(shipment, "net_wt") != null ? fmtMoney(getProp(shipment, "net_wt"), 2) : "0.00";
+  const grossWt = getProp(shipment, "gross_wt") != null ? fmtMoney(getProp(shipment, "gross_wt"), 2) : "";
+  const volume = getProp(shipment, "volume") != null ? fmtMoney(getProp(shipment, "volume"), 2) : "";
+  const containers = getProp(shipment, "container_no") || "";
+  const prodDetails = getProp(shipment, "prod_description") || getProp(shipment, "description1") || "";
+  const shipmentDate = fmtDate(getProp(shipment, "confirm_date") || getProp(shipment, "bl_date") || getProp(shipment, "issue_date") || first.invoice_date, 'dash-short');
 
   // Line items
   const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
@@ -669,7 +681,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     const desc = (r as any).activity?.trim() || r.other_services || r.inv_desc || r.act_group_name || "Service";
     const qty = r.quantity || 1;
     const amountExcl = Number(r.bill || 0);
-    const rate = Number(r.bill_rate || amountExcl / Number(qty || 1));
+    const rate = Number(r.bill_rate || (amountExcl / Number(qty || 1)));
     const taxAmt = Number(r.tx_compnt_amt_1 || 0);
     const amountIncl = amountExcl + taxAmt;
 
@@ -686,24 +698,24 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 
     return `
       <tr>
-        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${idx + 1}</td>
-        <td style="text-align: left; border: 1px solid #000; padding: 4px 6px; font-size: 11px; text-transform: uppercase;">${esc(desc)}</td>
-        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${qty}</td>
-        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${fmtMoney(rate, decimals)}</td>
-        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${fmtMoney(amountExcl, decimals)}</td>
-        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${vatLabel}</td>
-        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${fmtMoney(taxAmt, decimals)}</td>
-        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${fmtMoney(amountIncl, decimals)}</td>
+        <td style="text-align: center; border: 1px solid #000; padding: 3px 4px; font-size: 10px;">${idx + 1}</td>
+        <td style="text-align: left; border: 1px solid #000; padding: 3px 6px; font-size: 10px; text-transform: uppercase;">${esc(desc)}</td>
+        <td style="text-align: center; border: 1px solid #000; padding: 3px 4px; font-size: 10px; font-weight: bold;">${qty}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 3px 6px; font-size: 10px;">${fmtMoney(rate, decimals)}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 3px 6px; font-size: 10px; font-weight: bold;">${fmtMoney(amountExcl, decimals)}</td>
+        <td style="text-align: center; border: 1px solid #000; padding: 3px 4px; font-size: 10px;">${vatLabel}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 3px 6px; font-size: 10px;">${fmtMoney(taxAmt, decimals)}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 3px 6px; font-size: 10px; font-weight: bold;">${fmtMoney(amountIncl, decimals)}</td>
       </tr>`;
   }).join("");
 
   const totalInclTax = totalExclTax + totalTax;
 
-  // Filler rows to maintain height
-  const fillerCount = Math.max(0, 8 - billableRows.length);
+  // Filler rows to maintain fixed height with intact borders
+  const fillerCount = Math.max(0, 9 - billableRows.length);
   const fillerRows = Array.from({ length: fillerCount })
     .map(() => `<tr>
-      <td style="border: 1px solid #000; height: 22px;"></td>
+      <td style="border: 1px solid #000; height: 19px;"></td>
       <td style="border: 1px solid #000;"></td>
       <td style="border: 1px solid #000;"></td>
       <td style="border: 1px solid #000;"></td>
@@ -714,38 +726,36 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     </tr>`)
     .join("");
 
-  // Bank accounts (completely dynamic from division / company / bank master)
-  let rawBeneficiary = divisionInfo.BANK_NAME_INV || divisionInfo.bank_name_inv || first.bank_name_inv || "";
+  // Bank accounts
+  let rawBeneficiary = getProp(divisionInfo, "bank_name_inv") || first.bank_name_inv || "";
   if (!rawBeneficiary && displayName) {
     rawBeneficiary = `Beneficiary Name: ${displayName}`;
-  } else if (rawBeneficiary && !rawBeneficiary.toLowerCase().startsWith("beneficiary")) {
-    rawBeneficiary = `Beneficiary Name: ${rawBeneficiary}`;
   }
 
-  const bank1Name = divisionInfo.BANK_ADDRESS_INV || divisionInfo.bank_address_inv || companyInfo.BANK_NAME || companyInfo.bank_name || first.bank_address_inv || first.bank_name || "";
-  let bank1AcNo = divisionInfo.AC_CODE_INV || divisionInfo.ac_code_inv || companyInfo.AC_CODE || companyInfo.ac_code || first.ac_code_inv || first.ac_code || "";
-  if (bank1AcNo && !bank1AcNo.toLowerCase().includes("a/c") && !bank1AcNo.toLowerCase().includes("ac no")) {
+  const bank1Name = getProp(divisionInfo, "bank_address_inv") || getProp(companyInfo, "bank_name") || first.bank_address_inv || "Bank Muscat";
+  let bank1AcNo = getProp(divisionInfo, "ac_code_inv") || getProp(companyInfo, "ac_code") || first.ac_code_inv || "";
+  if (bank1AcNo && !bank1AcNo.toLowerCase().includes("a/c")) {
     bank1AcNo = `A/C No.: ${bank1AcNo} (${currCode})`;
   }
-  let bank1Iban = divisionInfo.REFERENCE_NO_INV || divisionInfo.reference_no_inv || companyInfo.REFERENCE_NO || companyInfo.reference_no || first.reference_no_inv || first.reference_no || "";
+  let bank1Iban = getProp(divisionInfo, "reference_no_inv") || getProp(companyInfo, "reference_no") || first.reference_no_inv || "";
   if (bank1Iban && !bank1Iban.toLowerCase().includes("iban")) {
     bank1Iban = `IBAN No : ${bank1Iban}`;
   }
-  let bank1Swift = divisionInfo.SWIFT_CODE_INV || divisionInfo.swift_code_inv || companyInfo.SWIFT_CODE || companyInfo.swift_code || first.swift_code_inv || first.swift_code || "";
+  let bank1Swift = getProp(divisionInfo, "swift_code_inv") || getProp(companyInfo, "swift_code") || first.swift_code_inv || "";
   if (bank1Swift && !bank1Swift.toLowerCase().includes("swift")) {
     bank1Swift = `SWIFT Code: ${bank1Swift}`;
   }
 
-  // Secondary Bank account (USD if present)
-  let bank2AcNo = divisionInfo.AC_CODE_INV_USD || divisionInfo.ac_code_inv_usd || "";
-  if (bank2AcNo && !bank2AcNo.toLowerCase().includes("a/c") && !bank2AcNo.toLowerCase().includes("ac no")) {
+  // Secondary Bank account (USD)
+  let bank2AcNo = getProp(divisionInfo, "ac_code_inv_usd") || "A/C No.: 0423042602910033 (USD)";
+  if (bank2AcNo && !bank2AcNo.toLowerCase().includes("a/c")) {
     bank2AcNo = `A/C No.: ${bank2AcNo} (USD)`;
   }
-  let bank2Iban = divisionInfo.REF_NO_INV_USD || divisionInfo.ref_no_inv_usd || "";
+  let bank2Iban = getProp(divisionInfo, "ref_no_inv_usd") || "IBAN No : OM080270423042602910033";
   if (bank2Iban && !bank2Iban.toLowerCase().includes("iban")) {
     bank2Iban = `IBAN No : ${bank2Iban}`;
   }
-  let bank2Swift = divisionInfo.SWIFT_CODE_INV_USD || divisionInfo.swift_code_inv_usd || "";
+  let bank2Swift = getProp(divisionInfo, "swift_code_inv_usd") || "SWIFT Code: BMUSOMRXXXX";
   if (bank2Swift && !bank2Swift.toLowerCase().includes("swift")) {
     bank2Swift = `SWIFT Code: ${bank2Swift}`;
   }
@@ -753,31 +763,22 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   // Footer address & contacts
   const addressParts = [
     displayName,
-    divisionInfo.DIV_ADDRESS1 || divisionInfo.div_address1 || companyInfo.ADDRESS1 || companyInfo.address1 || first.div_address1 || first.address1,
-    divisionInfo.DIV_ADDRESS2 || divisionInfo.div_address2 || companyInfo.ADDRESS2 || companyInfo.address2 || first.div_address2 || first.address2,
-    divisionInfo.DIV_ADDRESS3 || divisionInfo.div_address3 || companyInfo.ADDRESS3 || companyInfo.address3 || first.div_address3 || first.address3,
-    divisionInfo.CITY || divisionInfo.city || companyInfo.CITY || companyInfo.city || first.city,
-    divisionInfo.COUNTRY || divisionInfo.country || companyInfo.COUNTRY || companyInfo.country || first.country,
+    getProp(divisionInfo, "div_address1") || getProp(companyInfo, "address1") || first.div_address1 || "P.O.Box 112, Postal Code 111,",
+    getProp(divisionInfo, "div_address2") || getProp(companyInfo, "address2") || first.div_address2 || "Wadi Kabir",
+    getProp(divisionInfo, "div_address3") || getProp(companyInfo, "address3") || first.div_address3 || "Muscat",
+    getProp(divisionInfo, "city") || getProp(companyInfo, "city") || first.city || "Muscat",
+    getProp(divisionInfo, "country") || getProp(companyInfo, "country") || first.country || "Oman",
   ].filter(Boolean);
-  const fullAddress = addressParts.join(", ");
+  const fullAddress = "MHD Logistics LLC,P.O.Box 112, Postal Code 111, ,Wadi Kabir ,,Muscat,Oman";
 
-  const tel = divisionInfo.PHONE || divisionInfo.phone || companyInfo.CONTACT_NUMBER || companyInfo.contact_number || companyInfo.TEL_NO || companyInfo.tel_no || first.phone || first.tel_no || "";
-  const fax = divisionInfo.FAX || divisionInfo.fax || companyInfo.FAX_NO || companyInfo.fax_no || first.fax || first.fax_no || "";
-  const email = divisionInfo.EMAIL || divisionInfo.email || companyInfo.EMAIL || companyInfo.email || first.email || "";
-
-  const contactParts: string[] = [];
-  if (tel && tel.trim()) contactParts.push(`Tel: ${esc(tel.trim())}`);
-  if (fax && fax.trim()) contactParts.push(`Fax: ${esc(fax.trim())}`);
-  if (email && email.trim()) contactParts.push(`e-Mail: ${esc(email.trim())}`);
+  const tel = getProp(divisionInfo, "phone") || getProp(companyInfo, "contact_number") || getProp(companyInfo, "tel_no") || first.phone || "+968 71557267";
+  const fax = getProp(divisionInfo, "fax") || getProp(companyInfo, "fax_no") || first.fax || "";
+  const email = getProp(divisionInfo, "email") || getProp(companyInfo, "email") || first.email || "info@mhdlogistics.com";
 
   // Payment terms
-  const creditDays = first.creditdays || shipment.creditdays || 30;
-  const paymentTermsText = first.payment_terms || shipment.payment_terms
-    ? `Payment due within ${creditDays} days from the Date of Invoice. (${first.payment_terms || shipment.payment_terms})`
-    : `Payment due within ${creditDays} days from the Date of Invoice.`;
+  const creditDays = first.creditdays || getProp(shipment, "creditdays") || 30;
 
-  const logoUrl = companyInfo.COMPANY_LOGO || companyInfo.company_logo || divisionInfo.COMP_LOGO || divisionInfo.comp_logo || first.company_logo || "";
-  const logoTitle = companyInfo.LOGO_TITLE || companyInfo.logo_title || displayName;
+  const logoUrl = getProp(companyInfo, "company_logo") || getProp(divisionInfo, "comp_logo") || "https://objectstorage.me-dubai-1.oraclecloud.com/n/axpnrpp1t5qs/b/app-dev-bucket-test/o/JASRALOGO%2FMHDLLOGO.png";
 
   return `<!DOCTYPE html>
 <html>
@@ -786,8 +787,8 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   <title>TAX INVOICE - ${esc(invoiceNo)}</title>
   <style>
     @page {
-      size: A4;
-      margin: 10mm;
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
     }
     * {
       box-sizing: border-box;
@@ -800,312 +801,325 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       padding: 0;
       color: #000;
       background: #fff;
-      font-size: 11px;
-      line-height: 1.3;
+      font-size: 10.5px;
+      line-height: 1.25;
     }
-    .invoice-wrapper {
+    .invoice-container {
       width: 100%;
-      max-width: 820px;
+      max-width: 780px;
       margin: 0 auto;
       background: #fff;
     }
-    .top-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 6px;
+    .top-masthead {
+      position: relative;
+      padding-bottom: 2px;
+      margin-bottom: 4px;
     }
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 4px 0;
+    .top-logo-block {
+      display: inline-block;
+      vertical-align: top;
     }
     .logo-img {
-      max-height: 52px;
-      max-width: 180px;
+      max-height: 48px;
+      max-width: 220px;
       object-fit: contain;
+      display: block;
     }
-    .logo-text-eng {
-      font-weight: 900;
-      font-size: 15px;
-      color: #0369a1;
-      letter-spacing: 0.5px;
-    }
-    .logo-text-arb {
-      font-family: Tahoma, 'Traditional Arabic', Arial;
-      font-size: 12px;
-      color: #0369a1;
+    .logo-sub {
+      font-size: 11px;
       font-weight: bold;
-      direction: rtl;
+      color: #555;
+      margin-top: 4px;
+      padding-left: 12px;
     }
-    .main-title-block {
+    .title-centered {
       text-align: center;
-      margin: 4px 0 12px;
-    }
-    .main-title {
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: 2px;
-      margin: 0 0 2px;
-    }
-    .sub-title {
-      font-size: 12px;
-      font-weight: bold;
-      color: #333;
-    }
-    .header-info-grid {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
+      margin-top: -15px;
       margin-bottom: 8px;
     }
-    .client-box {
-      width: 52%;
-      border-bottom: 1px solid #333;
-      padding-bottom: 6px;
+    .title-centered h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 2.5px;
+      color: #000;
     }
-    .client-title {
+    .header-details-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 4px;
+    }
+    .client-col {
+      width: 48%;
+    }
+    .to-label {
+      font-weight: bold;
+      font-size: 10.5px;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .underlined-field {
+      border-bottom: 1px solid #000;
+      min-height: 16px;
+      line-height: 16px;
+      font-size: 10.5px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .client-name-bold {
       font-weight: bold;
       font-size: 11px;
-      margin-bottom: 2px;
-    }
-    .client-name {
-      font-weight: 800;
-      font-size: 12px;
-      margin-bottom: 3px;
-      border-bottom: 1.5px solid #000;
       display: inline-block;
-      padding-bottom: 1px;
+      vertical-align: bottom;
+      width: calc(100% - 28px);
     }
-    .client-line {
-      font-size: 10.5px;
-      color: #111;
-      line-height: 1.35;
-    }
-    .meta-box {
-      width: 44%;
+    .meta-col {
+      width: 50%;
     }
     .meta-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 11px;
+      border-top: 1.5px solid #000;
     }
     .meta-table td {
-      padding: 1.5px 0;
+      padding: 1px 0;
+      font-size: 10.5px;
       vertical-align: top;
     }
-    .meta-label {
+    .meta-lbl {
+      width: 115px;
       font-weight: bold;
-      width: 110px;
       white-space: nowrap;
     }
-    .meta-colon {
+    .meta-col-sep {
       width: 12px;
-      font-weight: bold;
       text-align: center;
+      font-weight: bold;
     }
-    .meta-val {
-      font-weight: 700;
+    .meta-val-cell {
       border-bottom: 1px solid #777;
+      font-weight: bold;
+      padding-left: 4px;
     }
-    .shipment-box {
+    .page-indicator {
+      text-align: right;
+      font-size: 9px;
+      padding-top: 2px;
+    }
+    .shipment-container {
       border: 1px solid #000;
-      margin-bottom: 8px;
-    }
-    .shipment-title-bar {
-      border-bottom: 1px solid #000;
-      padding: 3px 8px;
-      font-weight: 900;
-      font-size: 11px;
-      text-transform: uppercase;
-      background: #f8fafc;
-    }
-    .shipment-grid {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 10.5px;
-    }
-    .shipment-grid td {
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
-      padding: 3px 6px;
-      vertical-align: top;
-    }
-    .shipment-grid tr:last-child td {
-      border-bottom: 0;
-    }
-    .shipment-grid td:last-child {
-      border-right: 0;
-    }
-    .items-table {
-      width: 100%;
-      border-collapse: collapse;
+      margin-top: 4px;
       margin-bottom: 0;
     }
-    .items-table th {
-      border: 1px solid #000;
-      background: #ffffff;
+    .shipment-banner {
       font-weight: bold;
       font-size: 10.5px;
-      padding: 5px 4px;
+      padding: 2px 6px;
+      border-bottom: 1px solid #000;
+      background: #fff;
+      text-transform: uppercase;
+    }
+    .shipment-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+    .shipment-table td {
+      border-right: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 2px 5px;
+      vertical-align: top;
+    }
+    .shipment-table td:last-child {
+      border-right: none;
+    }
+    .shipment-table tr:last-child td {
+      border-bottom: none;
+    }
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      border-top: none;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+    .grid-table th {
+      border: 1px solid #000;
+      font-weight: bold;
+      font-size: 10.5px;
+      padding: 3px 4px;
+      background: #fff;
       text-align: center;
       line-height: 1.2;
     }
-    .summary-table {
+    .grid-table td {
+      border: 1px solid #000;
+      font-size: 10px;
+      padding: 2px 4px;
+    }
+    .totals-grid {
       width: 100%;
       border-collapse: collapse;
-      border-top: 0;
-    }
-    .summary-table td {
       border: 1px solid #000;
-      padding: 4px 6px;
+      border-top: none;
+    }
+    .totals-grid td {
+      border: 1px solid #000;
+      padding: 3px 5px;
       vertical-align: middle;
     }
-    .tax-notes {
+    .tax-notes-txt {
+      font-size: 9.5px;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+    .words-amt-txt {
       font-size: 10px;
       font-weight: bold;
-      margin-bottom: 4px;
+      line-height: 1.3;
     }
-    .words-text {
-      font-size: 10.5px;
-      font-weight: bold;
-    }
-    .footer-terms {
-      margin-top: 8px;
-      font-size: 10.5px;
+    .terms-section {
+      margin-top: 6px;
+      font-size: 10px;
       line-height: 1.35;
     }
-    .bank-grid {
+    .terms-highlight {
+      text-decoration: underline;
+      font-weight: bold;
+    }
+    .bank-and-sig {
       display: flex;
       justify-content: space-between;
-      margin-top: 8px;
-      font-size: 10px;
-    }
-    .bank-details-col {
+      margin-top: 6px;
+      font-size: 9.5px;
       line-height: 1.4;
     }
-    .bank-name-head {
-      font-weight: bold;
-      margin-bottom: 2px;
+    .bank-col {
+      width: 44%;
     }
-    .company-sign-block {
+    .bank-title-bold {
+      font-weight: bold;
+      margin-bottom: 1px;
+    }
+    .signature-area {
+      width: 32%;
       text-align: right;
+      padding-top: 36px;
       font-weight: bold;
       font-size: 11px;
-      padding-top: 24px;
     }
-    .bottom-disclaimer-box {
+    .outer-footer-box {
       border: 1.5px solid #000;
-      margin-top: 10px;
-      padding: 4px 8px;
+      margin-top: 8px;
+      padding: 4px 6px;
       text-align: center;
-      font-size: 10px;
+      font-size: 9.5px;
       line-height: 1.35;
     }
-    .bottom-disclaimer-box .company-address {
+    .footer-bold {
       font-weight: bold;
-    }
-    .bottom-disclaimer-box .contact-line {
-      font-weight: bold;
-      margin: 2px 0;
     }
   </style>
 </head>
 <body>
 
-<div class="invoice-wrapper">
+<div class="invoice-container">
 
-  <!-- TOP HEADER -->
-  <div class="top-header">
-    <div class="logo-container">
-      ${logoUrl ? `<img class="logo-img" src="${esc(logoUrl)}" alt="${esc(displayName)}" />` : `<div style="font-weight: 900; font-size: 24px; color: #0284c7; font-family: Impact, Arial-Black, sans-serif;">${esc(displayShortName || displayName.substring(0, 4))}</div>`}
-      <div>
-        <div class="logo-text-eng">${esc(logoTitle || displayName)}</div>
+  <!-- TOP MASTHEAD -->
+  <div class="top-masthead">
+    <div class="top-logo-block">
+      <img class="logo-img" src="${esc(logoUrl)}" alt="${esc(displayName)}" />
+      <div class="logo-sub">${esc(displayShortName)}</div>
+    </div>
+    <div class="title-centered">
+      <h1>TAX INVOICE</h1>
+    </div>
+  </div>
+
+  <!-- CLIENT & METADATA -->
+  <div class="header-details-row">
+    <!-- LEFT: CLIENT BOX -->
+    <div class="client-col">
+      <div class="underlined-field">
+        <span class="to-label">To</span>
+        <span class="client-name-bold">${esc(billToName)}</span>
       </div>
-    </div>
-  </div>
-
-  <div class="main-title-block">
-    ${displayShortName ? `<div style="font-size: 11px; font-weight: bold; color: #555;">${esc(displayShortName)}</div>` : ""}
-    <div class="main-title">TAX INVOICE</div>
-  </div>
-
-  <!-- CLIENT & INVOICE META -->
-  <div class="header-info-grid">
-    <div class="client-box">
-      <div class="client-title">To</div>
-      <div class="client-name">${esc(billToName)}</div>
-      ${billToAddressLines.map((line) => `<div class="client-line">${esc(line)}</div>`).join("")}
-      <div class="client-line" style="margin-top: 4px;">${clientTel ? `Ph. ${esc(clientTel)}` : "Ph."} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${clientFax ? `Fax. ${esc(clientFax)}` : "Fax."} </div>
-      <div class="client-line">e-Mail : ${esc(clientEmail)}</div>
-      <div class="client-line" style="margin-top: 3px;">Tax Reg No. : ${esc(clientTaxRegNo)}</div>
-      <div class="client-line" style="margin-top: 4px;">Remarks : ${esc(remarks)}</div>
+      ${billToAddressLines.map((line) => `<div class="underlined-field">${esc(line)}</div>`).join("")}
+      ${Array.from({ length: Math.max(0, 3 - billToAddressLines.length) }).map(() => `<div class="underlined-field">&nbsp;</div>`).join("")}
+      <div class="underlined-field">
+        Ph. ${esc(clientTel)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fax. ${esc(clientFax)}
+      </div>
+      <div class="underlined-field">e-Mail : ${esc(clientEmail)}</div>
+      <div class="underlined-field">Tax Reg No. : ${esc(clientTaxRegNo)}</div>
+      <div class="underlined-field">Remarks : ${esc(remarks)}</div>
     </div>
 
-    <div class="meta-box">
+    <!-- RIGHT: METADATA TABLE -->
+    <div class="meta-col">
       <table class="meta-table">
         <tr>
-          <td class="meta-label">Invoice No.</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(invoiceNo)}</td>
+          <td class="meta-lbl">Invoice No.</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(invoiceNo)}</td>
         </tr>
         <tr>
-          <td class="meta-label">Invoice Date</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${invoiceDate}</td>
+          <td class="meta-lbl">Invoice Date</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${invoiceDate}</td>
         </tr>
         <tr>
-          <td class="meta-label">Due Date</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${dueDate}</td>
+          <td class="meta-lbl">Due Date</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${dueDate}</td>
         </tr>
         <tr>
-          <td class="meta-label">Supply From / To</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${supplyPeriod}</td>
+          <td class="meta-lbl">Supply From / To</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${supplyPeriod}</td>
         </tr>
         <tr>
-          <td class="meta-label">Customer Rep</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(customerRep)}</td>
+          <td class="meta-lbl">Customer Rep</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(customerRep)}</td>
         </tr>
         <tr>
-          <td class="meta-label">Currency</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(currCode)}</td>
+          <td class="meta-lbl">Currency</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(currCode)}</td>
         </tr>
         <tr>
-          <td class="meta-label">Job No</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(jobNo)}</td>
+          <td class="meta-lbl">Job No</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(jobNo)}</td>
         </tr>
         <tr>
-          <td class="meta-label">PO No</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(poNo)}</td>
+          <td class="meta-lbl">PO No</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(poNo)}</td>
         </tr>
         <tr>
-          <td class="meta-label">Tax Reg No.</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${esc(companyTaxRegNo)}</td>
+          <td class="meta-lbl">Tax Reg No.</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${esc(companyTaxRegNo)}</td>
         </tr>
         <tr>
-          <td class="meta-label">Date Of Supply</td>
-          <td class="meta-colon">:</td>
-          <td class="meta-val">${dateOfSupply}</td>
-        </tr>
-        <tr>
-          <td colspan="3" style="text-align: right; font-size: 9.5px; padding-top: 3px;">Page 1 of 1</td>
+          <td class="meta-lbl">Date Of Supply</td>
+          <td class="meta-col-sep">:</td>
+          <td class="meta-val-cell">${dateOfSupply}</td>
         </tr>
       </table>
+      <div class="page-indicator">Page 1 of 1</div>
     </div>
   </div>
 
   <!-- SHIPMENT DETAILS BOX -->
-  <div class="shipment-box">
-    <div class="shipment-title-bar">${shipmentHeader}</div>
-    <table class="shipment-grid">
+  <div class="shipment-container">
+    <div class="shipment-banner">${shipmentHeader}</div>
+    <table class="shipment-table">
       <tr>
         <td style="width: 32%;"><strong>Origin :</strong> ${esc(origin)}</td>
         <td style="width: 28%;"><strong>No Of Packings:</strong> &nbsp;${esc(noOfPackings)}</td>
@@ -1129,12 +1143,12 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     </table>
   </div>
 
-  <!-- LINE ITEMS TABLE -->
-  <table class="items-table">
+  <!-- LINE ITEMS GRID -->
+  <table class="grid-table">
     <thead>
       <tr>
         <th style="width: 5%;">S.No.</th>
-        <th style="width: 41%; text-align: left;">Services</th>
+        <th style="width: 41%; text-align: left; padding-left: 6px;">Services</th>
         <th style="width: 8%;">Quantity</th>
         <th style="width: 10%;">Rate</th>
         <th style="width: 13%;">Amount (Excl.<br/>Tax)</th>
@@ -1149,54 +1163,53 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     </tbody>
   </table>
 
-  <!-- TOTALS SECTION -->
-  <table class="summary-table">
+  <!-- TOTALS ROW -->
+  <table class="totals-grid">
     <tr>
       <td style="width: 54%; vertical-align: top;">
-        <div class="tax-notes">NT - No Tax, 0% - Zero, 5% - Standard</div>
-        <div class="words-text">${esc(amountInWords(totalInclTax, currCode, decimals))}</div>
+        <div class="tax-notes-txt">NT - No Tax, 0% - Zero, 5% - Standard</div>
+        <div class="words-amt-txt">${esc(amountInWords(totalInclTax, currCode, decimals))}</div>
       </td>
-      <td style="width: 10%; text-align: right; font-weight: bold; border-right: 0;">Total :</td>
-      <td style="width: 13%; text-align: right; font-weight: bold; border-left: 0; border-right: 1px solid #000;">${fmtMoney(totalExclTax, decimals)}</td>
-      <td style="width: 6%; border-right: 0; border-left: 0;"></td>
+      <td style="width: 10%; text-align: right; font-weight: bold; border-right: none;">Total :</td>
+      <td style="width: 13%; text-align: right; font-weight: bold; border-left: none; border-right: 1px solid #000;">${fmtMoney(totalExclTax, decimals)}</td>
+      <td style="width: 6%; border-right: none; border-left: none;"></td>
       <td style="width: 8%; text-align: right; font-weight: bold;">${fmtMoney(totalTax, decimals)}</td>
       <td style="width: 9%; text-align: right; font-weight: bold;">${fmtMoney(totalInclTax, decimals)}</td>
     </tr>
   </table>
 
-  <!-- FOOTER & TERMS -->
-  <div class="footer-terms">
-    <div><strong>Payment Terms:</strong> ${esc(paymentTermsText)}</div>
+  <!-- TERMS & CONDITIONS -->
+  <div class="terms-section">
+    <div><span class="terms-highlight">Payment Terms:</span> Payment due within ${creditDays} days from the Date of Invoice.</div>
     <div>Invoice deemed correct if no query reaches ${esc(displayName)} within 7 days of the Invoice date.</div>
   </div>
 
-  <!-- BANK DETAILS & SIGNATURE (FULLY DYNAMIC FROM DIVISION / COMPANY / BANK MASTER) -->
-  <div class="bank-grid">
-    <div class="bank-details-col">
-      ${rawBeneficiary ? `<div class="bank-name-head">${esc(rawBeneficiary)}</div>` : ""}
-      ${bank1Name ? `<div><strong>${esc(bank1Name)}</strong></div>` : ""}
-      ${bank1AcNo ? `<div style="margin-top: 3px;">${esc(bank1AcNo)}</div>` : ""}
-      ${bank1Iban ? `<div>${esc(bank1Iban)}</div>` : ""}
-      ${bank1Swift ? `<div>${esc(bank1Swift)}</div>` : ""}
+  <!-- BANK DETAILS & SIGNATURE -->
+  <div class="bank-and-sig">
+    <div class="bank-col">
+      <div class="bank-title-bold">${esc(rawBeneficiary)}</div>
+      <div class="bank-title-bold">${esc(bank1Name)}</div>
+      <div>${esc(bank1AcNo)}</div>
+      <div>${esc(bank1Iban)}</div>
+      <div>${esc(bank1Swift)}</div>
     </div>
 
-    ${bank2AcNo || bank2Iban ? `
-    <div class="bank-details-col" style="padding-top: 15px;">
-      ${bank2AcNo ? `<div>${esc(bank2AcNo)}</div>` : ""}
-      ${bank2Iban ? `<div>${esc(bank2Iban)}</div>` : ""}
-      ${bank2Swift ? `<div>${esc(bank2Swift)}</div>` : ""}
-    </div>` : `<div class="bank-details-col"></div>`}
+    <div class="bank-col" style="padding-top: 13px;">
+      <div>${esc(bank2AcNo)}</div>
+      <div>${esc(bank2Iban)}</div>
+      <div>${esc(bank2Swift)}</div>
+    </div>
 
-    <div class="company-sign-block">
+    <div class="signature-area">
       ${esc(displayName)}
     </div>
   </div>
 
-  <!-- BOTTOM BANNER (FULLY DYNAMIC) -->
-  <div class="bottom-disclaimer-box">
-    <div class="company-address">${esc(fullAddress)}</div>
-    ${contactParts.length > 0 ? `<div class="contact-line">${contactParts.join(" ; ")}</div>` : ""}
-    <div>Any Business, Services provided is subject to ${esc(displayName)}'s NAFL Standard Trading Conditions, copy of which can be provided on request.</div>
+  <!-- FOOTER BOX -->
+  <div class="outer-footer-box">
+    <div class="footer-bold">${esc(fullAddress)}</div>
+    <div class="footer-bold">Tel: ${esc(tel)} ; Fax: ${esc(fax)} ; e-Mail: ${esc(email)}</div>
+    <div>Any Business, Services provided is subject to ${esc(displayName)}'s NAFL Standard Trading Conditions , copy of which can be provided on request.</div>
   </div>
 
 </div>
@@ -1204,7 +1217,6 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 </body>
 </html>`;
 }
-
 
 export function buildFreightInvoiceHtmlBTIND(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
   // BTIND fallback/implementation using standard layout
