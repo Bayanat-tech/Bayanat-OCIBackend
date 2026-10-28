@@ -1324,6 +1324,12 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
               AND NVL(pay_h.canceled, 'N') = 'N'
              WHERE d.company_code = h.company_code 
                AND d.div_code     = h.div_code 
+               AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+               AND (
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN'))
+                 OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+               )
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
                AND NVL(d.indicator_origin, 'N') = 'N'
                AND (:exclude_doc_no IS NULL OR d.doc_no <> :exclude_doc_no)
@@ -1971,6 +1977,35 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     const { detail = [], children = {}, files = [], ...h } = req.body;
     conn = await getConn(req);
 
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER 
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
+
     // Step 1 — call header SP, get generated doc_no
     const hdrResult = await conn.execute(
       `BEGIN SP_CREATE_CHQ_HEADER(
@@ -2095,6 +2130,37 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
     if (!h.doc_no) { res.status(400).json({ success: false, message: 'Missing doc_no in request' }); return; }
 
     conn = await getConn(req);
+
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER 
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND TO_CHAR(doc_no) <> :dn
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+          dn: String(h.doc_no).trim(),
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
 
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
