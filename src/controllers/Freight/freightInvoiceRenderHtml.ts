@@ -122,6 +122,10 @@ export interface FreightInvoiceMeta {
   curr_code?: string | null;
   ex_rate?: number | null;
   stampDataUrl?: string;
+  shipmentInfo?: any;
+  divisionInfo?: any;
+  companyInfo?: any;
+  bankAccounts?: any[];
 }
 
 export function normalizeOracleFreightInvoiceRow(raw: Record<string, any> | null | undefined): FreightInvoiceRow {
@@ -589,6 +593,618 @@ export function buildFreightInvoiceHtmlAMKSA(rows: FreightInvoiceRow[], meta: Fr
 </body>
 </html>`;
 }
+
+
+export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
+  if (!rows || rows.length === 0) {
+    return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No freight invoice data found.</p></body></html>`;
+  }
+
+  const first = rows[0];
+  const shipment = meta.shipmentInfo || {};
+  const divisionInfo = meta.divisionInfo || {};
+  const companyInfo = meta.companyInfo || {};
+
+  const divisionName = (divisionInfo.DIV_NAME || divisionInfo.div_name || first.div_name || "").trim();
+  const divisionShortName = (divisionInfo.DIV_SHORT_NAME || divisionInfo.div_short_name || first.div_short_name || "").trim();
+  const companyName = (companyInfo.COMPANY_NAME || companyInfo.company_name || first.company_name || "AAA LOGISTICS").trim();
+  const displayName = divisionName || companyName;
+  const displayShortName = divisionShortName || companyInfo.COMPANY_SHORT_NAME || companyInfo.company_short_name || "";
+
+  const currCode = (first.curr_code || meta.curr_code || "OMR").toString().toUpperCase();
+  const decimals = currCode === "OMR" ? 3 : 2;
+
+  const invoiceNo = meta.invoiceNo || first.invno_prefixed || first.invoice_no || "";
+  const invoiceDate = fmtDate(first.invoice_date || meta.invoiceDate || first.user_dt);
+  const dueDate = fmtDate(first.due_date || first.invoice_date || meta.invoiceDate);
+  const supplyPeriod = first.from_date && first.to_date
+    ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}`
+    : (meta.invoicePeriod || "");
+  const dateOfSupply = fmtDate(first.from_date || first.invoice_date);
+  const customerRep = first.customer_rep || first.salesman || "";
+  const jobNo = first.job_no || shipment.job_no || "";
+  const poNo = shipment.po_no || first.po_no || first.prin_ref1 || "";
+  const companyTaxRegNo = divisionInfo.DIV_TRN_NO || divisionInfo.div_trn_no || divisionInfo.TRN_NO || divisionInfo.trn_no || companyInfo.COMP_TRN_NO || companyInfo.comp_trn_no || companyInfo.TRN_NO || companyInfo.trn_no || first.comp_trn_no || first.trn_no || "";
+
+  const billToName = meta.clientName || first.client_name || first.party_name || first.prin_code || "";
+  const billToAddressLines = [
+    first.prin_addr1,
+    first.prin_addr2,
+    first.prin_addr3,
+    first.prin_addr4,
+    first.prin_city,
+  ].filter(Boolean) as string[];
+
+  const clientEmail = first.prin_email1 || "";
+  const clientTel = first.prin_telno1 || "";
+  const clientFax = first.prin_faxno1 || "";
+  const clientTaxRegNo = first.prin_trn_no || meta.clientVatNo || "";
+  const remarks = first.onl_remrks || first.remarks || "";
+
+  // Shipment / Job Mode Header
+  const rawMode = String(shipment.transport_mode || first.transport_mode || "S").toUpperCase();
+  const rawJobType = String(shipment.job_type || first.job_type || "IMP").toUpperCase();
+  const modeText = rawMode === "A" ? "AIR" : rawMode === "R" ? "ROAD" : "SEA";
+  const typeText = rawJobType === "EXP" ? "EXPORT" : "IMPORT";
+  const shipmentHeader = `${modeText} ${typeText}`;
+
+  const origin = shipment.place_receipt || first.country_origin || "";
+  const destination = shipment.place_delivery || first.country_destination || "";
+  const noOfPackings = shipment.no_of_packings != null ? String(shipment.no_of_packings) : "";
+  const blNo = shipment.bl_no || shipment.doc_ref || "";
+  const hblNo = shipment.hawb || "";
+  const netWt = shipment.net_wt != null ? fmtMoney(shipment.net_wt, 2) : "0.00";
+  const grossWt = shipment.gross_wt != null ? fmtMoney(shipment.gross_wt, 2) : "";
+  const volume = shipment.volume != null ? fmtMoney(shipment.volume, 2) : "";
+  const containers = shipment.container_no || "";
+  const prodDetails = shipment.prod_description || shipment.description1 || "";
+  const shipmentDate = fmtDate(shipment.issue_date || shipment.bl_date || first.invoice_date);
+
+  // Line items
+  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+  let totalExclTax = 0;
+  let totalTax = 0;
+
+  const itemRowsHtml = billableRows.map((r, idx) => {
+    const desc = (r as any).activity?.trim() || r.other_services || r.inv_desc || r.act_group_name || "Service";
+    const qty = r.quantity || 1;
+    const amountExcl = Number(r.bill || 0);
+    const rate = Number(r.bill_rate || amountExcl / Number(qty || 1));
+    const taxAmt = Number(r.tx_compnt_amt_1 || 0);
+    const amountIncl = amountExcl + taxAmt;
+
+    totalExclTax += amountExcl;
+    totalTax += taxAmt;
+
+    const vatPercNum = Number(r.tx_compnt_perc_1 || 0);
+    let vatLabel = "NT";
+    if (vatPercNum > 0) {
+      vatLabel = `${vatPercNum} %`;
+    } else if (String(r.tx_compnt_1_expamt || "").toUpperCase() === "ZERO" || (vatPercNum === 0 && taxAmt === 0 && String(desc).toUpperCase().includes("PORT"))) {
+      vatLabel = "Zero";
+    }
+
+    return `
+      <tr>
+        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${idx + 1}</td>
+        <td style="text-align: left; border: 1px solid #000; padding: 4px 6px; font-size: 11px; text-transform: uppercase;">${esc(desc)}</td>
+        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${qty}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${fmtMoney(rate, decimals)}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${fmtMoney(amountExcl, decimals)}</td>
+        <td style="text-align: center; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${vatLabel}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px;">${fmtMoney(taxAmt, decimals)}</td>
+        <td style="text-align: right; border: 1px solid #000; padding: 4px 6px; font-size: 11px; font-weight: bold;">${fmtMoney(amountIncl, decimals)}</td>
+      </tr>`;
+  }).join("");
+
+  const totalInclTax = totalExclTax + totalTax;
+
+  // Filler rows to maintain height
+  const fillerCount = Math.max(0, 8 - billableRows.length);
+  const fillerRows = Array.from({ length: fillerCount })
+    .map(() => `<tr>
+      <td style="border: 1px solid #000; height: 22px;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+      <td style="border: 1px solid #000;"></td>
+    </tr>`)
+    .join("");
+
+  // Bank accounts (completely dynamic from division / company / bank master)
+  let rawBeneficiary = divisionInfo.BANK_NAME_INV || divisionInfo.bank_name_inv || first.bank_name_inv || "";
+  if (!rawBeneficiary && displayName) {
+    rawBeneficiary = `Beneficiary Name: ${displayName}`;
+  } else if (rawBeneficiary && !rawBeneficiary.toLowerCase().startsWith("beneficiary")) {
+    rawBeneficiary = `Beneficiary Name: ${rawBeneficiary}`;
+  }
+
+  const bank1Name = divisionInfo.BANK_ADDRESS_INV || divisionInfo.bank_address_inv || companyInfo.BANK_NAME || companyInfo.bank_name || first.bank_address_inv || first.bank_name || "";
+  let bank1AcNo = divisionInfo.AC_CODE_INV || divisionInfo.ac_code_inv || companyInfo.AC_CODE || companyInfo.ac_code || first.ac_code_inv || first.ac_code || "";
+  if (bank1AcNo && !bank1AcNo.toLowerCase().includes("a/c") && !bank1AcNo.toLowerCase().includes("ac no")) {
+    bank1AcNo = `A/C No.: ${bank1AcNo} (${currCode})`;
+  }
+  let bank1Iban = divisionInfo.REFERENCE_NO_INV || divisionInfo.reference_no_inv || companyInfo.REFERENCE_NO || companyInfo.reference_no || first.reference_no_inv || first.reference_no || "";
+  if (bank1Iban && !bank1Iban.toLowerCase().includes("iban")) {
+    bank1Iban = `IBAN No : ${bank1Iban}`;
+  }
+  let bank1Swift = divisionInfo.SWIFT_CODE_INV || divisionInfo.swift_code_inv || companyInfo.SWIFT_CODE || companyInfo.swift_code || first.swift_code_inv || first.swift_code || "";
+  if (bank1Swift && !bank1Swift.toLowerCase().includes("swift")) {
+    bank1Swift = `SWIFT Code: ${bank1Swift}`;
+  }
+
+  // Secondary Bank account (USD if present)
+  let bank2AcNo = divisionInfo.AC_CODE_INV_USD || divisionInfo.ac_code_inv_usd || "";
+  if (bank2AcNo && !bank2AcNo.toLowerCase().includes("a/c") && !bank2AcNo.toLowerCase().includes("ac no")) {
+    bank2AcNo = `A/C No.: ${bank2AcNo} (USD)`;
+  }
+  let bank2Iban = divisionInfo.REF_NO_INV_USD || divisionInfo.ref_no_inv_usd || "";
+  if (bank2Iban && !bank2Iban.toLowerCase().includes("iban")) {
+    bank2Iban = `IBAN No : ${bank2Iban}`;
+  }
+  let bank2Swift = divisionInfo.SWIFT_CODE_INV_USD || divisionInfo.swift_code_inv_usd || "";
+  if (bank2Swift && !bank2Swift.toLowerCase().includes("swift")) {
+    bank2Swift = `SWIFT Code: ${bank2Swift}`;
+  }
+
+  // Footer address & contacts
+  const addressParts = [
+    displayName,
+    divisionInfo.DIV_ADDRESS1 || divisionInfo.div_address1 || companyInfo.ADDRESS1 || companyInfo.address1 || first.div_address1 || first.address1,
+    divisionInfo.DIV_ADDRESS2 || divisionInfo.div_address2 || companyInfo.ADDRESS2 || companyInfo.address2 || first.div_address2 || first.address2,
+    divisionInfo.DIV_ADDRESS3 || divisionInfo.div_address3 || companyInfo.ADDRESS3 || companyInfo.address3 || first.div_address3 || first.address3,
+    divisionInfo.CITY || divisionInfo.city || companyInfo.CITY || companyInfo.city || first.city,
+    divisionInfo.COUNTRY || divisionInfo.country || companyInfo.COUNTRY || companyInfo.country || first.country,
+  ].filter(Boolean);
+  const fullAddress = addressParts.join(", ");
+
+  const tel = divisionInfo.PHONE || divisionInfo.phone || companyInfo.CONTACT_NUMBER || companyInfo.contact_number || companyInfo.TEL_NO || companyInfo.tel_no || first.phone || first.tel_no || "";
+  const fax = divisionInfo.FAX || divisionInfo.fax || companyInfo.FAX_NO || companyInfo.fax_no || first.fax || first.fax_no || "";
+  const email = divisionInfo.EMAIL || divisionInfo.email || companyInfo.EMAIL || companyInfo.email || first.email || "";
+
+  const contactParts: string[] = [];
+  if (tel && tel.trim()) contactParts.push(`Tel: ${esc(tel.trim())}`);
+  if (fax && fax.trim()) contactParts.push(`Fax: ${esc(fax.trim())}`);
+  if (email && email.trim()) contactParts.push(`e-Mail: ${esc(email.trim())}`);
+
+  // Payment terms
+  const creditDays = first.creditdays || shipment.creditdays || 30;
+  const paymentTermsText = first.payment_terms || shipment.payment_terms
+    ? `Payment due within ${creditDays} days from the Date of Invoice. (${first.payment_terms || shipment.payment_terms})`
+    : `Payment due within ${creditDays} days from the Date of Invoice.`;
+
+  const logoUrl = companyInfo.COMPANY_LOGO || companyInfo.company_logo || divisionInfo.COMP_LOGO || divisionInfo.comp_logo || first.company_logo || "";
+  const logoTitle = companyInfo.LOGO_TITLE || companyInfo.logo_title || displayName;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>TAX INVOICE - ${esc(invoiceNo)}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #000;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .invoice-wrapper {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      background: #fff;
+    }
+    .top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .logo-img {
+      max-height: 52px;
+      max-width: 180px;
+      object-fit: contain;
+    }
+    .logo-text-eng {
+      font-weight: 900;
+      font-size: 15px;
+      color: #0369a1;
+      letter-spacing: 0.5px;
+    }
+    .logo-text-arb {
+      font-family: Tahoma, 'Traditional Arabic', Arial;
+      font-size: 12px;
+      color: #0369a1;
+      font-weight: bold;
+      direction: rtl;
+    }
+    .main-title-block {
+      text-align: center;
+      margin: 4px 0 12px;
+    }
+    .main-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin: 0 0 2px;
+    }
+    .sub-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+    }
+    .header-info-grid {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .client-box {
+      width: 52%;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+    .client-title {
+      font-weight: bold;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .client-name {
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 3px;
+      border-bottom: 1.5px solid #000;
+      display: inline-block;
+      padding-bottom: 1px;
+    }
+    .client-line {
+      font-size: 10.5px;
+      color: #111;
+      line-height: 1.35;
+    }
+    .meta-box {
+      width: 44%;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .meta-table td {
+      padding: 1.5px 0;
+      vertical-align: top;
+    }
+    .meta-label {
+      font-weight: bold;
+      width: 110px;
+      white-space: nowrap;
+    }
+    .meta-colon {
+      width: 12px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .meta-val {
+      font-weight: 700;
+      border-bottom: 1px solid #777;
+    }
+    .shipment-box {
+      border: 1px solid #000;
+      margin-bottom: 8px;
+    }
+    .shipment-title-bar {
+      border-bottom: 1px solid #000;
+      padding: 3px 8px;
+      font-weight: 900;
+      font-size: 11px;
+      text-transform: uppercase;
+      background: #f8fafc;
+    }
+    .shipment-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+    }
+    .shipment-grid td {
+      border-right: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 3px 6px;
+      vertical-align: top;
+    }
+    .shipment-grid tr:last-child td {
+      border-bottom: 0;
+    }
+    .shipment-grid td:last-child {
+      border-right: 0;
+    }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 0;
+    }
+    .items-table th {
+      border: 1px solid #000;
+      background: #ffffff;
+      font-weight: bold;
+      font-size: 10.5px;
+      padding: 5px 4px;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 0;
+    }
+    .summary-table td {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: middle;
+    }
+    .tax-notes {
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .words-text {
+      font-size: 10.5px;
+      font-weight: bold;
+    }
+    .footer-terms {
+      margin-top: 8px;
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+    .bank-grid {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 10px;
+    }
+    .bank-details-col {
+      line-height: 1.4;
+    }
+    .bank-name-head {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .company-sign-block {
+      text-align: right;
+      font-weight: bold;
+      font-size: 11px;
+      padding-top: 24px;
+    }
+    .bottom-disclaimer-box {
+      border: 1.5px solid #000;
+      margin-top: 10px;
+      padding: 4px 8px;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+    .bottom-disclaimer-box .company-address {
+      font-weight: bold;
+    }
+    .bottom-disclaimer-box .contact-line {
+      font-weight: bold;
+      margin: 2px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="invoice-wrapper">
+
+  <!-- TOP HEADER -->
+  <div class="top-header">
+    <div class="logo-container">
+      ${logoUrl ? `<img class="logo-img" src="${esc(logoUrl)}" alt="${esc(displayName)}" />` : `<div style="font-weight: 900; font-size: 24px; color: #0284c7; font-family: Impact, Arial-Black, sans-serif;">${esc(displayShortName || displayName.substring(0, 4))}</div>`}
+      <div>
+        <div class="logo-text-eng">${esc(logoTitle || displayName)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-title-block">
+    ${displayShortName ? `<div style="font-size: 11px; font-weight: bold; color: #555;">${esc(displayShortName)}</div>` : ""}
+    <div class="main-title">TAX INVOICE</div>
+  </div>
+
+  <!-- CLIENT & INVOICE META -->
+  <div class="header-info-grid">
+    <div class="client-box">
+      <div class="client-title">To</div>
+      <div class="client-name">${esc(billToName)}</div>
+      ${billToAddressLines.map((line) => `<div class="client-line">${esc(line)}</div>`).join("")}
+      <div class="client-line" style="margin-top: 4px;">${clientTel ? `Ph. ${esc(clientTel)}` : "Ph."} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${clientFax ? `Fax. ${esc(clientFax)}` : "Fax."} </div>
+      <div class="client-line">e-Mail : ${esc(clientEmail)}</div>
+      <div class="client-line" style="margin-top: 3px;">Tax Reg No. : ${esc(clientTaxRegNo)}</div>
+      <div class="client-line" style="margin-top: 4px;">Remarks : ${esc(remarks)}</div>
+    </div>
+
+    <div class="meta-box">
+      <table class="meta-table">
+        <tr>
+          <td class="meta-label">Invoice No.</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(invoiceNo)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Invoice Date</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${invoiceDate}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Due Date</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${dueDate}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Supply From / To</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${supplyPeriod}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Customer Rep</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(customerRep)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Currency</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(currCode)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Job No</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(jobNo)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">PO No</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(poNo)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Tax Reg No.</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${esc(companyTaxRegNo)}</td>
+        </tr>
+        <tr>
+          <td class="meta-label">Date Of Supply</td>
+          <td class="meta-colon">:</td>
+          <td class="meta-val">${dateOfSupply}</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="text-align: right; font-size: 9.5px; padding-top: 3px;">Page 1 of 1</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SHIPMENT DETAILS BOX -->
+  <div class="shipment-box">
+    <div class="shipment-title-bar">${shipmentHeader}</div>
+    <table class="shipment-grid">
+      <tr>
+        <td style="width: 32%;"><strong>Origin :</strong> ${esc(origin)}</td>
+        <td style="width: 28%;"><strong>No Of Packings:</strong> &nbsp;${esc(noOfPackings)}</td>
+        <td style="width: 22%;"><strong>Net Wt:</strong> &nbsp;${netWt}</td>
+        <td style="width: 18%;"><strong>Date :</strong> &nbsp;${shipmentDate}</td>
+      </tr>
+      <tr>
+        <td><strong>Destination :</strong> ${esc(destination)}</td>
+        <td><strong>BL No:</strong> &nbsp;${esc(blNo)}</td>
+        <td><strong>Gross Wt:</strong> &nbsp;${grossWt}</td>
+        <td><strong>Volume:</strong> &nbsp;${volume}</td>
+      </tr>
+      <tr>
+        <td><strong>Product Details :</strong> ${esc(prodDetails)}</td>
+        <td><strong>Containers:</strong> &nbsp;${esc(containers)}</td>
+        <td colspan="2"><strong>HBL No:</strong> &nbsp;${esc(hblNo)}</td>
+      </tr>
+      <tr>
+        <td colspan="4"><strong>Remarks:</strong> &nbsp;${esc(remarks)}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- LINE ITEMS TABLE -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 5%;">S.No.</th>
+        <th style="width: 41%; text-align: left;">Services</th>
+        <th style="width: 8%;">Quantity</th>
+        <th style="width: 10%;">Rate</th>
+        <th style="width: 13%;">Amount (Excl.<br/>Tax)</th>
+        <th style="width: 6%;">VAT<br/>%</th>
+        <th style="width: 8%;">Amount<br/>Tax</th>
+        <th style="width: 9%;">Amount<br/>(Incl. Tax)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRowsHtml}
+      ${fillerRows}
+    </tbody>
+  </table>
+
+  <!-- TOTALS SECTION -->
+  <table class="summary-table">
+    <tr>
+      <td style="width: 54%; vertical-align: top;">
+        <div class="tax-notes">NT - No Tax, 0% - Zero, 5% - Standard</div>
+        <div class="words-text">${esc(amountInWords(totalInclTax, currCode, decimals))}</div>
+      </td>
+      <td style="width: 10%; text-align: right; font-weight: bold; border-right: 0;">Total :</td>
+      <td style="width: 13%; text-align: right; font-weight: bold; border-left: 0; border-right: 1px solid #000;">${fmtMoney(totalExclTax, decimals)}</td>
+      <td style="width: 6%; border-right: 0; border-left: 0;"></td>
+      <td style="width: 8%; text-align: right; font-weight: bold;">${fmtMoney(totalTax, decimals)}</td>
+      <td style="width: 9%; text-align: right; font-weight: bold;">${fmtMoney(totalInclTax, decimals)}</td>
+    </tr>
+  </table>
+
+  <!-- FOOTER & TERMS -->
+  <div class="footer-terms">
+    <div><strong>Payment Terms:</strong> ${esc(paymentTermsText)}</div>
+    <div>Invoice deemed correct if no query reaches ${esc(displayName)} within 7 days of the Invoice date.</div>
+  </div>
+
+  <!-- BANK DETAILS & SIGNATURE (FULLY DYNAMIC FROM DIVISION / COMPANY / BANK MASTER) -->
+  <div class="bank-grid">
+    <div class="bank-details-col">
+      ${rawBeneficiary ? `<div class="bank-name-head">${esc(rawBeneficiary)}</div>` : ""}
+      ${bank1Name ? `<div><strong>${esc(bank1Name)}</strong></div>` : ""}
+      ${bank1AcNo ? `<div style="margin-top: 3px;">${esc(bank1AcNo)}</div>` : ""}
+      ${bank1Iban ? `<div>${esc(bank1Iban)}</div>` : ""}
+      ${bank1Swift ? `<div>${esc(bank1Swift)}</div>` : ""}
+    </div>
+
+    ${bank2AcNo || bank2Iban ? `
+    <div class="bank-details-col" style="padding-top: 15px;">
+      ${bank2AcNo ? `<div>${esc(bank2AcNo)}</div>` : ""}
+      ${bank2Iban ? `<div>${esc(bank2Iban)}</div>` : ""}
+      ${bank2Swift ? `<div>${esc(bank2Swift)}</div>` : ""}
+    </div>` : `<div class="bank-details-col"></div>`}
+
+    <div class="company-sign-block">
+      ${esc(displayName)}
+    </div>
+  </div>
+
+  <!-- BOTTOM BANNER (FULLY DYNAMIC) -->
+  <div class="bottom-disclaimer-box">
+    <div class="company-address">${esc(fullAddress)}</div>
+    ${contactParts.length > 0 ? `<div class="contact-line">${contactParts.join(" ; ")}</div>` : ""}
+    <div>Any Business, Services provided is subject to ${esc(displayName)}'s NAFL Standard Trading Conditions, copy of which can be provided on request.</div>
+  </div>
+
+</div>
+
+</body>
+</html>`;
+}
+
 
 export function buildFreightInvoiceHtmlBTIND(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
   // BTIND fallback/implementation using standard layout

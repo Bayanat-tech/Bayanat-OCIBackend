@@ -444,6 +444,7 @@ export const procBulkAccountEntry = async (
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : (header.doc_date ? new Date(header.doc_date) : null),
             AC_CODE: d.ac_code,
             JOB_NO: d.job_no || null,
+            DEPT_CODE: d.dept_code || null,
             HEADER_AC_CODE: d.header_ac_code,
             REMARKS: d.remarks || null,
             AMOUNT: Math.abs(Number(d.amount) || 0),
