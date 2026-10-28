@@ -1,3 +1,4 @@
+import { buildLpoDetailBindings, LPO_DETAIL_INSERT_SQL } from "./financeDetailContract";
 import { Response } from 'express';
 import oracledb from 'oracledb';
 import constants from '../../../../helpers/constants';
@@ -2504,22 +2505,10 @@ const result = await conn.execute(
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
-        v.detail.map((d: any) => ({
-          cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
-          sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
-          am: d.amount, cu: d.curr_code, er: d.ex_rate,
-          si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
-          qty: d.qty, pr: d.price, pc: d.prod_code,
-          pcc: d.cost_code ?? null,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
-          // dd:  toDate(v.doc_date), 
-          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        v.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, v, req.user.company_code, v.doc_type, doc_no, i)
+        )
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
     }
@@ -2677,36 +2666,10 @@ if (fyError) {
 
     if (req.body.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
-          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
-        ); END;`,
-        req.body.detail.map((d: any, i: number) => ({
-          cc: req.user.company_code,
-          dt: doc_type,
-          dn: doc_no,
-          sn: d.serial_no ?? (i + 1),
-          ac: d.ac_code,
-          hac: h.ac_code,
-          am: Number(d.amount || 0),
-          cu: d.curr_code ?? h.curr_code,
-          er: d.ex_rate ?? h.ex_rate ?? 1,
-          si: d.sign_ind ?? 1,
-          dv: d.div_code ?? h.div_code,
-          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1)),
-          qty: Number(d.qty ?? 1),
-          pr: Number(d.price ?? 0),
-          pc: d.prod_code ?? null,
-          pcc: d.cost_code ?? null,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null,
-          tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null,
-          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        req.body.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, h, req.user.company_code, doc_type, doc_no, i)
+        )
       );
     }
 
