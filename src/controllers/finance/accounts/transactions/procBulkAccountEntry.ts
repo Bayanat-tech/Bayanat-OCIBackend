@@ -293,6 +293,12 @@ export const procBulkAccountEntry = async (
               AND pay_h.doc_type     = d.doc_type
               AND NVL(pay_h.canceled, 'N') = 'N'
              WHERE d.company_code = h.company_code
+               AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+               AND (
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN'))
+                 OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+               )
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
                AND NVL(d.indicator_origin, 'N') = 'N'
                AND NVL(d.lcur_amount, 0) <> 0
