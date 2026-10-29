@@ -14,16 +14,24 @@ import {
 
 type ReportRow = Record<string, any>;
 
-// DB Helpers
+// ─── DB Helpers ───────────────────────────────────────────────────────────────
+
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
-  if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
-  if (!tenantId) throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+  if (!tenantId && req.user?.loginid)
+    tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+  if (!tenantId)
+    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
   return TenantManager.getConnection(tenantId);
 }
 
 async function closeConn(conn?: oracledb.Connection) {
-  if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+  if (conn)
+    try {
+      await conn.close();
+    } catch (e) {
+      console.warn("Close conn error:", e);
+    }
 }
 
 function normalize(rows: any[] = []): ReportRow[] {
@@ -35,28 +43,36 @@ function normalize(rows: any[] = []): ReportRow[] {
   );
 }
 
-// Formatters
-function text(value: unknown): string { return value == null ? "" : String(value); }
-function escapeHtml(value: unknown): string { return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
-function fmtDate(value: unknown): string {
-  if (!value) return "";
-  const d = new Date(value as any);
-  if (Number.isNaN(d.getTime())) return text(value).slice(0, 10);
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${dd}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+function text(value: unknown): string {
+  if (value == null) return "";
+  return String(value);
 }
 
-// Param Parser
-function allIfBlank(value: unknown): string { const v = text(value).trim(); return v || "All"; }
+function escapeHtml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// ─── Param Parser ────────────────────────────────────────────────────────────
+
+function allIfBlank(value: unknown): string {
+  const v = text(value).trim();
+  return v || "All";
+}
 
 function parseParams(req: RequestWithUser) {
   const src = { ...(req.query as Record<string, any>), ...(req.body || {}) };
   const userCompany = text(req.user?.company_code).trim();
   const companyCode = userCompany || text(src.company_code).trim() || "";
   
-  // The frontend MasterWithReportPage sends the keyField as 'BANK_CODE' 
   const bankCode = allIfBlank(src.code2 ?? src.bank_code ?? src.main_bank_code);
 
   return {
@@ -66,7 +82,8 @@ function parseParams(req: RequestWithUser) {
   };
 }
 
-// Data Loader
+// ─── Data Loader ─────────────────────────────────────────────────────────────
+
 async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
   const params = parseParams(req);
   if (!params.companyCode) throw Object.assign(new Error("company_code is required"), { status: 400 });
@@ -112,50 +129,166 @@ async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
   }
 }
 
-// CSS
-const EXTRA_CSS = `
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-  body, table.bank-table { font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
-  .doc-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0 10px 0; }
-  body .doc-title-row h1 { margin: 0; font-size: 16px; font-weight: 800; color: #00378c !important; letter-spacing: 0; }
-  table.bank-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; margin-top: 6px; border: 0; }
-  table.bank-table thead th { background: #00378c !important; color: #ffffff !important; font-weight: 700; font-size: 10px; padding: 8px 6px; text-align: left; border: 0 !important; box-shadow: inset 0 0 0 1000px #00378c; }
-  table.bank-table tbody td { padding: 5px 6px; border: 0; border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; font-size: 10px; font-weight: 400; background: #fcfdfe; }
-  .center { text-align: center; } .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .bank-empty { border: 1px dashed #cbd5e1; background: #f8fafc; text-align: center; padding: 40px 12px; margin-top: 14px; color: #64748b; font-weight: 700; }
-  @media print { table.bank-table thead { display: table-header-group; } table.bank-table tr { page-break-inside: avoid; } }
-`;
-const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
+// ─── Extra CSS (Matching Salary Register Style) ──────────────────────────────
 
-// Body Renderer
-function renderBody(rows: ReportRow[], filtersHtml = ""): string {
-  const heading = `${FONT_LINK}<div class="doc-title-row"><div><h1>Bank Master Report</h1></div></div>`;
+const BANK_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body, table.bank-table {
+    font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin: 4px 0 10px 0;
+  }
+  body .doc-title-row h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #00378c !important;
+    letter-spacing: 0;
+  }
+
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  table.bank-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-top: 6px;
+    border: 1px solid #94a3b8;
+  }
+
+  table.bank-table thead th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0;
+    padding: 8px 6px;
+    text-align: left;
+    vertical-align: middle;
+    border: 0 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.45) !important;
+    box-shadow: inset 0 0 0 1000px #00378c;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  table.bank-table thead th.num-head { text-align: right; }
+
+  table.bank-table tbody td {
+    padding: 6px 6px;
+    border: 0;
+    border-bottom: 1px solid #94a3b8 !important;
+    border-right: 1px solid #94a3b8 !important;
+    color: #1e293b;
+    font-size: 10px;
+    font-weight: 400;
+    background: #fcfdfe;
+    vertical-align: top;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: hidden;
+  }
+
+  .center { text-align: center; }
+  .left   { text-align: left; }
+  .right  { text-align: right; }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .bank-empty {
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+    text-align: center;
+    padding: 40px 12px;
+    margin-top: 14px;
+    color: #64748b;
+    font-weight: 700;
+  }
+
+  @media print {
+    body .doc-title-row h1 { color: #00378c !important; }
+    table.bank-table thead { display: table-header-group; }
+    table.bank-table tr    { page-break-inside: avoid; }
+    table.bank-table thead th {
+      background: #00378c !important;
+      color: #ffffff !important;
+      box-shadow: inset 0 0 0 1000px #00378c;
+    }
+  }
+`;
+
+const FONT_LINK = `
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
+
+// ─── Body Renderer ────────────────────────────────────────────────────────────
+
+function renderCustomBody(rows: ReportRow[], filtersHtml = "", params: any): string {
+  const heading = `
+    ${FONT_LINK}
+    <div class="doc-title-row">
+      <div><h1>List of Banks</h1></div>
+    </div>`;
 
   if (!rows.length) {
     return `${heading}${filtersHtml}<div class="bank-empty">No data found</div>`;
   }
 
-  const keys = Object.keys(rows[0] || {});
-  
-  // Create headers (replace underscores with spaces)
-  const headCells = `<th class="num-head">SNo.</th>` + keys.map((k) => `<th>${escapeHtml(k.replace(/_/g, " ").toUpperCase())}</th>`).join("");
+  // Generate Rows matching your exact screenshot layout
+  const bodyRows = rows.map((r) => {
+    return `
+      <tr>
+        <td style="font-weight:bold; width: 12%;">${escapeHtml(r.bank_code)}</td>
+        <td style="width: 35%;">
+          <div style="font-weight:bold;">${escapeHtml(r.bank_name)}</div>
+          <div style="color:#555; font-size:9px;">${escapeHtml(r.bank_short_name)}</div>
+        </td>
+        <td style="width: 13%;">${escapeHtml(r.country_code)}</td>
+        <td style="width: 25%;">${escapeHtml(r.bank_addr1)}</td>
+        <td style="width: 15%;">${escapeHtml(r.status === 'A' || r.status === 'Y' ? 'Active' : 'Inactive')}</td>
+      </tr>
+    `;
+  }).join('');
 
-  const bodyRows = rows.map((r, i) => {
-    const cells = keys.map((k) => {
-      const val = r[k];
-      // Check if it's a date
-      if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/))) {
-        return `<td class="center">${escapeHtml(fmtDate(val))}</td>`;
-      }
-      return `<td>${escapeHtml(val)}</td>`;
-    }).join("");
-    return `<tr><td class="num">${i + 1}</td>${cells}</tr>`;
-  }).join("");
-
-  return `${heading}${filtersHtml}<table class="bank-table"><thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+  return `
+    ${heading}
+    ${filtersHtml}
+    <div class="table-container">
+      <table class="bank-table">
+        <thead>
+          <tr>
+            <th>Bank</th>
+            <th>Name</th>
+            <th>Country</th>
+            <th>Address</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bodyRows}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
-// Route Handler
+// ─── Route Handler ────────────────────────────────────────────────────────────
+
 export const getBankReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = parseParams(req);
@@ -166,18 +299,23 @@ export const getBankReportHtml = async (req: RequestWithUser, res: Response): Pr
       { label: "Bank Code", value: [params.bankCode] },
     ]);
 
-    const bodyHtml = renderBody(rows, filtersHtml);
-    const footerHtml = reportFooter({ reportName: "Bank_Master_Report", userName: params.loginId, endLabel: "Powered by Bayanat Technology" });
+    const bodyHtml = renderCustomBody(rows, filtersHtml, params);
+    
+    const footerHtml = reportFooter({ 
+      reportName: "rpt_hr_bank", 
+      userName: params.loginId, 
+      endLabel: "Powered by Bayanat Technology" 
+    });
 
     const html = buildReportDocument({ 
-      title: "Bank Master", 
+      title: "Bank Report", 
       headerHtml, 
       bodyHtml, 
       footerHtml, 
-      extraCss: EXTRA_CSS, 
+      extraCss: BANK_EXTRA_CSS, 
       autoPrint: req.query.print !== "false", 
       showPrintButton: true, 
-      orientation: "landscape" 
+      orientation: "portrait" // Portrait to match the email screenshot
     });
     
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -186,4 +324,4 @@ export const getBankReportHtml = async (req: RequestWithUser, res: Response): Pr
     console.error("Bank Report HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
-};
+};  

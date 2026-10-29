@@ -24,6 +24,9 @@ import {
 } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
+import { getBankReportHtml } from "../controllers/wms/reports/HrBankReport.controller";
+import { getEduLevelReportHtml } from "../controllers/wms/reports/HrEduLevelReport.controller";
+import { getSponsorReportHtml } from "../controllers/wms/reports/HrSponsorReport.controller";
 
 // Initialize Express Router
 const router = express.Router();
@@ -126,6 +129,60 @@ router.use(
   tenantContextMiddleware,
   checkUserAuthorization,
   stockReportCriteria
+);
+
+router.get(
+  "/bank/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getBankReportHtml
+);
+
+router.post(
+  "/bank/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getBankReportHtml
+);
+
+router.get(
+  "/edu-level/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getEduLevelReportHtml
+);
+
+router.post(
+  "/edu-level/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getEduLevelReportHtml
+);
+
+router.get(
+  "/sponsor/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getSponsorReportHtml
+);
+
+router.post(
+  "/sponsor/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getSponsorReportHtml
 );
 
 // Route for general management operations

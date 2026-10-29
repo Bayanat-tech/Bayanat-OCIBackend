@@ -37,9 +37,6 @@ import { getSectionMasterReportHtml } from "../../../controllers/wms/reports/HrS
 import { getFormalDesignationReportHtml } from "../../../controllers/wms/reports/HrFormalDesignationReport.controller";
 import { getCategoryReportHtml } from "../../../controllers/wms/reports/HrCategoryReport.controller";
 
-// Import your new Bank Report Controller
-import { getBankReportHtml } from "../../../controllers/wms/reports/HrBankReport.controller";
-
 const router = express.Router();
 
 // ─── Stock Transfer ───────────────────────────────────────────────────────────
@@ -164,23 +161,6 @@ router.post(
   checkUserAuthorization,
   getSectionMasterReportHtml
 );
-
-// 👇 YOUR NEW BANK REPORT ROUTE
-// Added both GET and POST to cover whichever method the frontend uses
-router.get(
-  "/bank/html",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getBankReportHtml
-);
-
-router.post(
-  "/bank/html",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getBankReportHtml
-);
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Retirement Report ────────────────────────────────────────────────────────
 
