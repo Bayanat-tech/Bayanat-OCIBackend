@@ -4,21 +4,22 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../controllers/common/report_common";
+import { buildReportDocument, reportFooter, reportHeader } from "./report_common_pr";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  fromdate:     string; // "All" or "YYYY-MM-DD"
-  todate:       string;
-  user_id:      string; // "All" or CREATE_USER code
-  search_text:  string; // "All" or free text
-  status:       string; // "All" | "PENDING" | "APPROVED" | "REJECTED" | "PO GENERATED"
-  report_type:  string; // "SUMMARY" | "DETAILS"
+  fromdate: string; // "All" or "YYYY-MM-DD"
+  todate: string;
+  user_id: string; // "All" or CREATE_USER code
+  search_text: string; // "All" or free text
+  status: string; // "All" | "PENDING" | "APPROVED" | "REJECTED" | "PO GENERATED"
+  report_type: string; // "SUMMARY" | "DETAILS"
 }
 
 // Dispatch keys handled by PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS
@@ -91,14 +92,14 @@ function rateFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    fromdate:     text(b.fromdate) || "All",
-    todate:       text(b.todate) || "All",
-    user_id:      text(b.user_id) || "All",
-    search_text:  text(b.search_text) || "All",
-    status:       text(b.status) || "All",
-    report_type:  text(b.report_type).toUpperCase() === "DETAILS" ? "DETAILS" : "SUMMARY",
+    fromdate: text(b.fromdate) || "All",
+    todate: text(b.todate) || "All",
+    user_id: text(b.user_id) || "All",
+    search_text: text(b.search_text) || "All",
+    status: text(b.status) || "All",
+    report_type: text(b.report_type).toUpperCase() === "DETAILS" ? "DETAILS" : "SUMMARY",
   };
 }
 
@@ -212,13 +213,13 @@ const PR_REGISTER_EXTRA_CSS = `
 
 // Inline styles, same approach as the PO Order Register report (does not depend on extraCss)
 const PR_S = {
-  head:  "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:11px;padding:6px 8px;border-left:3px solid #0b4ca1;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  head: "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:11px;padding:6px 8px;border-left:3px solid #0b4ca1;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
   total: "background:#f4f7fb !important;color:#0b3d91 !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
   grand: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:8px 6px;border-top:2px solid #0b4ca1;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-    th:    "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:left;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  thR:   "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:right;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  td:    "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;",
-  tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;word-break:break-word;",
+  th: "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:left;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  thR: "background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:right;border-bottom:2px solid #0b4ca1;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  td: "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;",
+  tdR: "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;word-break:break-word;",
 };
 
 const PR_WRAP = "font-size:9.5px;line-height:1.25;color:#1e293b;";
@@ -262,15 +263,10 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
     .join("");
 
   return `
-  <div class="pr-register" style="${PR_WRAP}">
-    <div style="margin:0 0 6px 0;padding:0;">
-      <h1 style="${PR_TITLE}">${escapeHtml(REPORT_TITLE)}</h1>
-    </div>
-
-    ${
-      rows.length === 0
-        ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
-        : `
+  <div class="pr-register">
+    <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
+      ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+      : `
       <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:14%"/><col style="width:11%"/><col style="width:12%"/><col style="width:33%"/><col style="width:9%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
         <thead>
@@ -376,14 +372,9 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
 
   return `
   <div class="pr-register" style="${PR_WRAP}">
-    <div style="margin:0 0 6px 0;padding:0;">
-      <h1 style="${PR_TITLE}">${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
-    </div>
-
-    ${
-      rows.length === 0
-        ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
-        : `
+          <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(DETAILS_REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
+      ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+      : `
       <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:6%"/><col style="width:13%"/><col style="width:33%"/><col style="width:11%"/><col style="width:9%"/><col style="width:8%"/><col style="width:8%"/><col style="width:12%"/></colgroup>
         <thead>
@@ -469,7 +460,7 @@ const XL_STYLE_DEFS: Record<string, any> = {
     fill: { fgColor: { rgb: "FFCFE0F5" } },
     alignment: { horizontal: "left", vertical: "center" },
   },
-   grandTotalNum: {
+  grandTotalNum: {
     font: { bold: true, sz: 11, color: { rgb: "FF0B3D91" } },
     fill: { fgColor: { rgb: "FFCFE0F5" } },
     alignment: { horizontal: "right", vertical: "center" },
@@ -566,7 +557,7 @@ function buildXlsx(opts: {
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
   // ── Sheet XML ──
-   const colXml = Array.from({ length: colCount }, (_, i) =>
+  const colXml = Array.from({ length: colCount }, (_, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="${colWidths?.[i] ?? colWidth}" customWidth="1"/>`
   ).join("");
 
@@ -839,7 +830,7 @@ function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   rows_.push([null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-   return buildXlsx({ rows: rows_, merges, colCount: COL_COUNT, colWidth: 18, colWidths: [8, 14, 40, 12, 12, 10, 10, 16], sheetName: "PR Register Details" });
+  return buildXlsx({ rows: rows_, merges, colCount: COL_COUNT, colWidth: 18, colWidths: [8, 14, 40, 12, 12, 10, 10, 16], sheetName: "PR Register Details" });
 }
 
 // ─── Route handlers ─────────────────────────────────────────────────────────

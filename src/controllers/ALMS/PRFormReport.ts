@@ -327,8 +327,10 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
   };
 
   const headerBlockHtml =
-    '<h1 class="report-title" style="margin:0 0 8px 0;">Purchase Request : ' +
-    escapeHtml(left[0]?.[1] ?? requestNumber) + "</h1>" +
+        '<table class="pr-title-line"><tbody><tr><td>' +
+      '<h1 class="report-title">Purchase Request : ' +
+        escapeHtml(left[0]?.[1] ?? requestNumber) + "</h1>" +
+    "</td></tr></tbody></table>" +
     '<table class="grn-two-col"><tbody><tr>' +
     "<td>" + kvTable("Request Details", left) + "</td>" +
     "<td>" + kvTable("Other Details", right) + "</td>" +
@@ -358,8 +360,8 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
   // ── Items: PORTRAIT = 7 columns (pairs share a cell) so it fits the page ──
   const portraitLines = calc.map(({ r, amount, tax, lineTotal, lcurrAfterTax, discAmt }) => `
     <tr>
-      <td>${escapeHtml(r.sr_no)}. ${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""
-    }${(r.supplier_name || r.supplier) ? `<br/><span class="muted">Supplier: ${escapeHtml(r.supplier_name || r.supplier)}</span>` : ""
+            <td>${escapeHtml(r.sr_no)}.&nbsp;${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""}
+    ${(r.supplier_name || r.supplier) ? `<br/><span class="muted">Supplier: ${escapeHtml(r.supplier_name || r.supplier)}</span>` : ""
     }</td>
       <td class="num">${qtyFmt(r.item_qty)}<br/><span class="muted">Appr: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
       <td class="num">${amtFmt(r.item_rate)}<br/><span class="muted">Disc: ${amtFmt(discAmt)}</span></td>
@@ -370,7 +372,7 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
     </tr>`).join("");
 
   const portraitTable = `
-  <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
+    <table class="data-table pr-items-portrait" width="100%">
     <thead>
       <tr>
         <th width="23%">Sr. / Item / Description</th>
@@ -419,7 +421,7 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
     </tr>`).join("");
 
   const landscapeTable = `
-  <table class="data-table" width="100%">
+   <table class="data-table pr-items-landscape" width="100%">
     <thead>
       <tr>
         <th width="4%"  class="center">Sr. No.</th>
