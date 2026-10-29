@@ -27,6 +27,7 @@ import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
 import { getBankReportHtml } from "../controllers/wms/reports/HrBankReport.controller";
 import { getEduLevelReportHtml } from "../controllers/wms/reports/HrEduLevelReport.controller";
 import { getSponsorReportHtml } from "../controllers/wms/reports/HrSponsorReport.controller";
+import { getMainBankReportHtml } from "../controllers/wms/reports/HrMainBankReport.controller";
 
 // Initialize Express Router
 const router = express.Router();
@@ -183,6 +184,25 @@ router.post(
   tenantContextMiddleware,
   checkUserAuthorization,
   getSponsorReportHtml
+);
+
+
+router.get(
+  "/main-bank/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getMainBankReportHtml
+);
+
+router.post(
+  "/main-bank/html",
+  passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getMainBankReportHtml
 );
 
 // Route for general management operations
