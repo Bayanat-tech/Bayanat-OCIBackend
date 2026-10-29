@@ -689,10 +689,8 @@ export const procBulkAccountEntry = async (
     if (oneChar(header.canceled) !== 'Y') {
       await validateSavedPosting(connection, header.company_code, header.doc_type, String(generatedDocNo));
     }
-    await connection.commit();
     if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
-      try {
-        await connection.execute(
+        const repaired = await connection.execute(
           `BEGIN PROC_FIX_INVDETAIL_SELF_INV(:p_company_code, :p_doc_no, :p_status, :p_message); END;`,
           {
             p_company_code: header.company_code,
@@ -701,11 +699,10 @@ export const procBulkAccountEntry = async (
             p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
           }
         );
-        await connection.commit();
-      } catch (uErr) {
-        console.warn('[procBulkAccountEntry] Could not update TR_AC_INVDETAIL.INV_NO:', uErr);
-      }
+        const repairResult = repaired.outBinds as any;
+        if (repairResult?.p_status === 'ERROR') throw new Error(repairResult.p_message || 'Invoice reference repair failed');
     }
+    await connection.commit();
 
     res.json({
       success: true,

@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import TenantManager from '../../../../database/TenantManager';
 import { getCurrentTenantId } from '../../../../middleware/tenantContext.middleware';
 import { RequestWithUser } from '../../../../interfaces/common.interface';
+import { getCompanyTaxLabels } from './companyTaxLabels';
 import { escapeHtml } from '../../../purchase_sales/report/common/formatters';
 import { buildReportDocument, reportFooter, reportHeader } from '../../../common/report_common';
 
@@ -16,8 +17,13 @@ const normalize = (rows: any[] = []) => rows.map(row => Object.fromEntries(Objec
 
 export async function readGstLines(c: oracledb.Connection, company: string, type: string, no: string) {
   try {
-    return normalize((await c.execute(`SELECT * FROM TR_AC_GST_LINE WHERE company_code=:cc AND doc_type=:dt AND doc_no=:dn ORDER BY serial_no`,
+    const rows = normalize((await c.execute(`SELECT * FROM TR_AC_GST_LINE WHERE company_code=:cc AND doc_type=:dt AND doc_no=:dn ORDER BY serial_no`,
       { cc: company, dt: type, dn: no }, { outFormat: oracledb.OUT_FORMAT_OBJECT })).rows);
+    if (rows.length) {
+      const labels = await getCompanyTaxLabels(c, company);
+      for (const row of rows) row.treatment_label = labels[row.tax_treatment as keyof typeof labels] || row.tax_treatment;
+    }
+    return rows;
   } catch (e: any) { if (e.errorNum === 942) return []; throw e; }
 }
 
@@ -65,7 +71,7 @@ export const getFinanceGstRegister = async (req: RequestWithUser, res: Response)
     const accountFilter = accounts.length ? `AND (h.ac_code IN (${list(accounts, 'ha')}) OR g.ac_code IN (${list(accounts, 'da')}))` : '';
     const groupFilter = groups.length ? `AND SUBSTR(g.ac_code,1,5) IN (${list(groups, 'gp')})` : '';
     const rows: any[] = normalize((await c.execute(`SELECT g.doc_type,g.doc_no,g.doc_date,g.serial_no,g.tax_direction,g.ac_code,a.ac_name,
-      g.supplier_state,g.place_of_supply,g.hsn_sac,g.tax_rate,g.taxable_lcur*g.sign_ind*CASE g.tax_direction WHEN 'OUTPUT' THEN -1 ELSE 1 END signed_taxable,
+      g.supplier_state,g.place_of_supply,g.hsn_sac,g.tax_treatment,g.tax_rate,g.taxable_lcur*g.sign_ind*CASE g.tax_direction WHEN 'OUTPUT' THEN -1 ELSE 1 END signed_taxable,
       g.cgst_lcur*g.sign_ind*CASE g.tax_direction WHEN 'OUTPUT' THEN -1 ELSE 1 END signed_cgst,g.sgst_lcur*g.sign_ind*CASE g.tax_direction WHEN 'OUTPUT' THEN -1 ELSE 1 END signed_sgst,g.igst_lcur*g.sign_ind*CASE g.tax_direction WHEN 'OUTPUT' THEN -1 ELSE 1 END signed_igst
       FROM TR_AC_GST_LINE g JOIN TR_AC_HEADER h ON h.company_code=g.company_code AND h.doc_type=g.doc_type AND h.doc_no=g.doc_no
       LEFT JOIN MS_ACCODES a ON a.company_code=g.company_code AND a.ac_code=g.ac_code
@@ -73,12 +79,25 @@ export const getFinanceGstRegister = async (req: RequestWithUser, res: Response)
       AND g.doc_date<TO_DATE(:dt,'YYYY-MM-DD')+1 AND (:div='All' OR :div='*' OR g.div_code=:div)
       ${accountFilter} ${groupFilter} ORDER BY g.doc_date,g.doc_type,g.doc_no,g.serial_no`, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT })).rows);
     const company = normalize((await c.execute('SELECT company_name,currency FROM MS_COMPANYINFO WHERE company_code=:cc', { cc: req.user.company_code }, { outFormat: oracledb.OUT_FORMAT_OBJECT })).rows)[0] || {};
-    const fields = ['doc_type','doc_no','doc_date','serial_no','tax_direction','ac_code','ac_name','supplier_state','place_of_supply','hsn_sac','tax_rate','signed_taxable','signed_cgst','signed_sgst','signed_igst'];
-    const headings = ['Type','Voucher','Date','Line','Input / Output','Account','Account name','Supplier state','Place of supply','HSN / SAC','GST %','Taxable base','CGST','SGST / UTGST','IGST'];
+    const labels = await getCompanyTaxLabels(c, req.user.company_code);
+    for (const row of rows) row.treatment_label = labels[row.tax_treatment as keyof typeof labels] || row.tax_treatment;
+    const legacy = (await c.execute<{ LINE_COUNT: number; TAX_AMOUNT: number }>(`SELECT COUNT(*) line_count,NVL(SUM(ABS(g.tx_compnt_lcuramt_1)),0) tax_amount
+      FROM TR_AC_DETAIL g JOIN TR_AC_HEADER h ON h.company_code=g.company_code AND h.doc_type=g.doc_type AND h.doc_no=g.doc_no
+      WHERE g.company_code=:cc AND NVL(h.canceled,'N')<>'Y' AND NVL(g.cancelled,'N')<>'Y' AND g.serial_no<9000
+      AND g.tx_compnt_1_expmt IN ('S','Z','E') AND NVL(g.amount,0)>0
+      AND g.doc_date>=TO_DATE(:df,'YYYY-MM-DD') AND g.doc_date<TO_DATE(:dt,'YYYY-MM-DD')+1
+      AND (:div='All' OR :div='*' OR g.div_code=:div) ${accountFilter} ${groupFilter}
+      AND NOT EXISTS(SELECT 1 FROM TR_AC_GST_LINE x WHERE x.company_code=g.company_code AND x.doc_type=g.doc_type AND x.doc_no=g.doc_no AND x.serial_no=g.serial_no)`,
+      binds, { outFormat: oracledb.OUT_FORMAT_OBJECT })).rows?.[0];
+    const coverage = legacy?.LINE_COUNT
+      ? `${legacy.LINE_COUNT} older tax lines lack GST classification and are excluded from component totals. Their recorded aggregate tax is ${Number(legacy.TAX_AMOUNT).toFixed(2)}. Review these through the legacy tax reports before using this register for that historical period.`
+      : 'GST component totals cover the classified lines in this period.';
+    const fields = ['doc_type','doc_no','doc_date','serial_no','tax_direction','ac_code','ac_name','supplier_state','place_of_supply','hsn_sac','treatment_label','tax_rate','signed_taxable','signed_cgst','signed_sgst','signed_igst'];
+    const headings = ['Type','Voucher','Date','Line','Input / Output','Account','Account name','Supplier state','Place of supply','HSN / SAC','Treatment','GST %','Taxable base','CGST','SGST / UTGST','IGST'];
     const values = rows.map(row => fields.map(f => f === 'doc_date' ? new Date(row[f]).toISOString().slice(0,10) : row[f]));
     const totals = ['signed_taxable','signed_cgst','signed_sgst','signed_igst'].map(f => rows.reduce((s, row) => s + Number(row[f] || 0), 0));
     if (req.params.format === 'excel') {
-      const ws = XLSX.utils.aoa_to_sheet([[company.company_name, 'GST register', company.currency], [], headings, ...values, [...Array(10).fill(''), 'Total', ...totals]]);
+      const ws = XLSX.utils.aoa_to_sheet([[company.company_name, 'GST register', company.currency], [coverage], headings, ...values, [...Array(11).fill(''), 'Total', ...totals]]);
       ws['!cols'] = headings.map((_, i) => ({ wch: i === 6 ? 32 : 17 }));
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'GST register');
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -87,12 +106,12 @@ export const getFinanceGstRegister = async (req: RequestWithUser, res: Response)
     }
     const money = (n: unknown) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const headingHtml = headings.map(h => '<th>' + escapeHtml(h) + '</th>').join('');
-    const rowHtml = values.map(row => '<tr>' + row.map((v, i) => '<td>' + escapeHtml(i >= 11 ? money(v) : String(v ?? '')) + '</td>').join('') + '</tr>').join('');
+    const rowHtml = values.map(row => '<tr>' + row.map((v, i) => '<td>' + escapeHtml(i >= 12 ? money(v) : String(v ?? '')) + '</td>').join('') + '</tr>').join('');
     const totalHtml = totals.map(v => '<th>' + money(v) + '</th>').join('');
-    const bodyHtml = '<h2>GST register</h2><p>' + escapeHtml(binds.df) + ' to ' + escapeHtml(binds.dt) + ' ? ' + escapeHtml(company.currency || '') + '. Normal input/output tax is positive; reversing entries are negative. Cancelled vouchers excluded.</p><table><thead><tr>' + headingHtml + '</tr></thead><tbody>' + (rowHtml || '<tr><td colspan="15">No GST postings in this period.</td></tr>') + '</tbody><tfoot><tr><th colspan="11">Total</th>' + totalHtml + '</tr></tfoot></table>';
+    const bodyHtml = '<h2>GST register</h2><p>' + escapeHtml(binds.df) + ' to ' + escapeHtml(binds.dt) + ' | ' + escapeHtml(company.currency || '') + '. Normal input/output tax is positive; reversing entries are negative. Cancelled vouchers excluded.</p><p><strong>Coverage:</strong> ' + escapeHtml(coverage) + '</p><table><thead><tr>' + headingHtml + '</tr></thead><tbody>' + (rowHtml || '<tr><td colspan="16">No GST postings in this period.</td></tr>') + '</tbody><tfoot><tr><th colspan="12">Total</th>' + totalHtml + '</tr></tfoot></table>';
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(buildReportDocument({ title: 'GST register', headerHtml: await reportHeader({ company_code: req.user.company_code, req }), bodyHtml,
-      footerHtml: reportFooter({ reportName: 'GST register', userName: req.user.loginid }), extraCss: '@page{size:A4 landscape}table{width:100%;border-collapse:collapse;font-size:9px}td,th{padding:5px;border:1px solid #cbd5e1}th{background:#eef3f9;text-align:left}td:nth-child(n+12){text-align:right;font-variant-numeric:tabular-nums}' }));
+      footerHtml: reportFooter({ reportName: 'GST register', userName: req.user.loginid }), extraCss: '@page{size:A4 landscape}table{width:100%;border-collapse:collapse;font-size:9px}td,th{padding:5px;border:1px solid #cbd5e1}th{background:#eef3f9;text-align:left}td:nth-child(n+13){text-align:right;font-variant-numeric:tabular-nums}' }));
   } catch (e: any) { res.status(e.status || 500).json({ success: false, message: e.message }); }
   finally { if (c) await c.close(); }
 };
