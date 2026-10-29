@@ -33,12 +33,12 @@ import { getHrVarianceReportHtml } from "../../../controllers/wms/reports/Varian
 import { getHrEmployeeDetailsHtml } from "../../../controllers/wms/reports/EmployeeDetails.controller";
 import { getHrEmployeeWiseCostHtml } from "../../../controllers/wms/reports/EmployeeWiseCostReport.controller";
 
-
 import { getSectionMasterReportHtml } from "../../../controllers/wms/reports/HrSectionMasterReport.controller";
-
 import { getFormalDesignationReportHtml } from "../../../controllers/wms/reports/HrFormalDesignationReport.controller";
-
 import { getCategoryReportHtml } from "../../../controllers/wms/reports/HrCategoryReport.controller";
+
+// Import your new Bank Report Controller
+import { getBankReportHtml } from "../../../controllers/wms/reports/HrBankReport.controller";
 
 const router = express.Router();
 
@@ -156,12 +156,29 @@ router.post(
   getAbsentMemoReportHtml
 );
 
-// 👇 NEW SECTION MASTER REPORT ROUTE ADDED HERE
+// ─── Section Master ───────────────────────────────────────────────────────────
+
 router.post(
   "/section-master/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getSectionMasterReportHtml
+);
+
+// 👇 YOUR NEW BANK REPORT ROUTE
+// Added both GET and POST to cover whichever method the frontend uses
+router.get(
+  "/bank/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getBankReportHtml
+);
+
+router.post(
+  "/bank/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getBankReportHtml
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -309,12 +326,16 @@ router.post(
   getEmployeeHeadCountReportHtml
 );
 
+// ─── Formal Designation ───────────────────────────────────────────────────────
+
 router.post(
   "/formal-designation/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getFormalDesignationReportHtml
 );
+
+// ─── Category ─────────────────────────────────────────────────────────────────
 
 router.post(
   "/category/html",
