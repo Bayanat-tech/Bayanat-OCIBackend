@@ -14,7 +14,9 @@ import {
 
 type ReportRow = Record<string, any>;
 
+// ─────────────────────────────────────────────────────────────
 // DB Helpers
+// ─────────────────────────────────────────────────────────────
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
   if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
@@ -35,9 +37,18 @@ function normalize(rows: any[] = []): ReportRow[] {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
 // Formatters
+// ─────────────────────────────────────────────────────────────
 function text(value: unknown): string { return value == null ? "" : String(value); }
-function escapeHtml(value: unknown): string { return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+function escapeHtml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function fmtDate(value: unknown): string {
@@ -48,14 +59,33 @@ function fmtDate(value: unknown): string {
   return `${dd}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
 }
 
+// ─────────────────────────────────────────────────────────────
+// Status mapping (accepts both codes and names)
+// ─────────────────────────────────────────────────────────────
+const STATUS_CODE: Record<string, string> = {
+  c: "C", confirmed: "C",
+  p: "P", probation: "P",
+  s: "S", separated: "S",
+};
+const STATUS_LABEL: Record<string, string> = { C: "Confirmed", P: "Probation", S: "Separated" };
+const toStatusCode = (v: string): string => STATUS_CODE[text(v).trim().toLowerCase()] ?? "All";
+
+// ─────────────────────────────────────────────────────────────
 // Param Parser
+// ─────────────────────────────────────────────────────────────
 function allIfBlank(value: unknown): string { const v = text(value).trim(); return v || "All"; }
+
+// Timezone-safe: "2026-01-01" -> local date (not UTC midnight)
+function parseDate(str: any): Date | null {
+  const s = text(str).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
 
 function parseParams(req: RequestWithUser) {
   const src = { ...(req.query as Record<string, any>), ...(req.body || {}) };
   const userCompany = text(req.user?.company_code).trim();
   const companyCode = userCompany || text(src.company_code).trim() || "";
-  const parseDate = (str: any) => { const s = text(str).trim(); return s ? new Date(s) : null; };
 
   return {
     companyCode,
@@ -73,7 +103,37 @@ function parseParams(req: RequestWithUser) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Duplicate guards
+// ─────────────────────────────────────────────────────────────
+// 1) remove fully identical rows
+function dedupeRows(rows: ReportRow[]): ReportRow[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    const k = JSON.stringify(r);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// 2) keep one row per employee (used when "Employee Amendment" is NOT ticked)
+function dedupeByEmployee(rows: ReportRow[]): ReportRow[] {
+  if (!rows.length) return rows;
+  const keyCol = ["employee_id", "employee_code", "emp_code", "emp_id"].find((k) => k in rows[0]);
+  if (!keyCol) return rows;
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    const k = text(r[keyCol]);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
 // Data Loader
+// ─────────────────────────────────────────────────────────────
 async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
   const params = parseParams(req);
   if (!params.companyCode) throw Object.assign(new Error("company_code is required"), { status: 400 });
@@ -90,7 +150,7 @@ async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
       p_code5: params.gradeCode,
       p_code6: params.desgCode,
       p_code7: params.employeeCode,
-      p_code8: params.empStatus === "Confirmed" ? "C" : params.empStatus === "Probation" ? "P" : params.empStatus === "Separated" ? "S" : "All",
+      p_code8: toStatusCode(params.empStatus),
       p_code9: params.empAmendment,
       p_number1: null, p_number2: null, p_number3: null, p_number4: null,
       p_date1: { val: params.joinFrom, type: oracledb.DATE },
@@ -113,16 +173,26 @@ async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
     );
 
     const builtSql = text((procResult.outBinds as any)?.p_return_string).trim();
-    if (!builtSql || builtSql.toUpperCase() === "INVALID PARAMETER VALUE") throw Object.assign(new Error("Report procedure returned no query"), { status: 500 });
+    if (!builtSql || builtSql.toUpperCase() === "INVALID PARAMETER VALUE") {
+      throw Object.assign(new Error("Report procedure returned no query"), { status: 500 });
+    }
+
+    // Uncomment to debug duplicates / status filter:
+    // console.log("Employee Details SQL:", builtSql);
 
     const result = await conn.execute(builtSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    return normalize(result.rows as any[]);
+
+    let rows = dedupeRows(normalize(result.rows as any[]));
+    if (params.empAmendment !== "Y") rows = dedupeByEmployee(rows);
+    return rows;
   } finally {
     await closeConn(conn);
   }
 }
 
+// ─────────────────────────────────────────────────────────────
 // CSS
+// ─────────────────────────────────────────────────────────────
 const EXTRA_CSS = `
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   body, table.emp-table { font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
@@ -131,13 +201,27 @@ const EXTRA_CSS = `
   table.emp-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; margin-top: 6px; border: 0; }
   table.emp-table thead th { background: #00378c !important; color: #ffffff !important; font-weight: 700; font-size: 10px; padding: 8px 6px; text-align: left; border: 0 !important; box-shadow: inset 0 0 0 1000px #00378c; }
   table.emp-table tbody td { padding: 5px 6px; border: 0; border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; font-size: 10px; font-weight: 400; background: #fcfdfe; }
-  .center { text-align: center; } .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.emp-table td, table.emp-table th { vertical-align: top; word-break: break-word; }
+  table.emp-table thead th.center, table.emp-table tbody td.center { text-align: center; }
+  table.emp-table thead th.num, table.emp-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.emp-table .nowrap { white-space: nowrap; }
+  table.emp-table tbody tr:nth-child(even) td { background: #f6f9fd; }
   .emp-empty { border: 1px dashed #cbd5e1; background: #f8fafc; text-align: center; padding: 40px 12px; margin-top: 14px; color: #64748b; font-weight: 700; }
   @media print { table.emp-table thead { display: table-header-group; } table.emp-table tr { page-break-inside: avoid; } }
 `;
 const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
 
+// ─────────────────────────────────────────────────────────────
 // Body Renderer
+// ─────────────────────────────────────────────────────────────
+function colKind(key: string, rows: ReportRow[]): "num" | "date" | "center" | "text" {
+  const sample = rows.map((r) => r[key]).find((v) => v != null && v !== "");
+  if (sample instanceof Date || (typeof sample === "string" && /^\d{4}-\d{2}-\d{2}/.test(sample))) return "date";
+  if (/(_code|_id|_no|_status)$/.test(key)) return "center";
+  if (typeof sample === "number") return "num";
+  return "text";
+}
+
 function renderBody(rows: ReportRow[], filtersHtml = ""): string {
   const heading = `${FONT_LINK}<div class="doc-title-row"><div><h1>Employee Details Report</h1></div></div>`;
 
@@ -145,30 +229,40 @@ function renderBody(rows: ReportRow[], filtersHtml = ""): string {
     return `${heading}${filtersHtml}<div class="emp-empty">No data found</div>`;
   }
 
-  const keys = Object.keys(rows[0] || {});
-  const headCells = `<th class="num-head">SNo.</th>` + keys.map((k) => `<th>${escapeHtml(k.replace(/_/g, " ").toUpperCase())}</th>`).join("");
+  const keys = Object.keys(rows[0]);
+  const kinds = keys.map((k) => colKind(k, rows));
+  const cls = (kind: string) =>
+    kind === "num" ? "num" : kind === "date" || kind === "center" ? "center nowrap" : "";
 
-  const bodyRows = rows.map((r, i) => {
-    const cells = keys.map((k) => {
-      const val = r[k];
-      if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}/))) {
-        return `<td class="center">${escapeHtml(fmtDate(val))}</td>`;
-      }
-      return `<td>${escapeHtml(val)}</td>`;
-    }).join("");
-    return `<tr><td class="num">${i + 1}</td>${cells}</tr>`;
-  }).join("");
+  const headCells =
+    `<th class="center">SNo.</th>` +
+    keys.map((k, i) => `<th class="${cls(kinds[i])}">${escapeHtml(k.replace(/_/g, " ").toUpperCase())}</th>`).join("");
+
+  const bodyRows = rows
+    .map((r, idx) => {
+      const cells = keys
+        .map((k, i) => {
+          const v = r[k];
+          const display = kinds[i] === "date" ? fmtDate(v) : text(v);
+          return `<td class="${cls(kinds[i])}">${escapeHtml(display)}</td>`;
+        })
+        .join("");
+      return `<tr><td class="center">${idx + 1}</td>${cells}</tr>`;
+    })
+    .join("");
 
   return `${heading}${filtersHtml}<table class="emp-table"><thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
 }
 
-// Route Handler (EXPORTED CORRECTLY)
+// ─────────────────────────────────────────────────────────────
+// Route Handler
+// ─────────────────────────────────────────────────────────────
 export const getHrEmployeeDetailsHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = parseParams(req);
     const rows = await loadData(req);
     const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    
+
     const filtersHtml = reportAppliedFilters([
       { label: "Division", value: [params.divCode] },
       { label: "Department", value: [params.deptCode] },
@@ -176,14 +270,27 @@ export const getHrEmployeeDetailsHtml = async (req: RequestWithUser, res: Respon
       { label: "Grade", value: [params.gradeCode] },
       { label: "Designation", value: [params.desgCode] },
       { label: "Employee", value: [params.employeeCode] },
-      { label: "Status", value: [params.empStatus] },
+      { label: "Status", value: [STATUS_LABEL[toStatusCode(params.empStatus)] ?? "All"] },
       { label: "Amendment", value: [params.empAmendment === "Y" ? "Yes" : "No"] },
     ]);
 
     const bodyHtml = renderBody(rows, filtersHtml);
-    const footerHtml = reportFooter({ reportName: "rpt_hr_employee_details", userName: params.loginId, endLabel: "Powered by Bayanat Technology" });
+    const footerHtml = reportFooter({
+      reportName: "rpt_hr_employee_details",
+      userName: params.loginId,
+      endLabel: "Powered by Bayanat Technology",
+    });
 
-    const html = buildReportDocument({ title: "Employee Details", headerHtml, bodyHtml, footerHtml, extraCss: EXTRA_CSS, autoPrint: req.query.print !== "false", showPrintButton: true, orientation: "landscape" });
+    const html = buildReportDocument({
+      title: "Employee Details",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+      showPrintButton: true,
+      orientation: "landscape",
+    });
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
