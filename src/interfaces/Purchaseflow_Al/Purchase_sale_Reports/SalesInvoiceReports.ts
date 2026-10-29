@@ -349,6 +349,48 @@ function infoBlockHtml(label: string, linesHtml: string): string {
       </div>`;
 }
 
+
+
+
+type KvPair = [string, string];
+ 
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+ 
+/** Two boxes side by side (50% / 50%, no outer border). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+ 
+/** "To" box rows – empty fields are skipped, the customer name is always shown. */
+function partyPairs(header: SalesInvoiceHeader): KvPair[] {
+  const all: KvPair[] = [
+    ["Customer", header.party_name],
+    ["Address", header.party_address],
+    ["Tel", header.party_phone],
+    ["Fax", header.party_fax],
+    ["Mobile", header.cust_mobile],
+    ["Email", header.cust_email],
+    ["TRN No", header.trn_no],
+  ];
+  return all.filter(([, v], i) => i === 0 || !!text(v).trim());
+}
+
 function infoGridHtml(innerHtml: string): string {
   return `<div class="info-grid" style="${S_GRID}">${innerHtml}</div>`;
 }
@@ -388,15 +430,10 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
-  // const header = buildSalesInvoiceHeader(rows);
-  // const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  // const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  // const overallDiscount = header.disc_hdr_price;
-  // const grandTotal = totalAmount - overallDiscount;
+ 
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
-
+ 
   const bodyRows = rows.map((r, i) => `
   <tr>
     <td>${i + 1}</td>
@@ -407,23 +444,20 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
     <td class="right">${amtFmt(lineDiscOf(r))}</td>
     <td class="right amount">${amtFmt(r.amount)}</td>
   </tr>`).join("");
-
-  const detailsBlock = infoBlockHtml(
-    "Invoice Details",
-    [
-      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
-      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
-      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
-      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
-      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
-      header.due_date ? vl(`Due Date: ${escapeHtml(dateText(header.due_date))}`) : "",
-    ].join("")
-  );
-
+ 
+  const detailsPairs: KvPair[] = [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Payment Term", header.payment_terms],
+  ];
+  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
+  if (header.due_date) detailsPairs.push(["Due Date", dateText(header.due_date)]);
+ 
   return `
-      ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
-
+    ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
+ 
     <table class="data-table" style="${S_TABLE}">
       <thead>
         <tr>
@@ -438,40 +472,40 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
+ 
     <div class="totals-box">
-     <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
-<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
-<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-<div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>`;
 }
-
 // ─── Body 2: Sales Invoice (Tax) ───────────────────────────────────────────
 
 function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
+ 
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
   const netTotal = round2(t.grandTotal + t.totalTax);
-   rows.forEach((r) => {
+ 
+  rows.forEach((r) => {
     const expected = round2((lineNetOf(r) * num(r.tx_compnt_perc_1)) / 100);
     if (Math.abs(expected - num(r.tx_compnt_amt_1)) > 0.01) {
       console.warn("Tax mismatch", r.doc_no, r.prod_code, "expected:", expected, "db:", r.tx_compnt_amt_1);
     }
   });
-
+ 
   const bodyRows = rows
     .map((r, i) => {
-       const net = lineNetOf(r);
-const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
-return `
+      const net = lineNetOf(r);
+      const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
+      return `
   <tr>
     <td>${i + 1}</td>
-    <td>...</td>
+    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
     <td>${escapeHtml(r.p_uom)}</td>
     <td class="right">${qtyFmt(r.quantity)}</td>
     <td class="right">${amtFmt(r.unit_price)}</td>
@@ -483,24 +517,20 @@ return `
   </tr>`;
     })
     .join("");
-
-  const detailsBlock = infoBlockHtml(
-    "Invoice Details",
-    [
-      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
-      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
-      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
-      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
-      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
-      vl(`Company TRN No: ${escapeHtml(header.company_trn_no)}`),
-    ].join("")
-  );
-
+ 
+  const detailsPairs: KvPair[] = [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Payment Term", header.payment_terms],
+  ];
+  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
+  detailsPairs.push(["Company TRN No", header.company_trn_no]);
+ 
   return `
-      ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-
-    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
-
+    ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
+ 
     <table class="data-table" style="${S_TABLE}">
       <thead>
         <tr>
@@ -518,13 +548,13 @@ return `
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
+ 
     <div class="totals-box">
-     <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
-<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
-<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-<div class="row"><span>Tax Amount</span><span>${amtFmt(t.totalTax)}</span></div>
-<div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row"><span>Tax Amount</span><span>${amtFmt(t.totalTax)}</span></div>
+      <div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
     </div>`;
 }
 
