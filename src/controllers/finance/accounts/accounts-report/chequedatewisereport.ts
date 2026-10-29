@@ -1,3 +1,4 @@
+import { prepareLedgerRows } from "./ledgerReportRows";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
@@ -244,7 +245,7 @@ export const getChequeDateWiseReport = async (
     });
 
     // Lower-case all keys; drop cancelled documents (CANCELLED = 'Y')
-    const rows = ((dataResult.rows as any[]) || [])
+    const rawRows = ((dataResult.rows as any[]) || [])
       .map((row) =>
         Object.keys(row).reduce((acc: any, key) => {
           acc[key.toLowerCase()] = row[key];
@@ -255,6 +256,7 @@ export const getChequeDateWiseReport = async (
 
     /* ── values that come from the data instead of being hardcoded ── */
     // Currency = CURR_CODE of the first row
+    const rows = prepareLedgerRows(rawRows, true);
     const reportCurrency = text(rows[0]?.curr_code).trim(); // "" when no rows
     const money = makeMoney(currencyDecimals(reportCurrency));
     const formatBalance = (value: number) =>

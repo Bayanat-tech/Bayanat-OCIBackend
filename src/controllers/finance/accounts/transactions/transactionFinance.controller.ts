@@ -1,3 +1,7 @@
+import { readGstLines } from './financeGst.controller';
+import { buildLpoDetailBindings, LPO_DETAIL_INSERT_SQL } from "./financeDetailContract";
+import { getCompanyTaxLabels } from "./companyTaxLabels";
+import { validateSavedPosting } from './financePostingValidation';
 import { Response } from 'express';
 import oracledb from 'oracledb';
 import constants from '../../../../helpers/constants';
@@ -23,6 +27,18 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
 async function closeConn(conn?: oracledb.Connection) {
   if (conn) try { await conn.close(); } catch (e: any) { console.warn('Close conn error:', e); }
 }
+async function finalizeLegacyPosting(conn: oracledb.Connection, req: RequestWithUser, type: string, no: string) {
+  let gstEnabled = false;
+  try {
+    const setup = await conn.execute<{ N: number }>(`SELECT COUNT(*) n FROM MS_AC_GST_SETUP WHERE company_code=:cc AND enabled='Y'`, { cc: req.user.company_code }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    gstEnabled = Number(setup.rows?.[0]?.N) === 1;
+  } catch (error: any) { if (error.errorNum !== 942) throw error; }
+  if (gstEnabled) await conn.execute('BEGIN PROC_APPLY_INDIA_GST(:cc,:dt,:dn,:lines); END;', {
+    cc: req.user.company_code, dt: type, dn: no,
+    lines: { type: oracledb.CLOB, val: JSON.stringify(req.body.gst_lines || []) },
+  });
+  await validateSavedPosting(conn, req.user.company_code, type, String(no));
+}
 function normalize(rows: any[]): any[] {
   return rows.map(row =>
     Object.keys(row).reduce((acc: any, k) => { acc[k.toLowerCase()] = row[k]; return acc; }, {})
@@ -31,8 +47,11 @@ function normalize(rows: any[]): any[] {
 
 function sendError(res: Response, err: any) {
   console.error(err);
-  res.status(err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-    .json({ success: false, message: err.message ?? 'Error occurred' });
+  const businessError = Number(err.errorNum) >= 20000 && Number(err.errorNum) <= 20999;
+  res.status(err.status ?? (businessError ? 400 : constants.STATUS_CODES.INTERNAL_SERVER_ERROR))
+    .json({ success: false, message: businessError
+      ? String(err.message).split('\n')[0].replace(/^ORA-\d+:\s*/, '')
+      : err.message ?? 'Error occurred' });
 }
 
 /** Safely trim any value to YYYY-MM-DD string or return null */
@@ -211,15 +230,16 @@ async function spInsertDetailRows(
   if (!detail?.length) return;
 
   let headerAc: string | null = null;
+  let detailHeader: any = {};
   try {
     const hdr: any = await conn.execute(
-      `SELECT ac_code FROM TR_AC_HEADER 
+      `SELECT ac_code,curr_code,ex_rate,doc_date,div_code FROM TR_AC_HEADER
        WHERE company_code = :cc AND doc_type = :dt AND doc_no = :dn`,
       { cc: company_code, dt: doc_type, dn: doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows: any[] = hdr?.rows ?? [];
-    if (rows.length) headerAc = rows[0].AC_CODE ?? rows[0].ac_code ?? null;
+    if (rows.length) { detailHeader = rows[0]; headerAc = rows[0].AC_CODE ?? null; }
   } catch (e: any) {
     console.warn('Unable to fetch header ac_code:', e?.message ?? e);
   }
@@ -245,16 +265,16 @@ async function spInsertDetailRows(
   const buildBind = (d: any) => ({
     company_code, doc_type, doc_no,
     serial_no: d.serial_no,
-    doc_date: toDate(d.doc_date),
+    doc_date: toDate(d.doc_date ?? detailHeader.DOC_DATE),
     ac_code: d.ac_code ?? null,
     header_ac_code: d.header_ac_code ?? headerAc ?? null,
     bank_ac_code: d.bank_ac_code ?? null,
     remarks: d.remarks ?? null,
     amount: d.amount ?? 0,
     sign_ind: d.sign_ind ?? 1,
-    curr_code: d.curr_code ?? null,
-    ex_rate: d.ex_rate ?? 1,
-    lcur_amount: d.lcur_amount ?? d.amount ?? 0,
+    curr_code: d.curr_code ?? detailHeader.CURR_CODE ?? null,
+    ex_rate: d.ex_rate ?? detailHeader.EX_RATE ?? 1,
+    lcur_amount: d.lcur_amount ?? (Number(d.amount || 0) * Number(d.ex_rate ?? detailHeader.EX_RATE ?? 1)),
     pdc_ind: d.pdc_ind ?? null,
     cheque_no: d.cheque_no ?? null,
     cheque_date: toDate(d.cheque_date),
@@ -302,8 +322,8 @@ async function spInsertDetailRows(
   });
 
   // Split: never insert 9001 from client — SP_AC_TXN_CONTROL owns it
-  const normalRows = detail.filter((d: any) => d.serial_no !== 9001);
-  const reverseRows = detail.filter((d: any) => d.serial_no === 9001);
+  const normalRows = detail.filter((d: any) => Number(d.serial_no) < 9000);
+  const reverseRows: any[] = [];
 
   for (const d of reverseRows) {
     await conn.execute(spSql, buildBind(d));
@@ -781,7 +801,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     }
 
     const effectiveCurr = companyCurrency || companyBaseCurr || normalizedData.currency || normalizedData.base_curr_code || "INR";
-    let effectiveDecimals = lcurDecimalNos ?? amountDecimalNos ?? normalizedData.lcur_decimal_nos ?? normalizedData.amount_decimal_nos;
+    let effectiveDecimals = amountDecimalNos ?? lcurDecimalNos ?? normalizedData.amount_decimal_nos ?? normalizedData.lcur_decimal_nos;
     if (effectiveDecimals == null || isNaN(effectiveDecimals)) {
       if (["OMR", "BHD", "KWD"].includes(effectiveCurr)) {
         effectiveDecimals = 3;
@@ -795,6 +815,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     normalizedData.decimals = Number(effectiveDecimals);
     normalizedData.lcur_decimal_nos = Number(effectiveDecimals);
     normalizedData.amount_decimal_nos = Number(effectiveDecimals);
+    normalizedData.tax_treatment_labels = await getCompanyTaxLabels(conn, companyCode);
 
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -1291,7 +1312,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
            NVL((
-             SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+             SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
              FROM TR_AC_INVDETAIL invd
              WHERE invd.company_code = h.company_code
                AND invd.doc_type     = h.doc_type
@@ -1323,6 +1344,12 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
               AND NVL(pay_h.canceled, 'N') = 'N'
              WHERE d.company_code = h.company_code 
                AND d.div_code     = h.div_code 
+               AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+               AND (
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
+                 OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+               )
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
                AND NVL(d.indicator_origin, 'N') = 'N'
                AND (:exclude_doc_no IS NULL OR d.doc_no <> :exclude_doc_no)
@@ -1426,7 +1453,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              MAX(inv.doc_no) AS doc_no,
              MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
              MAX(NVL(h.canceled, 'N')) AS canceled,
-             NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
+             NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.lcur_amount, inv.amount_origin) ELSE 0 END)), 0) AS original_amount,
              NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
            FROM TR_AC_INVDETAIL inv
            LEFT JOIN TR_AC_HEADER h
@@ -1970,6 +1997,35 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     const { detail = [], children = {}, files = [], ...h } = req.body;
     conn = await getConn(req);
 
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
+
     // Step 1 — call header SP, get generated doc_no
     const hdrResult = await conn.execute(
       `BEGIN SP_CREATE_CHQ_HEADER(
@@ -2016,6 +2072,7 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
       `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
       { cc: req.user.company_code, dt: h.doc_type, dn: doc_no, lu: req.user.loginid }
     );
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(doc_no));
     await conn.commit();
 
     console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);
@@ -2095,6 +2152,37 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     conn = await getConn(req);
 
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND TO_CHAR(doc_no) <> :dn
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+          dn: String(h.doc_no).trim(),
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
+
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
       `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
@@ -2142,6 +2230,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
       { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
     );
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(h.doc_no));
     await conn.commit();
 
     res.json({
@@ -2252,6 +2341,27 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       }
     }
 
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) for PI
+    if (v.doc_type === 'PI' && (v.ref_no?.trim() || v.inv_no?.trim())) {
+      const checkRef = (v.ref_no?.trim() || v.inv_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: v.ac_code, ref: checkRef },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
     // Step 1 — create header, get generated doc_no
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
@@ -2326,6 +2436,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, v.doc_type, String(purchase_no));
     await conn.commit();
 
     // *** Response always reached on success ***
@@ -2419,6 +2530,7 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
       { cc: req.user.company_code, dt: v.doc_type, dn: sales_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, v.doc_type, String(sales_no));
     await conn.commit();
 
     // *** Response always reached on success ***
@@ -2504,22 +2616,10 @@ const result = await conn.execute(
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
-        v.detail.map((d: any) => ({
-          cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
-          sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
-          am: d.amount, cu: d.curr_code, er: d.ex_rate,
-          si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
-          qty: d.qty, pr: d.price, pc: d.prod_code,
-          pcc: d.cost_code ?? null,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
-          // dd:  toDate(v.doc_date), 
-          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        v.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, v, req.user.company_code, v.doc_type, doc_no, i)
+        )
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
     }
@@ -2619,6 +2719,28 @@ if (fyError) {
   return;
 }
 
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
     //  Call your SP safely
     await conn.execute(
       `BEGIN SP_UPDATE_LPO(
@@ -2677,36 +2799,10 @@ if (fyError) {
 
     if (req.body.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
-          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
-        ); END;`,
-        req.body.detail.map((d: any, i: number) => ({
-          cc: req.user.company_code,
-          dt: doc_type,
-          dn: doc_no,
-          sn: d.serial_no ?? (i + 1),
-          ac: d.ac_code,
-          hac: h.ac_code,
-          am: Number(d.amount || 0),
-          cu: d.curr_code ?? h.curr_code,
-          er: d.ex_rate ?? h.ex_rate ?? 1,
-          si: d.sign_ind ?? 1,
-          dv: d.div_code ?? h.div_code,
-          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1)),
-          qty: Number(d.qty ?? 1),
-          pr: Number(d.price ?? 0),
-          pc: d.prod_code ?? null,
-          pcc: d.cost_code ?? null,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null,
-          tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null,
-          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        req.body.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, h, req.user.company_code, doc_type, doc_no, i)
+        )
       );
     }
 
@@ -2784,6 +2880,7 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
       `BEGIN SP_CANCEL_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
       { cc: req.user.company_code, dn: docNo, dt: docType, lu: req.user.loginid }
     );
+    await conn.commit();
     res.json({ success: true, message: constants.MESSAGES.UPDATED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -2791,29 +2888,24 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
 export const deleteDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const doc_no = JSON.parse(req.query.doc_no as any);
+    const rawDocNo = req.query.doc_no;
+    if (typeof rawDocNo !== 'string' || !rawDocNo.trim() || !req.params.doc_type) {
+      res.status(400).json({ success: false, message: 'Document number and type are required' });
+      return;
+    }
+    // Accept both the current plain voucher number and legacy JSON-quoted strings.
+    const doc_no = rawDocNo.startsWith('"') ? JSON.parse(rawDocNo) : rawDocNo;
     const doc_type = req.params.doc_type;
     conn = await getConn(req);
     await conn.execute(
       `BEGIN SP_DELETE_DOCUMENT(:cc, :dn, :dt); END;`,
       { cc: req.user.company_code, dn: doc_no, dt: doc_type }
     );
+    await conn.commit();
     res.json({ success: true, message: constants.MESSAGES.DELETED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
-// export const deleteDetailItem = async (req: RequestWithUser, res: Response): Promise<void> => {
-//   let conn: oracledb.Connection | undefined;
-//   try {
-//     const { doc_no, doc_type, serial_no, div_code, table } = req.query as any;
-//     conn = await getConn(req);
-//     await conn.execute(
-//       `BEGIN SP_DELETE_DETAIL_ITEM(:cc, :dn, :dt, :dc, :sn, :tb); END;`,
-//       { cc: req.user.company_code, dn: doc_no, dt: doc_type, dc: div_code, sn: Number(serial_no), tb: table }
-//     );
-//     res.json({ success: true, data: 'Detail Item ' + constants.MESSAGES.DELETED_SUCCESSFULLY });
-//   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
-// };
 export const deleteDetailItem = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
@@ -2832,6 +2924,9 @@ export const deleteDetailItem = async (req: RequestWithUser, res: Response): Pro
       { cc: req.user.company_code, dt: doc_type, dn: doc_no, usr: req.user.loginid }
     );
 
+    req.body = { ...(req.body || {}), gst_lines: await readGstLines(conn, req.user.company_code, String(doc_type), String(doc_no)) };
+    await finalizeLegacyPosting(conn, req, String(doc_type), String(doc_no));
+    await conn.commit();
     res.json({ success: true, data: 'Detail Item ' + constants.MESSAGES.DELETED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -2850,6 +2945,7 @@ export const deleteChildrenItem = async (req: RequestWithUser, res: Response): P
         rd: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
       }
     );
+    await conn.commit();
     const rowsDeleted = (result.outBinds as any).rd;
     if (rowsDeleted > 0) {
       res.json({ success: true, data: `${String(table).toUpperCase()} ${constants.MESSAGES.DELETED_SUCCESSFULLY}` });
@@ -2925,6 +3021,30 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     }
 
     conn = await getConn(req);
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (h.doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(h.doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
+
 
     // Update header and delete existing child records
     await conn.execute(
@@ -3018,6 +3138,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
       { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(h.doc_no));
     await conn.commit(); // no-op, kept for safety
 
     console.log(`Updated purchase document ${h.doc_type} ${h.doc_no} with ${cleanDetail.length} detail rows`);

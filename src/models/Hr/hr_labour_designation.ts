@@ -14,7 +14,7 @@ export class HrLabourDesignation implements IHrLabourDesignation {
   labour_desg_name!: string;
 
   @Column({ name: "LABOUR_DESG_SHORT_NAME", type: "varchar2", length: 10, nullable: true })
-  labour_desg_short_name!: string;
+  labour_desg_short_name?: string;
 
   @Column({ name: "REMARKS", type: "varchar2", length: 100, nullable: true })
   remarks!: string;

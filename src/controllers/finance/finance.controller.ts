@@ -723,6 +723,12 @@ export const getFinanceListData = async (
                   AND NVL(pay_h.canceled, 'N') = 'N'
                  WHERE d.company_code = h.company_code
                    AND d.div_code     = h.div_code
+                   AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+                   AND (
+                     (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
+                     OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
+                     OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+                   )
                    AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
                    AND NVL(d.indicator_origin, 'N') = 'N'
                    AND (TRIM(d.doc_type) || TRIM(TO_CHAR(d.doc_no)) || TRIM(TO_CHAR(d.serial_no)) <> :invrsno)

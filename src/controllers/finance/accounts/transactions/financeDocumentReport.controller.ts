@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
+import { readGstLines } from './financeGst.controller';
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 import {
@@ -203,7 +204,7 @@ async function loadReportData(
     try {
       const companySql = `
         SELECT *
-        FROM VW_COMPANY_INFO
+        FROM MS_COMPANYINFO
         WHERE company_code = :companyCode
       `;
 
@@ -214,6 +215,8 @@ async function loadReportData(
       );
 
       company = normalize(companyResult.rows as any[])[0] || company;
+      company.address = [company.address1, company.address2, company.address3].filter(Boolean).join(', ');
+      company.trn_no = company.tax_num || company.trn_no;
     } catch (companyError) {
       console.warn(
         "Company information lookup failed for finance report:",
@@ -226,6 +229,7 @@ async function loadReportData(
       company,
       header,
       details: detailRows,
+      gstLines: isPO ? [] : await readGstLines(conn, companyCode, docType, docNo),
       invoiceDetails: [],
     };
   } finally {
@@ -441,23 +445,46 @@ const FINANCE_EXTRA_CSS = `
 `;
 
 /** Body only – no <html>/<head>/<body> */
+function gstBreakdownHtml(lines: ReportRow[], currency: string, localCurrency: string) {
+  if (!lines.length) return '';
+  const rows = lines.map(g => {
+    const sameState = g.supplier_state === g.place_of_supply;
+    const stateRate = sameState ? amount(g.tax_rate) / 2 : 0;
+    const integratedRate = sameState ? 0 : amount(g.tax_rate);
+    return '<tr><td>'+escapeHtml(g.serial_no)+'</td><td>'+escapeHtml(g.tax_direction)+' / '+escapeHtml(g.treatment_label || g.tax_treatment || '')+'</td><td>'+escapeHtml(g.supplier_state)+'</td><td>'+escapeHtml(g.place_of_supply)+'</td><td>'+escapeHtml(g.hsn_sac)+'</td><td class="num">'+money(stateRate)+'% / '+money(g.cgst_amt)+'</td><td class="num">'+money(stateRate)+'% / '+money(g.sgst_amt)+'</td><td class="num">'+money(integratedRate)+'% / '+money(g.igst_amt)+'</td></tr>';
+  }).join('');
+  return '<h3>GST breakdown</h3><table class="data-table"><thead><tr><th>Line</th><th>Input / Output / Treatment</th><th>Supplier state</th><th>Place of supply</th><th>HSN / SAC</th><th>CGST % / '+escapeHtml(currency)+'</th><th>SGST / UTGST % / '+escapeHtml(currency)+'</th><th>IGST % / '+escapeHtml(currency)+'</th></tr></thead><tbody>'+rows+'</tbody></table><p>GST in '+escapeHtml(localCurrency)+': CGST '+money(lines.reduce((n,g)=>n+amount(g.cgst_lcur),0))+'; SGST / UTGST '+money(lines.reduce((n,g)=>n+amount(g.sgst_lcur),0))+'; IGST '+money(lines.reduce((n,g)=>n+amount(g.igst_lcur),0))+'.</p>';
+}
+
+function journalFigures(data: Awaited<ReturnType<typeof loadReportData>>) {
+  const dr = data.details.reduce((n,d)=>n+(Number(d.sign_ind)>0?amount(d.lcur_amount):0),0);
+  const cr = data.details.reduce((n,d)=>n+(Number(d.sign_ind)<0?amount(d.lcur_amount):0),0);
+  return { dr, cr, currency: text(data.company.currency || data.header.curr_code) };
+}
+function renderJournalBody(data: Awaited<ReturnType<typeof loadReportData>>, docType: string) {
+  const t=journalFigures(data);
+  return '<h2>'+escapeHtml(titleFor(docType))+' | '+escapeHtml(data.header.doc_no)+'</h2><p>'+escapeHtml(dateText(data.header.doc_date))+' | '+escapeHtml(t.currency)+(data.header.canceled==='Y'?' ? CANCELLED':'')+'</p><table class="data-table"><thead><tr><th>Line</th><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>'+data.details.map(d=>'<tr><td>'+escapeHtml(d.serial_no)+'</td><td>'+escapeHtml(d.ac_code)+'</td><td>'+escapeHtml(d.ac_name || d.remarks)+'</td><td class="num">'+money(Number(d.sign_ind)>0?d.lcur_amount:0)+'</td><td class="num">'+money(Number(d.sign_ind)<0?d.lcur_amount:0)+'</td></tr>').join('')+'</tbody><tfoot><tr><th colspan="3">Total</th><th>'+money(t.dr)+'</th><th>'+money(t.cr)+'</th></tr></tfoot></table><p>Difference: '+money(t.dr-t.cr)+'</p>'+gstBreakdownHtml(data.gstLines,data.header.curr_code,t.currency);
+}
+
 function renderFinanceBody(
   data: Awaited<ReturnType<typeof loadReportData>>,
   docType: string,
   printUser = ""
 ): string {
+  if (['JV','RJV'].includes(docType)) return renderJournalBody(data,docType);
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
+  const baseSign = -Number(details.find(d=>Number(d.serial_no)===9001)?.sign_ind || (['BP','CP','PI','PO','CN'].includes(docType)?-1:1));
   const subtotal = visibleDetails.reduce(
-    (sum, row) => sum + amount(row.amount),
+    (sum, row) => sum + amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign,
     0
   );
   const taxTotal = visibleDetails.reduce(
-    (sum, row) => sum + amount(row.tx_compnt_amt_1),
+    (sum, row) => sum + amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign,
     0
   );
   const total = subtotal + taxTotal;
-  const currency = text(header.curr_code || "QAR");
+  const currency = text(header.curr_code || company.currency || "");
   const partyName = text(
     header.party_name || header.ac_name || header.ac_payee
   );
@@ -479,8 +506,8 @@ function renderFinanceBody(
 
   const detailRows = visibleDetails
     .map((row, index) => {
-      const lineAmount = amount(row.amount);
-      const tax = amount(row.tx_compnt_amt_1);
+      const lineAmount = amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign;
+      const tax = amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign;
       const rate = amount(row.price) || lineAmount;
       return `
       <tr>
@@ -548,10 +575,10 @@ function renderFinanceBody(
             <th class="left" style="width:34%">Description</th>
             <th class="num" style="width:10%">Qty</th>
             <th class="num" style="width:12%">Rate</th>
-            <th class="num" style="width:12%">Excl. VAT</th>
-            <th class="num" style="width:8%">VAT %</th>
-            <th class="num" style="width:12%">VAT</th>
-            <th class="num" style="width:12%">Incl. VAT</th>
+            <th class="num" style="width:12%">Excl. Tax</th>
+            <th class="num" style="width:8%">Tax %</th>
+            <th class="num" style="width:12%">Tax</th>
+            <th class="num" style="width:12%">Incl. Tax</th>
           </tr>
         </thead>
         <tbody>
@@ -568,6 +595,7 @@ function renderFinanceBody(
           : ""
       }
 
+      ${gstBreakdownHtml(data.gstLines, header.curr_code, company.currency || header.curr_code)}
       <div class="totals-wrap">
         <table class="totals">
           <tr>
@@ -742,18 +770,24 @@ function buildReportSheet(
   data: Awaited<ReturnType<typeof loadReportData>>,
   docType: string
 ) {
+  if (['JV','RJV'].includes(docType)) {
+    const t=journalFigures(data);
+    const rows:any[][]=[[data.company.company_name || '',titleFor(docType),data.header.doc_no,t.currency],[],['Line','Account','Description','Debit','Credit'],...data.details.map(d=>[d.serial_no,d.ac_code,d.ac_name || d.remarks,Number(d.sign_ind)>0?amount(d.lcur_amount):0,Number(d.sign_ind)<0?amount(d.lcur_amount):0]),['','','Total',t.dr,t.cr],['','','Difference',t.dr-t.cr],[],['GST line','Direction','Supplier state','Place of supply','HSN / SAC','CGST','SGST / UTGST','IGST'],...data.gstLines.map(g=>[g.serial_no,String(g.tax_direction)+' / '+String(g.treatment_label || g.tax_treatment || ''),g.supplier_state,g.place_of_supply,g.hsn_sac,g.cgst_amt,g.sgst_amt,g.igst_amt])];
+    const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:10},{wch:18},{wch:40},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18}];return ws;
+  }
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
+  const baseSign = -Number(details.find(d=>Number(d.serial_no)===9001)?.sign_ind || (['BP','CP','PI','PO','CN'].includes(docType)?-1:1));
   const subtotal = visibleDetails.reduce(
-    (sum, row) => sum + amount(row.amount),
+    (sum, row) => sum + amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign,
     0
   );
   const taxTotal = visibleDetails.reduce(
-    (sum, row) => sum + amount(row.tx_compnt_amt_1),
+    (sum, row) => sum + amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign,
     0
   );
   const total = subtotal + taxTotal;
-  const currency = text(header.curr_code || "QAR");
+  const currency = text(header.curr_code || company.currency || "");
   const partyName = text(
     header.party_name || header.ac_name || header.ac_payee
   );
@@ -794,7 +828,7 @@ function buildReportSheet(
       "",
       "",
     ],
-    [`TRN: ${companyTrn}`, "", "", "", "", "", "", "", ""],
+    [`${String(company.country || '').toUpperCase() === 'INDIA' ? 'GSTIN' : 'TRN'}: ${companyTrn}`, "", "", "", "", "", "", "", ""],
     [],
     [partyLabel, "", "", "", "", "DOCUMENT DETAILS", "", "", ""],
     [
@@ -848,16 +882,16 @@ function buildReportSheet(
       "Description",
       "Qty",
       "Rate",
-      "Excl. VAT",
-      "VAT %",
+      "Excl. Tax",
+      "Tax %",
       "VAT Value",
-      "Incl. VAT",
+      "Incl. Tax",
     ],
   ];
 
   visibleDetails.forEach((row, index) => {
-    const lineAmount = amount(row.amount);
-    const tax = amount(row.tx_compnt_amt_1);
+    const lineAmount = amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign;
+    const tax = amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign;
     const rate = amount(row.price) || lineAmount;
     rows.push([
       index + 1,
@@ -1107,7 +1141,10 @@ export const getFinanceDocumentReportHtml = async (
     const userName = text(
       req.user?.loginid || (req.user as any)?.username || ""
     );
-    const bodyHtml = renderFinanceBody(data, docType, userName);
+    const registration = text(data.company.tax_num || data.company.trn_no);
+    const registrationLabel = String(data.company.country || '').toUpperCase() === 'INDIA' ? 'GSTIN' : 'TRN';
+    const bodyHtml = (registration ? `<p>${registrationLabel}: ${escapeHtml(registration)}</p>` : '')
+      + renderFinanceBody(data, docType, userName);
 
     const html = buildReportDocument({
       title: `${titleFor(docType)} - ${text(data.header.doc_no)}`,

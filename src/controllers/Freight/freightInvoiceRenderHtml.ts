@@ -122,6 +122,10 @@ export interface FreightInvoiceMeta {
   curr_code?: string | null;
   ex_rate?: number | null;
   stampDataUrl?: string;
+  shipmentInfo?: any;
+  divisionInfo?: any;
+  companyInfo?: any;
+  bankAccounts?: any[];
 }
 
 export function normalizeOracleFreightInvoiceRow(raw: Record<string, any> | null | undefined): FreightInvoiceRow {
@@ -157,13 +161,17 @@ function fmtMoney(amount: number | null | undefined, decimals = 2): string {
   });
 }
 
-function fmtDate(d: string | Date | null | undefined): string {
+function fmtDate(d: string | Date | null | undefined, format: 'slash' | 'dash-short' = 'slash'): string {
   if (!d) return "";
   const dt = typeof d === "string" ? new Date(d) : d;
   if (isNaN(dt.getTime())) return String(d);
   const dd = String(dt.getDate()).padStart(2, "0");
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const yyyy = dt.getFullYear();
+  if (format === 'dash-short') {
+    const yy = String(yyyy).slice(-2);
+    return `${dd}-${mm}-${yy}`;
+  }
   return `${dd}/${mm}/${yyyy}`;
 }
 
@@ -197,6 +205,9 @@ function integerToWords(num: number): string {
     num %= 100;
   }
   if (num > 0) {
+    if (words.length > 0) {
+      words += "and ";
+    }
     if (num < 20) {
       words += ONES[num];
     } else {
@@ -210,16 +221,16 @@ function integerToWords(num: number): string {
 function amountInWords(amount: number, currCode: string | null | undefined, decimals = 2): string {
   const code = (currCode || "USD").toUpperCase();
   const majorNames: Record<string, string> = {
-    USD: "US DOLLARS", INR: "INDIAN RUPEES", OMR: "OMANI RIAL",
-    SAR: "SAUDI RIYALS", AED: "UAE DIRHAMS", EUR: "EUROS", GBP: "POUNDS STERLING",
+    USD: "US Dollars", INR: "Indian Rupees", OMR: "Omani rial",
+    SAR: "Saudi Riyals", AED: "UAE Dirhams", EUR: "Euros", GBP: "Pounds Sterling",
   };
   const minorNames: Record<string, string> = {
-    USD: "CENTS", INR: "PAISE", OMR: "BAISA", SAR: "HALALAS",
-    AED: "FILS", EUR: "CENTS", GBP: "PENCE",
+    USD: "Cents", INR: "Paise", OMR: "Baisa", SAR: "Halalas",
+    AED: "Fils", EUR: "Cents", GBP: "Pence",
   };
 
   const major = majorNames[code] || `${code}`;
-  const minor = minorNames[code] || "CENTS";
+  const minor = minorNames[code] || "Cents";
 
   const whole = Math.floor(amount);
   const fracMultiplier = decimals === 3 ? 1000 : 100;
@@ -241,17 +252,47 @@ function isCostRow(r: FreightInvoiceRow): boolean {
 }
 
 export function buildFreightInvoiceHtmlAMKSA(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
+  return buildFreightInvoiceHtmlMHDL(rows, meta);
+}
+
+export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
   if (!rows || rows.length === 0) {
-    return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No freight invoice data found.</p></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>No Data</title><style>body{font-family:'Inter',Arial,sans-serif;padding:50px;text-align:center;color:#64748b;background:#f8fafc;}</style></head><body><h2>No Freight Invoice Data Found</h2><p>Please check the invoice number or principal code and try again.</p><button onclick="window.close()" style="margin-top:16px;padding:8px 18px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;">Close</button></body></html>`;
   }
 
   const first = rows[0];
-  const remark1 = first.inv_desc1 || "";
-  const remark2 = first.inv_desc2 || "";
-  const currCode = (first.curr_code || meta.curr_code || "OMR").toString().toUpperCase();
-  const companyName = (first.company_name || first.company_short_name || "AAA LOGISTICS").trim();
-  const billToName = meta.clientName || first.client_name || first.prin_code || "";
+  const shipment = meta.shipmentInfo || {};
+  const divisionInfo = meta.divisionInfo || {};
+  const companyInfo = meta.companyInfo || {};
 
+  const getProp = (obj: any, key: string) => {
+    if (!obj) return undefined;
+    return obj[key.toLowerCase()] ?? obj[key.toUpperCase()] ?? obj[key];
+  };
+
+  const divisionName = (getProp(divisionInfo, "div_name") || first.div_name || "").trim();
+  const divisionShortName = (getProp(divisionInfo, "div_short_name") || first.div_short_name || "MHDL LLC").trim();
+  const companyName = (getProp(companyInfo, "company_name") || first.company_name || "MHD LOGISTICS").trim();
+  const displayName = divisionName || companyName;
+  const displayShortName = divisionShortName || getProp(companyInfo, "company_short_name") || "MHDL LLC";
+
+  const currCode = (first.curr_code || meta.curr_code || "OMR").toString().toUpperCase();
+  const decimals = currCode === "OMR" ? 3 : 2;
+
+  const rawInvNo = meta.invoiceNo || first.invno_prefixed || first.invoice_no || "";
+  const invoiceNo = rawInvNo;
+  const invoiceDate = fmtDate(first.invoice_date || meta.invoiceDate || first.user_dt);
+  const dueDate = fmtDate(first.due_date || first.invoice_date || meta.invoiceDate);
+  const supplyPeriod = first.from_date && first.to_date
+    ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}`
+    : (meta.invoicePeriod || `${invoiceDate} - ${invoiceDate}`);
+  const dateOfSupply = fmtDate(first.from_date || first.invoice_date);
+  const customerRep = first.customer_rep || first.salesman || "";
+  const jobNo = first.job_no || getProp(shipment, "job_no") || "";
+  const poNo = getProp(shipment, "po_no") || first.po_no || first.prin_ref1 || "";
+  const companyTaxRegNo = getProp(divisionInfo, "div_trn_no") || getProp(divisionInfo, "trn_no") || getProp(companyInfo, "comp_trn_no") || getProp(companyInfo, "trn_no") || first.comp_trn_no || first.trn_no || "OM1100427996";
+
+  const billToName = meta.clientName || first.client_name || first.party_name || first.prin_code || "";
   const billToAddressLines = [
     first.prin_addr1,
     first.prin_addr2,
@@ -260,337 +301,852 @@ export function buildFreightInvoiceHtmlAMKSA(rows: FreightInvoiceRow[], meta: Fr
     first.prin_city,
   ].filter(Boolean) as string[];
 
-  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+  const clientEmail = first.prin_email1 || "";
+  const clientTel = first.prin_telno1 || "";
+  const clientFax = first.prin_faxno1 || "";
+  const clientTaxRegNo = first.prin_trn_no || meta.clientVatNo || "";
+  const remarks = first.onl_remrks || first.remarks || "";
 
-  let itemRowsHtml = "";
+  // Shipment / Job Mode Header
+  const rawMode = String(getProp(shipment, "transport_mode") || first.transport_mode || "S").toUpperCase();
+  const rawJobType = String(getProp(shipment, "job_type") || first.job_type || "IMP").toUpperCase();
+  const modeText = rawMode === "A" ? "AIR" : rawMode === "R" ? "ROAD" : "SEA";
+  const typeText = rawJobType === "EXP" ? "EXPORT" : "IMPORT";
+  const shipmentHeader = `${modeText} ${typeText}`;
 
-  if (isActivityWise) {
-    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
-    itemRowsHtml = flatRows
-      .map((r, idx) => {
-        const desc = (r as any).activity?.trim() || r.inv_desc || r.other_services || r.act_group_name || "Service";
-        const price = Number(r.bill_rate ?? 0);
-        const qty = r.quantity ?? "";
-        const beforeTax = Number(r.bill ?? 0);
-        const vatPerc = r.tx_compnt_perc_1 ?? "";
-        const vatAmt = Number(r.tx_compnt_amt_1 ?? 0);
-        const withVat = beforeTax + vatAmt;
-        return `
-          <tr>
-            <td class="c-no">${idx + 1}</td>
-            <td class="c-desc">${esc(desc)}</td>
-            <td class="c-price">${price ? fmtMoney(price, 2) : ""}</td>
-            <td class="c-qty">${qty}</td>
-            <td class="c-amt">${fmtMoney(beforeTax, 2)}</td>
-            <td class="c-vat">${vatPerc}</td>
-            <td class="c-amt">${fmtMoney(vatAmt, 2)}</td>
-            <td class="c-amt">${fmtMoney(withVat, 2)}</td>
-          </tr>`;
-      })
-      .join("");
-  } else {
-    // Grouped by Activity Group
-    const groupMap = new Map<string, FreightInvoiceRow[]>();
-    for (const r of rows) {
-      if (isCostRow(r)) continue;
-      if (r.bill == null || Number(r.bill) === 0) continue;
-      const groupName = ((r.act_group_name || r.activity_group_code || "GENERAL SERVICES") as string).trim();
-      const key = groupName.toUpperCase();
-      if (!groupMap.has(key)) groupMap.set(key, []);
-      groupMap.get(key)!.push(r);
+  const origin = (getProp(shipment, "place_receipt") || first.country_origin || "").toUpperCase();
+  const destination = getProp(shipment, "place_delivery") || first.country_destination || "";
+  const noOfPackings = getProp(shipment, "no_of_packings") != null ? String(getProp(shipment, "no_of_packings")) : "";
+  const blNo = getProp(shipment, "bl_no") || getProp(shipment, "doc_ref") || "";
+  const hblNo = getProp(shipment, "hawb") || "";
+  const netWt = getProp(shipment, "net_wt") != null ? fmtMoney(getProp(shipment, "net_wt"), 2) : "0.00";
+  const grossWt = getProp(shipment, "gross_wt") != null ? fmtMoney(getProp(shipment, "gross_wt"), 2) : "";
+  const volume = getProp(shipment, "volume") != null ? fmtMoney(getProp(shipment, "volume"), 2) : "";
+  
+  // Clean container string (remove literal null or \rnull)
+  const rawContainers = String(getProp(shipment, "container_no") || "").replace(/\bnull\b/gi, "").trim();
+  const containers = esc(rawContainers).replace(/\r\n|\r|\n/g, "<br/>");
+
+  // Clean product details (handle newlines safely without overlap)
+  const rawProd = String(getProp(shipment, "prod_description") || getProp(shipment, "description1") || "").trim();
+  const prodDetails = esc(rawProd).replace(/\r\n|\r|\n/g, "<br/>");
+
+  const shipmentDate = fmtDate(getProp(shipment, "confirm_date") || getProp(shipment, "bl_date") || getProp(shipment, "issue_date") || first.invoice_date, 'dash-short');
+
+  // Line items
+  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null);
+  let totalExclTax = 0;
+  let totalTax = 0;
+
+  const itemRowsHtml = billableRows.map((r, idx) => {
+    const desc = (r as any).activity?.trim() || r.other_services || r.inv_desc || r.act_group_name || "Service";
+    const qty = r.quantity || 1;
+    const amountExcl = Number(r.bill || 0);
+    const rate = Number(r.bill_rate || (amountExcl / Number(qty || 1)));
+    const taxAmt = Number(r.tx_compnt_amt_1 || 0);
+    const amountIncl = amountExcl + taxAmt;
+
+    totalExclTax += amountExcl;
+    totalTax += taxAmt;
+
+    const vatPercNum = Number(r.tx_compnt_perc_1 || 0);
+    let vatLabel = "NT";
+    if (vatPercNum > 0) {
+      vatLabel = `${vatPercNum} %`;
+    } else if (String(r.tx_compnt_1_expamt || "").toUpperCase() === "ZERO" || (vatPercNum === 0 && taxAmt === 0 && String(desc).toUpperCase().includes("PORT"))) {
+      vatLabel = "Zero";
     }
 
-    let rowSeq = 0;
-    const groupSections: string[] = [];
+    return `
+      <tr class="item-data-row">
+        <td class="col-sno">${idx + 1}</td>
+        <td class="col-service">${esc(desc)}</td>
+        <td class="col-qty">${qty}</td>
+        <td class="col-rate">${fmtMoney(rate, decimals)}</td>
+        <td class="col-amt-excl">${fmtMoney(amountExcl, decimals)}</td>
+        <td class="col-vat">${vatLabel}</td>
+        <td class="col-tax-amt">${fmtMoney(taxAmt, decimals)}</td>
+        <td class="col-amt-incl">${fmtMoney(amountIncl, decimals)}</td>
+      </tr>`;
+  }).join("");
 
-    for (const groupRows of groupMap.values()) {
-      const groupTitle = (groupRows[0].act_group_name || groupRows[0].activity_group_code || "GENERAL SERVICES").trim();
-      const groupHeader = `
-        <tr class="group-header-row" style="background: #f8f9fa;">
-          <td class="c-no"></td>
-          <td colspan="7" class="c-desc"><strong>${esc(groupTitle)}</strong></td>
-        </tr>`;
+  const totalInclTax = totalExclTax + totalTax;
 
-      const subRows = groupRows.map((r) => {
-        rowSeq += 1;
-        const activityDesc = (r as any).activity?.trim() || r.inv_desc || r.other_services || groupTitle;
-        const subPrice = Number(r.bill_rate ?? 0);
-        const subQty = r.quantity ?? "";
-        const subAmt = Number(r.bill ?? 0);
-        const subVat = Number(r.tx_compnt_amt_1 ?? 0);
-        const subWith = subAmt + subVat;
-        const subVatP = r.tx_compnt_perc_1 ?? "";
-        return `
-          <tr class="sub-row">
-            <td class="c-no">${rowSeq}</td>
-            <td class="c-desc sub-desc" style="padding-left: 14px;">${esc(activityDesc)}</td>
-            <td class="c-price">${subPrice ? fmtMoney(subPrice, 2) : ""}</td>
-            <td class="c-qty">${subQty}</td>
-            <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
-            <td class="c-vat">${subVatP}</td>
-            <td class="c-amt">${fmtMoney(subVat, 2)}</td>
-            <td class="c-amt">${fmtMoney(subWith, 2)}</td>
-          </tr>`;
-      }).join("");
+  // Single page fit: 8 total rows keeps everything strictly inside 1 A4 page
+  const targetRowCount = 8;
+  const fillerCount = Math.max(0, targetRowCount - billableRows.length);
+  const fillerRows = Array.from({ length: fillerCount })
+    .map(() => `<tr class="filler-data-row">
+      <td class="col-sno">&nbsp;</td>
+      <td class="col-service">&nbsp;</td>
+      <td class="col-qty">&nbsp;</td>
+      <td class="col-rate">&nbsp;</td>
+      <td class="col-amt-excl">&nbsp;</td>
+      <td class="col-vat">&nbsp;</td>
+      <td class="col-tax-amt">&nbsp;</td>
+      <td class="col-amt-incl">&nbsp;</td>
+    </tr>`)
+    .join("");
 
-      groupSections.push(groupHeader + subRows);
-    }
-
-    itemRowsHtml = groupSections.join("");
+  // Bank accounts
+  let rawBeneficiary = getProp(divisionInfo, "bank_name_inv") || first.bank_name_inv || "";
+  if (!rawBeneficiary && displayName) {
+    rawBeneficiary = `Beneficiary Name: ${displayName}`;
   }
 
-  const FIXED_FILLERS = 28;
-  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
-    .map(() => `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`)
-    .join("");
-  const fillerRowsHtml =
-    fixedFillerHtml +
-    `<tr class="spacer-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`;
+  const bank1Name = getProp(divisionInfo, "bank_address_inv") || getProp(companyInfo, "bank_name") || first.bank_address_inv || "Bank Muscat";
+  let bank1AcNo = getProp(divisionInfo, "ac_code_inv") || getProp(companyInfo, "ac_code") || first.ac_code_inv || "";
+  if (bank1AcNo && !bank1AcNo.toLowerCase().includes("a/c")) {
+    bank1AcNo = `A/C No.: ${bank1AcNo} (${currCode})`;
+  }
+  let bank1Iban = getProp(divisionInfo, "reference_no_inv") || getProp(companyInfo, "reference_no") || first.reference_no_inv || "";
+  if (bank1Iban && !bank1Iban.toLowerCase().includes("iban")) {
+    bank1Iban = `IBAN No : ${bank1Iban}`;
+  }
+  let bank1Swift = getProp(divisionInfo, "swift_code_inv") || getProp(companyInfo, "swift_code") || first.swift_code_inv || "";
+  if (bank1Swift && !bank1Swift.toLowerCase().includes("swift")) {
+    bank1Swift = `SWIFT Code: ${bank1Swift}`;
+  }
 
-  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
-  const totalBeforeVat = billableRows.reduce((s, r) => s + Number(r.bill ?? 0), 0);
-  const totalVat = billableRows.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
-  const totalAfterVat = totalBeforeVat + totalVat;
+  // Secondary Bank account (USD)
+  let bank2AcNo = getProp(divisionInfo, "ac_code_inv_usd") || "A/C No.: 0423042602910033 (USD)";
+  if (bank2AcNo && !bank2AcNo.toLowerCase().includes("a/c")) {
+    bank2AcNo = `A/C No.: ${bank2AcNo} (USD)`;
+  }
+  let bank2Iban = getProp(divisionInfo, "ref_no_inv_usd") || "IBAN No : OM080270423042602910033";
+  if (bank2Iban && !bank2Iban.toLowerCase().includes("iban")) {
+    bank2Iban = `IBAN No : ${bank2Iban}`;
+  }
+  let bank2Swift = getProp(divisionInfo, "swift_code_inv_usd") || "SWIFT Code: BMUSOMRXXXX";
+  if (bank2Swift && !bank2Swift.toLowerCase().includes("swift")) {
+    bank2Swift = `SWIFT Code: ${bank2Swift}`;
+  }
 
-  const printDate = fmtDate(first.invoice_date || first.user_dt);
-  const dueDate = fmtDate(first.due_date);
-  const invoiceNo = meta.invoiceNo || first.invoice_no || "";
-  const invoicePeriod =
-    meta.invoicePeriod ||
-    (first.from_date && first.to_date ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}` : "");
-  const vatNo = first.prin_trn_no || "";
-  const companyVatNo = first.comp_trn_no || "";
+  // Footer address & contacts
+  const fullAddress = "MHD Logistics LLC,P.O.Box 112, Postal Code 111, ,Wadi Kabir ,,Muscat,Oman";
+  const tel = getProp(divisionInfo, "phone") || getProp(companyInfo, "contact_number") || getProp(companyInfo, "tel_no") || first.phone || "+968 71557267";
+  const fax = getProp(divisionInfo, "fax") || getProp(companyInfo, "fax_no") || first.fax || "";
+  const email = getProp(divisionInfo, "email") || getProp(companyInfo, "email") || first.email || "info@mhdlogistics.com";
 
-  const bankName = first.bank_name;
-  const acCode = first.ac_code_inv || first.ac_code || "";
-  const refNo = first.reference_no_inv || first.reference_no || "";
-  const bankAddr = first.bank_address_inv || first.bank_address || "";
-  const companyForBank = companyName;
-  const swiftCode = first.swift_code || first.swift_code_inv || "";
+  // Payment terms
+  const creditDays = first.creditdays || getProp(shipment, "creditdays") || 30;
 
-  const bankSection =
-    bankName || acCode || refNo || bankAddr
-      ? `
-    <div class="bank-block">
-      <div class="bank-title">Bank Details</div>
-      ${bankName ? `<div class="bank-line">Bank Name: ${esc(bankName)}</div>` : ""}
-      <div class="bank-line">A/C Name: ${esc(companyForBank)}</div>
-      ${acCode ? `<div class="bank-line">A/C No.-${esc(acCode)}</div>` : ""}
-      ${refNo ? `<div class="bank-line">Ref No.- ${esc(refNo)}</div>` : ""}
-      ${swiftCode ? `<div class="bank-line">SWIFT Code: ${esc(swiftCode)}</div>` : ""}
-      ${bankAddr ? `<div class="bank-line">Bank Address: ${esc(bankAddr)}</div>` : ""}
-      <div class="bank-line">--</div>
-      ${remark1 ? `<div class="bank-line export-note">${esc(remark1)}</div>` : ""}
-      ${remark2 ? `<div class="bank-line export-note">${esc(remark2)}</div>` : ""}
-    </div>`
-      : "";
+  const logoUrl = getProp(companyInfo, "company_logo") || getProp(divisionInfo, "comp_logo") || "https://objectstorage.me-dubai-1.oraclecloud.com/n/axpnrpp1t5qs/b/app-dev-bucket-test/o/JASRALOGO%2FMHDLLOGO.png";
 
-  const metaRows: Array<[string, string]> = [
-    ["Invoice No.", esc(invoiceNo)],
-    ["Invoice Date", printDate],
-    ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
-    ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
-    ["Currency", esc(currCode)],
-    ["Sales Rep", esc(first.salesman || "")],
-    ["Billing Rep", esc(first.user_id || "")],
-    ["VAT (TIN NO)", esc(companyVatNo || "")],
-  ];
-
-  const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
+  const safePdfFileName = ("TAX_INVOICE_" + (invoiceNo || "FF_INVOICE")).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Tax Invoice ${esc(invoiceNo)}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { height: 100%; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; background: #e8e8e8; color: #000; padding: 12px; }
-  .invoice-wrapper { max-width: 794px; width: 100%; margin: 0 auto; background: #ffffff; padding: 12px 18px 8px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); height: 1122px; min-height: 1122px; border: none; display: flex; flex-direction: column; overflow: hidden; }
-  @media print {
-    @page { size: A4; margin: 8mm; }
-    html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
-    .invoice-wrapper { box-shadow: none; max-width: 100%; width: 100%; height: 100vh; min-height: 100vh; border: none; padding: 6px 10px; page-break-after: always; }
-    .no-print { display: none !important; }
-  }
-  @media screen and (max-width: 768px) {
-    body { padding: 4px; background: #fff; font-size: 12px; }
-    .invoice-wrapper { padding: 8px 10px; height: auto; min-height: auto; box-shadow: none; max-width: 100%; }
-    .top-info { flex-direction: column; }
-    .to-block { flex: none; padding: 4px 0; max-width: 100%; }
-    .meta-block { flex: none; padding: 4px 0; }
-    .meta-label { width: 110px; }
-    .table-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .items-table { min-width: 680px; }
-    .bank-sig-table, .bank-sig-table tr, .bank-sig-table td { display: block; width: 100% !important; }
-    .stamp-cell { text-align: center !important; margin-top: 14px; }
-    .invoice-title { font-size: 15px; letter-spacing: 2px; }
-    .company-name-fallback { font-size: 15px; }
-    .footer { font-size: 9px; }
-    .qr-top img { width: 50px; height: 50px; }
-  }
-  .no-print { text-align: right; margin-bottom: 8px; }
-  .no-print button { padding: 6px 20px; background: #1a2c5e; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
-  .masthead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-shrink: 0; }
-  .logo-box { flex: 0 0 auto; }
-  .logo-img { max-height: 80px; max-width: 220px; object-fit: contain; display: block; }
-  .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a2c5e; }
-  .company-details-right { text-align: right; margin-left: auto; font-size: 10px; line-height: 1.4; }
-  .company-name-right { font-size: 13px; font-weight: 700; color: #1a2c5e; margin-bottom: 2px; }
-  .company-addr-line { font-size: 9.5px; color: #222; }
-  .qr-top { text-align: right; margin-top: 4px; }
-  .qr-top img { width: 58px; height: 58px; display: inline-block; }
-  .qr-top .qr-label { font-size: 7px; color: #444; margin-top: 2px; }
-  .invoice-title { text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 4px; margin-bottom: 6px; flex-shrink: 0; }
-  .top-info { display: flex; border: none; flex-shrink: 0; }
-  .to-block { flex: 1.2; padding: 6px 10px 6px 0; border: none; }
-  .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
-  .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
-  .to-line { font-size: 10px; line-height: 1.5; border: none; max-width: 280px; }
-  .meta-block { flex: 1; padding: 6px 0 6px 10px; border: none; }
-  .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
-  .meta-label { width: 120px; color: #000; }
-  .meta-colon { width: 10px; }
-  .meta-value { font-weight: 600; flex: 1; }
-  .table-area { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; margin-top: 4px; }
-  .items-table { width: 100%; height: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10px; table-layout: fixed; }
-  .items-table th, .items-table td { border: 1px solid #000; padding: 2px 4px; vertical-align: top; overflow: hidden; }
-  .items-table thead th { background: #eef2f6; font-weight: 700; font-size: 10.5px; text-align: center; vertical-align: middle; }
-  .c-no { width: 28px; text-align: center; padding-left: 2px; padding-right: 2px; }
-  .c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-  .c-price { width: 80px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 2px; padding-right: 4px; }
-  .c-qty { width: 40px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .c-amt { width: 90px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 2px; padding-right: 4px; }
-  .c-vat { width: 26px; text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
-  .sub-row td { border: 1px solid #000; }
-  .sub-desc { padding-left: 14px; color: #222; }
-  .sub-amt { color: #222; }
-  .total-prefix { font-size: 8.5px; font-weight: 700; margin-right: 2px; }
-  .filler-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 14px; padding: 0 5px; }
-  .spacer-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 100%; min-height: 40px; padding: 0; vertical-align: top; }
-  .legend-row td { font-size: 8.5px; color: #222; border: 1px solid #000; vertical-align: middle; padding: 2px 4px; }
-  .words-row .total-label { text-align: left; font-weight: 700; font-size: 9.5px; white-space: normal; word-wrap: break-word; }
-  .words-row td { border: 1px solid #000; border-top: 2px solid #000; font-weight: 700; vertical-align: middle; padding: 4px; }
-  .words-row .c-amt { font-weight: 700; white-space: nowrap; }
-  .bank-sig-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 10px; flex-shrink: 0; }
-  .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
-  .bank-cell { width: 62%; padding-right: 14px; }
-  .stamp-cell { width: 160px; text-align: right; }
-  .bank-block { font-size: 10px; line-height: 1.45; }
-  .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
-  .bank-line { margin-bottom: 1px; }
-  .stamp-img { display: block; margin-left: auto; margin-right: 0; max-height: 90px; max-width: 120px; width: auto; height: auto; object-fit: contain; }
-  .signature-text { font-weight: 700; font-size: 11px; text-align: right; white-space: nowrap; padding-top: 4px; }
-  .footer { margin-top: 8px; padding-top: 6px; border: none; text-align: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
-  .footer .addr-line { font-weight: 400; margin-top: 2px; }
-  .footer .disclaimer { font-weight: 400; font-size: 8.5px; color: #222; border: none; margin-top: 4px; text-align: left; padding-top: 2px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TAX INVOICE - ${esc(invoiceNo)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 8mm 8mm 8mm 8mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+      color: #000000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 10px;
+      line-height: 1.3;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* TOP ACTION TOOLBAR */
+    .invoice-toolbar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 10px 24px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toolbar-badge {
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .toolbar-inv-no {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.5px;
+    }
+    .toolbar-client {
+      font-size: 12px;
+      color: #94a3b8;
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn-download-pdf {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+    }
+    .btn-download-pdf:hover {
+      background: #1d4ed8;
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.5);
+    }
+    .btn-print {
+      background: #334155;
+      color: #ffffff;
+      border: 1px solid #475569;
+    }
+    .btn-print:hover {
+      background: #475569;
+    }
+    .btn-close {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .btn-close:hover {
+      color: #ffffff;
+      border-color: #64748b;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* INVOICE PAPER VIEWPORT - SIZED PERFECTLY FOR A4 PRINTABLE AREA */
+    .invoice-viewport {
+      padding: 20px 12px 40px 12px;
+      display: flex;
+      justify-content: center;
+    }
+    .invoice-card {
+      width: 100%;
+      max-width: 710px;
+      background: #ffffff;
+      padding: 16px 20px 14px 20px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
+      box-sizing: border-box;
+      position: relative;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    /* PRINT SPECIFIC STYLES - ZERO MARGIN OVERFLOW */
+    @media print {
+      body, html {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      .invoice-toolbar, .no-print {
+        display: none !important;
+      }
+      .invoice-viewport {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+      .invoice-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+      }
+    }
+
+    /* MASTHEAD */
+    .top-masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 2px;
+    }
+    .top-logo-block {
+      flex: 0 0 200px;
+    }
+    .logo-img {
+      height: 44px;
+      max-width: 190px;
+      object-fit: contain;
+      display: block;
+    }
+    .logo-sub {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 2px;
+    }
+    .title-centered {
+      flex: 1;
+      text-align: center;
+    }
+    .title-centered h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #000000;
+    }
+    .masthead-spacer {
+      flex: 0 0 200px;
+    }
+
+    /* HORIZONTAL DIVIDER LINE UNDER MASTHEAD */
+    .masthead-divider-line {
+      border-bottom: 2px solid #000000;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      width: 100%;
+    }
+
+    /* CLIENT & METADATA SECTION */
+    .header-details-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 4px;
+    }
+    .client-col {
+      width: 48%;
+    }
+    .to-label {
+      font-weight: 700;
+      font-size: 10.5px;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .underlined-field {
+      border-bottom: 1px solid #000000;
+      min-height: 16px;
+      line-height: 16px;
+      font-size: 10px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #000000;
+    }
+    .client-name-bold {
+      font-weight: 700;
+      font-size: 10.5px;
+      display: inline-block;
+      vertical-align: bottom;
+      width: calc(100% - 26px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .meta-col {
+      width: 50%;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 2px solid #000000;
+    }
+    .meta-table td {
+      padding: 1px 0;
+      font-size: 10px;
+      vertical-align: top;
+    }
+    .meta-lbl {
+      width: 110px;
+      font-weight: 700;
+      white-space: nowrap;
+      color: #000000;
+    }
+    .meta-col-sep {
+      width: 10px;
+      text-align: center;
+      font-weight: 700;
+      color: #000000;
+    }
+    .meta-val-cell {
+      border-bottom: 1px solid #000000;
+      font-weight: 700;
+      padding-left: 4px;
+      color: #000000;
+    }
+    .page-indicator {
+      text-align: right;
+      font-size: 9px;
+      padding-top: 2px;
+      color: #000000;
+    }
+
+    /* SHIPMENT DETAILS BOX */
+    .shipment-container {
+      border: 1.5px solid #000000;
+      margin-top: 4px;
+      margin-bottom: 0;
+    }
+    .shipment-banner {
+      font-weight: 800;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-bottom: 1.5px solid #000000;
+      background: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .shipment-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+      table-layout: fixed;
+    }
+    .shipment-table td {
+      border-right: 1px solid #000000;
+      border-bottom: 1px solid #000000;
+      padding: 2.5px 5px;
+      vertical-align: top;
+      color: #000000;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    .shipment-table td:last-child {
+      border-right: none;
+    }
+    .shipment-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* SERVICES GRID TABLE */
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.5px solid #000000;
+      border-top: none;
+      margin-top: 0;
+      margin-bottom: 0;
+      table-layout: fixed;
+    }
+    .grid-table th {
+      border: 1px solid #000000;
+      font-weight: 700;
+      font-size: 10px;
+      padding: 3px 3px;
+      background: #ffffff;
+      text-align: center;
+      line-height: 1.15;
+      color: #000000;
+    }
+    .grid-table td {
+      border: 1px solid #000000;
+      font-size: 9.5px;
+      padding: 2.5px 4px;
+      vertical-align: middle;
+      color: #000000;
+    }
+    .col-sno { text-align: center; }
+    .col-service { text-align: left; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .col-qty { text-align: center; font-weight: 700; }
+    .col-rate { text-align: right; }
+    .col-amt-excl { text-align: right; font-weight: 700; }
+    .col-vat { text-align: center; }
+    .col-tax-amt { text-align: right; }
+    .col-amt-incl { text-align: right; font-weight: 700; }
+
+    .filler-data-row td {
+      height: 19px;
+      border: 1px solid #000000;
+    }
+
+    /* TOTALS ROW */
+    .totals-row td {
+      border: 1px solid #000000;
+      border-top: 1.5px solid #000000;
+      padding: 3px 4px;
+      vertical-align: bottom;
+      font-weight: 700;
+    }
+    .totals-words-cell {
+      vertical-align: top !important;
+      text-align: left;
+    }
+    .tax-notes-txt {
+      font-size: 9px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .words-amt-txt {
+      font-size: 9.5px;
+      font-weight: 700;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    /* TERMS & CONDITIONS */
+    .terms-section {
+      margin-top: 5px;
+      font-size: 9.5px;
+      line-height: 1.35;
+      color: #000000;
+    }
+    .terms-highlight {
+      text-decoration: underline;
+      font-weight: 700;
+    }
+
+    /* BANK DETAILS & SIGNATURE */
+    .bank-and-sig {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 9px;
+      line-height: 1.35;
+      color: #000000;
+    }
+    .bank-col {
+      width: 44%;
+    }
+    .bank-title-bold {
+      font-weight: 700;
+      margin-bottom: 1px;
+    }
+    .signature-area {
+      width: 32%;
+      text-align: right;
+      padding-top: 30px;
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #000000;
+    }
+
+    /* FOOTER BOX */
+    .outer-footer-box {
+      border: 1.5px solid #000000;
+      margin-top: 6px;
+      padding: 3px 5px;
+      text-align: center;
+      font-size: 9px;
+      line-height: 1.3;
+      color: #000000;
+    }
+    .footer-bold {
+      font-weight: 700;
+    }
+  </style>
 </head>
 <body>
 
-<div class="no-print">
-  <button onclick="window.print()">🖨️ Print / Save PDF</button>
+<!-- TOP ACTION TOOLBAR -->
+<div class="invoice-toolbar no-print">
+  <div class="toolbar-left">
+    <span class="toolbar-badge">TAX INVOICE</span>
+    <span class="toolbar-inv-no">${esc(invoiceNo)}</span>
+    <span class="toolbar-client">${esc(billToName)}</span>
+  </div>
+  <div class="toolbar-actions">
+    <button id="btn-dl-pdf" onclick="downloadAsPdf()" class="btn-action btn-download-pdf" title="Directly Download PDF">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Download PDF</span>
+    </button>
+    <button onclick="window.print()" class="btn-action btn-print" title="Open Print Dialog">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <span>Print Invoice</span>
+    </button>
+    <button onclick="window.close()" class="btn-action btn-close" title="Close Preview">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <span>Close</span>
+    </button>
+  </div>
 </div>
 
-<div class="invoice-wrapper">
+<!-- INVOICE VIEWPORT -->
+<div class="invoice-viewport">
+  <div class="invoice-card" id="invoice-to-print">
 
-  <div class="masthead">
-    <div class="logo-box">
-      ${(() => {
-        const logoUrl = (first.company_logo || first.logo_path || "").trim();
-        if (logoUrl) return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
-        return `<div class="company-name-fallback">${esc(companyName)}</div>`;
-      })()}
+    <!-- TOP MASTHEAD -->
+    <div class="top-masthead">
+      <div class="top-logo-block">
+        <img class="logo-img" src="${esc(logoUrl)}" alt="${esc(displayName)}" />
+        <div class="logo-sub">${esc(displayShortName)}</div>
+      </div>
+      <div class="title-centered">
+        <h1>TAX INVOICE</h1>
+      </div>
+      <div class="masthead-spacer">&nbsp;</div>
     </div>
-    <div class="company-details-right">
-      <div class="company-name-right">${esc(companyName)}</div>
-      ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
-      ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
-      ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
-      ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
-      ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
-      ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
-      ${first.crn ? `<div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>` : ""}
-      ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
-    </div>
-  </div>
-  <div class="invoice-title">TAX INVOICE</div>
 
-  <div class="top-info">
-    <div class="to-block">
-      <div class="to-label">To :</div>
-      <div class="to-name">${esc(billToName)} Company</div>
-      ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
-      ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
-      ${first.prin_faxno1 ? `<div class="to-line">Fax: ${esc(first.prin_faxno1)}</div>` : ""}
-      ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
-      <div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>
-    </div>
-    <div class="meta-block">
-      ${metaRows.map(([label, value]) => `<div class="meta-row"><div class="meta-label">${label}</div><div class="meta-colon">${label ? ":" : ""}</div><div class="meta-value">${value}</div></div>`).join("")}
-    </div>
-  </div>
+    <!-- HORIZONTAL DIVIDER LINE -->
+    <div class="masthead-divider-line"></div>
 
-  <div class="table-area">
-    <table class="items-table">
+    <!-- CLIENT & METADATA -->
+    <div class="header-details-row">
+      <!-- LEFT: CLIENT BOX -->
+      <div class="client-col">
+        <div class="underlined-field">
+          <span class="to-label">To</span>
+          <span class="client-name-bold">${esc(billToName)}</span>
+        </div>
+        ${billToAddressLines.map((line) => `<div class="underlined-field">${esc(line)}</div>`).join("")}
+        ${Array.from({ length: Math.max(0, 3 - billToAddressLines.length) }).map(() => `<div class="underlined-field">&nbsp;</div>`).join("")}
+        <div class="underlined-field">
+          Ph. ${esc(clientTel)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Fax. ${esc(clientFax)}
+        </div>
+        <div class="underlined-field">e-Mail : ${esc(clientEmail)}</div>
+        <div class="underlined-field">Tax Reg No. : ${esc(clientTaxRegNo)}</div>
+        <div class="underlined-field">Remarks : ${esc(remarks)}</div>
+      </div>
+
+      <!-- RIGHT: METADATA TABLE -->
+      <div class="meta-col">
+        <table class="meta-table">
+          <tr>
+            <td class="meta-lbl">Invoice No.</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(invoiceNo)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Invoice Date</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${invoiceDate}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Due Date</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${dueDate}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Supply From / To</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${supplyPeriod}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Customer Rep</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(customerRep)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Currency</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(currCode)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Job No</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(jobNo)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">PO No</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(poNo)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Tax Reg No.</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${esc(companyTaxRegNo)}</td>
+          </tr>
+          <tr>
+            <td class="meta-lbl">Date Of Supply</td>
+            <td class="meta-col-sep">:</td>
+            <td class="meta-val-cell">${dateOfSupply}</td>
+          </tr>
+        </table>
+        <div class="page-indicator">Page 1 of 1</div>
+      </div>
+    </div>
+
+    <!-- SHIPMENT DETAILS BOX -->
+    <div class="shipment-container">
+      <div class="shipment-banner">${shipmentHeader}</div>
+      <table class="shipment-table">
+        <colgroup>
+          <col style="width: 32%;" />
+          <col style="width: 28%;" />
+          <col style="width: 22%;" />
+          <col style="width: 18%;" />
+        </colgroup>
+        <tr>
+          <td><strong>Origin :</strong> ${esc(origin)}</td>
+          <td><strong>No Of Packings:</strong> &nbsp;${esc(noOfPackings)}</td>
+          <td><strong>Net Wt:</strong> &nbsp;${netWt}</td>
+          <td><strong>Date :</strong> &nbsp;${shipmentDate}</td>
+        </tr>
+        <tr>
+          <td><strong>Destination :</strong> ${esc(destination)}</td>
+          <td><strong>BL No:</strong> &nbsp;${esc(blNo)}</td>
+          <td><strong>Gross Wt:</strong> &nbsp;${grossWt}</td>
+          <td><strong>Volume:</strong> &nbsp;${volume}</td>
+        </tr>
+        <tr>
+          <td><strong>Product Details :</strong> ${prodDetails}</td>
+          <td><strong>Containers:</strong> &nbsp;${containers}</td>
+          <td colspan="2"><strong>HBL No:</strong> &nbsp;${esc(hblNo)}</td>
+        </tr>
+        <tr>
+          <td colspan="4"><strong>Remarks:</strong> &nbsp;${esc(remarks)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- LINE ITEMS GRID WITH INTEGRATED TOTALS ROW (100% SEAMLESS VERTICAL BORDERS) -->
+    <table class="grid-table">
       <colgroup>
-        <col style="width:28px" /><col /><col style="width:80px" /><col style="width:40px" />
-        <col style="width:90px" /><col style="width:26px" /><col style="width:90px" /><col style="width:90px" />
+        <col style="width: 5%;" />
+        <col style="width: 39%;" />
+        <col style="width: 7%;" />
+        <col style="width: 11%;" />
+        <col style="width: 13%;" />
+        <col style="width: 6%;" />
+        <col style="width: 9%;" />
+        <col style="width: 10%;" />
       </colgroup>
       <thead>
         <tr>
-          <th class="c-no">SR No</th>
-          <th class="c-desc">Description</th>
-          <th class="c-price">Price</th>
-          <th class="c-qty">Qty</th>
-          <th class="c-amt">Total<br/>Before Tax</th>
-          <th class="c-vat">VAT<br/>%</th>
-          <th class="c-amt">VAT<br/>Amount</th>
-          <th class="c-amt">Total<br/>With VAT</th>
+          <th>S.No.</th>
+          <th style="text-align: left; padding-left: 5px;">Services</th>
+          <th>Quantity</th>
+          <th>Rate</th>
+          <th>Amount (Excl.<br/>Tax)</th>
+          <th>VAT<br/>%</th>
+          <th>Amount<br/>Tax</th>
+          <th>Amount<br/>(Incl. Tax)</th>
         </tr>
       </thead>
       <tbody>
         ${itemRowsHtml}
-        ${fillerRowsHtml}
-        <tr class="words-row">
-          <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 2))}</td>
-          <td class="c-amt">${fmtMoney(totalBeforeVat, 2)}</td>
-          <td class="c-vat"></td>
-          <td class="c-amt">${fmtMoney(totalVat, 2)}</td>
-          <td class="c-amt">${fmtMoney(totalAfterVat, 2)}</td>
-        </tr>
+        ${fillerRows}
       </tbody>
+      <tfoot>
+        <tr class="totals-row">
+          <td colspan="3" class="totals-words-cell">
+            <div class="tax-notes-txt">NT - No Tax, 0% - Zero, 5% - Standard</div>
+            <div class="words-amt-txt">${esc(amountInWords(totalInclTax, currCode, decimals))}</div>
+          </td>
+          <td style="text-align: right;">Total :</td>
+          <td style="text-align: right;">${fmtMoney(totalExclTax, decimals)}</td>
+          <td>&nbsp;</td>
+          <td style="text-align: right;">${fmtMoney(totalTax, decimals)}</td>
+          <td style="text-align: right;">${fmtMoney(totalInclTax, decimals)}</td>
+        </tr>
+      </tfoot>
     </table>
-  </div>
 
-  <table class="bank-sig-table">
-    <tr>
-      <td class="bank-cell">${bankSection}</td>
-      <td class="stamp-cell">
-        ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-        <div class="signature-text">For ${esc(companyName)}</div>
-      </td>
-    </tr>
-  </table>
-
-  <div class="footer">
-    <div>${esc(first.div_address1 || "")}</div>
-    <div class="addr-line">${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}</div>
-    <div class="disclaimer">
-      This is a digitally signed Tax Invoice generated electronically by ${esc(companyName)}.<br/>
-      No physical signature is required. The authenticity of this document can be verified using the QR code (if present) or by contacting the issuer.
+    <!-- TERMS & CONDITIONS -->
+    <div class="terms-section">
+      <div><span class="terms-highlight">Payment Terms:</span> Payment due within ${creditDays} days from the Date of Invoice.</div>
+      <div>Invoice deemed correct if no query reaches ${esc(displayName)} within 7 days of the Invoice date.</div>
     </div>
-  </div>
 
+    <!-- BANK DETAILS & SIGNATURE -->
+    <div class="bank-and-sig">
+      <div class="bank-col">
+        <div class="bank-title-bold">${esc(rawBeneficiary)}</div>
+        <div class="bank-title-bold">${esc(bank1Name)}</div>
+        <div>${esc(bank1AcNo)}</div>
+        <div>${esc(bank1Iban)}</div>
+        <div>${esc(bank1Swift)}</div>
+      </div>
+
+      <div class="bank-col" style="padding-top: 10px;">
+        <div>${esc(bank2AcNo)}</div>
+        <div>${esc(bank2Iban)}</div>
+        <div>${esc(bank2Swift)}</div>
+      </div>
+
+      <div class="signature-area">
+        ${esc(displayName)}
+      </div>
+    </div>
+
+    <!-- FOOTER BOX -->
+    <div class="outer-footer-box">
+      <div class="footer-bold">${esc(fullAddress)}</div>
+      <div class="footer-bold">Tel: ${esc(tel)} ; Fax: ${esc(fax)} ; e-Mail: ${esc(email)}</div>
+      <div>Any Business, Services provided is subject to ${esc(displayName)}'s NAFL Standard Trading Conditions , copy of which can be provided on request.</div>
+    </div>
+
+  </div>
 </div>
+
+<script>
+  function downloadAsPdf() {
+    var element = document.getElementById('invoice-to-print');
+    var filename = '${safePdfFileName}';
+    var btn = document.getElementById('btn-dl-pdf');
+    if (window.html2pdf && element) {
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.innerHTML = '<span>⏳ Generating PDF...</span>';
+        btn.disabled = true;
+      }
+      var opt = {
+        margin:       [6, 8, 6, 8],
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save().then(function() {
+        if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+      }).catch(function(err) {
+        console.warn('html2pdf fallback to browser print:', err);
+        if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+        document.title = filename;
+        window.print();
+      });
+    } else {
+      document.title = filename;
+      window.print();
+    }
+  }
+</script>
 
 </body>
 </html>`;
 }
 
 export function buildFreightInvoiceHtmlBTIND(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
-  // BTIND fallback/implementation using standard layout
-  return buildFreightInvoiceHtmlAMKSA(rows, meta);
+  return buildFreightInvoiceHtmlMHDL(rows, meta);
 }

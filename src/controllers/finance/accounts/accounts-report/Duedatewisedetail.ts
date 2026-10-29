@@ -1,3 +1,4 @@
+import { ageingReportLabels } from "./ageingReportBuckets";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
@@ -136,7 +137,7 @@ export const DuedatewiseDetail = async (req: Request, res: Response): Promise<vo
       }, {})
     );
 
-    const ageLabels = ["Below 30", "30 - 60", "60 - 90", "90 - 120", "120 - 160", "160 - 200", "Above 200"];
+    const ageLabels = ageingReportLabels(req.body);
 
     type DetailRow = (typeof rows)[0];
     type AccGroup = {

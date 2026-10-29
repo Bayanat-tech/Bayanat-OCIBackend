@@ -1,19 +1,13 @@
+import { normalizeAccountingSign, postingAmounts } from "./financePostingAmounts";
+import { validateFinanceDocumentScope } from "./financeDocumentScope";
+import { validateSavedPosting } from "./financePostingValidation";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { IUser } from '../../../../interfaces/user.interface';
 
-const normalizeSignInd = (value: unknown, fallback = 1): 1 | -1 => {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "cr" || normalized === "credit") return 1;
-    if (normalized === "dr" || normalized === "debit") return -1;
-  }
-  const numeric = Number(value);
-  if (numeric === 1 || numeric === -1) return numeric as 1 | -1;
-  return fallback === -1 ? -1 : 1;
-};
+const normalizeSignInd = normalizeAccountingSign;
 
 const defaultDetailSign = (docType?: string): 1 | -1 =>
   docType === "PI" || docType === "PO" ? 1 : -1;
@@ -80,7 +74,7 @@ export const procBulkAccountEntry = async (
     const invoiceDetail = req.body?.invoiceDetails || req.body?.invoiceDetail || [];
     const expenseDetail = req.body?.expenseDetails || req.body?.expenseDetail || [];
     const jobDetail = req.body?.jobDetails || req.body?.jobDetail || [];
-    const loginid = req.body?.loginid || header?.create_user || header?.edit_user;
+    const loginid = user?.loginid;
 
     if (!header) {
 
@@ -92,6 +86,11 @@ export const procBulkAccountEntry = async (
       return;
     }
 
+    validateFinanceDocumentScope(user?.company_code, header, [details, invoiceDetail, expenseDetail, jobDetail]);
+    if (oneChar(header.canceled) === 'Y') {
+      res.status(400).json({ success: false, message: 'Use the document cancellation action to cancel a voucher and release its allocations' });
+      return;
+    }
     const tenantId = getCurrentTenantId();
 
     if (!tenantId) {
@@ -105,6 +104,18 @@ export const procBulkAccountEntry = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+    if (header.doc_no && String(header.doc_no) !== '0') {
+      const existing = await connection.execute<{ CANCELED: string }>(
+        `SELECT canceled FROM TR_AC_HEADER
+          WHERE company_code=:cc AND doc_type=:dt AND doc_no=:dn FOR UPDATE`,
+        { cc: header.company_code, dt: header.doc_type, dn: String(header.doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (existing.rows?.[0]?.CANCELED === 'Y') {
+        res.status(400).json({ success: false, message: 'Cancelled vouchers cannot be edited or reactivated' });
+        return;
+      }
+    }
 
    if (oneChar(header.canceled) !== 'Y' && header.doc_date) {
      // 1. Fetch current active financial period and accounting period lock rules
@@ -175,6 +186,106 @@ export const procBulkAccountEntry = async (
            res.status(400).json({
              success: false,
              message: `Document Date cannot be moved across financial periods. Cancel this document and create a new one in the target period.`
+           });
+           return;
+         }
+       }
+     }
+
+     // PowerBuilder Rule (uo_ac_invoice.sru): Duplicate Supplier Invoice (Ref No) check for Purchase Invoices (PI)
+     const docTypeForDup = String(header.doc_type || '').toUpperCase();
+     const refNoForDup = String(header.ref_no || header.inv_no || header.invoice_no || '').trim();
+     const acCodeForDup = String(header.ac_code || '').trim();
+     const curDocNoForDup = String(header.doc_no || '0').trim();
+
+     if (docTypeForDup === 'PI' && refNoForDup && acCodeForDup && oneChar(header.canceled) !== 'Y') {
+       const dupCheckRes: any = await connection!.execute(
+         `SELECT doc_no, doc_date 
+          FROM TR_AC_HEADER 
+          WHERE company_code = :cc
+            AND doc_type = 'PI'
+            AND ac_code = :ac
+            AND UPPER(TRIM(ref_no)) = UPPER(:ref_no)
+            AND NVL(canceled, 'N') <> 'Y'
+            AND (:cur_doc_no IS NULL OR :cur_doc_no = '0' OR TO_CHAR(doc_no) <> :cur_doc_no)
+            AND ROWNUM = 1`,
+         {
+           cc: header.company_code,
+           ac: acCodeForDup,
+           ref_no: refNoForDup,
+           cur_doc_no: curDocNoForDup,
+         },
+         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+       );
+
+       if (dupCheckRes.rows && dupCheckRes.rows.length > 0) {
+         const existing = dupCheckRes.rows[0];
+         res.status(400).json({
+           success: false,
+           message: `Supplier Invoice # "${refNoForDup}" already exists for this vendor in Purchase Invoice (${existing.DOC_NO || existing.doc_no}). Duplicate invoice numbers are not allowed.`,
+         });
+         return;
+       }
+     }
+
+     // PowerBuilder Rule (uo_ac_invoice.sru): Duplicate Ref No / LPO No check for Sales & Service Invoices (SI, SV)
+     if (['SI', 'SV'].includes(docTypeForDup) && acCodeForDup && oneChar(header.canceled) !== 'Y') {
+       if (refNoForDup) {
+         const dupRefRes: any = await connection!.execute(
+           `SELECT doc_no, doc_date 
+            FROM TR_AC_HEADER 
+            WHERE company_code = :cc
+              AND doc_type IN ('SI', 'SV')
+              AND ac_code = :ac
+              AND UPPER(TRIM(ref_no)) = UPPER(:ref_no)
+              AND NVL(canceled, 'N') <> 'Y'
+              AND (:cur_doc_no IS NULL OR :cur_doc_no = '0' OR TO_CHAR(doc_no) <> :cur_doc_no)
+              AND ROWNUM = 1`,
+           {
+             cc: header.company_code,
+             ac: acCodeForDup,
+             ref_no: refNoForDup,
+             cur_doc_no: curDocNoForDup,
+           },
+           { outFormat: oracledb.OUT_FORMAT_OBJECT }
+         );
+
+         if (dupRefRes.rows && dupRefRes.rows.length > 0) {
+           const existing = dupRefRes.rows[0];
+           res.status(400).json({
+             success: false,
+             message: `Customer Invoice / Reference # "${refNoForDup}" already exists for this customer in Invoice (${existing.DOC_NO || existing.doc_no}). Duplicate invoice references are not allowed.`,
+           });
+           return;
+         }
+       }
+
+       const lpoNoForDup = String(header.lpo_no || '').trim();
+       if (lpoNoForDup) {
+         const dupLpoRes: any = await connection!.execute(
+           `SELECT doc_no, doc_date 
+            FROM TR_AC_HEADER 
+            WHERE company_code = :cc
+              AND doc_type IN ('SI', 'SV')
+              AND ac_code = :ac
+              AND UPPER(TRIM(lpo_no)) = UPPER(:lpo_no)
+              AND NVL(canceled, 'N') <> 'Y'
+              AND (:cur_doc_no IS NULL OR :cur_doc_no = '0' OR TO_CHAR(doc_no) <> :cur_doc_no)
+              AND ROWNUM = 1`,
+           {
+             cc: header.company_code,
+             ac: acCodeForDup,
+             lpo_no: lpoNoForDup,
+             cur_doc_no: curDocNoForDup,
+           },
+           { outFormat: oracledb.OUT_FORMAT_OBJECT }
+         );
+
+         if (dupLpoRes.rows && dupLpoRes.rows.length > 0) {
+           const existing = dupLpoRes.rows[0];
+           res.status(400).json({
+             success: false,
+             message: `Customer LPO # "${lpoNoForDup}" has already been billed in Invoice (${existing.DOC_NO || existing.doc_no}). Duplicate LPO references are not allowed.`,
            });
            return;
          }
@@ -293,6 +404,12 @@ export const procBulkAccountEntry = async (
               AND pay_h.doc_type     = d.doc_type
               AND NVL(pay_h.canceled, 'N') = 'N'
              WHERE d.company_code = h.company_code
+               AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+               AND (
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
+                 OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+               )
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
                AND NVL(d.indicator_origin, 'N') = 'N'
                AND NVL(d.lcur_amount, 0) <> 0
@@ -359,11 +476,13 @@ export const procBulkAccountEntry = async (
           :p_detail,
           :p_invdetail,
           :p_expdetail,
-          :p_jobdetail
+          :p_jobdetail,
+          :p_gst_lines_json
         );
       END;
       `,
       {
+        p_gst_lines_json: { type: oracledb.CLOB, val: JSON.stringify(header.gst_lines || []) },
         p_header: {
           type: "TY_TR_AC_HEADER_ACENTRY_TAB",
           dir: oracledb.BIND_INOUT,
@@ -444,6 +563,7 @@ export const procBulkAccountEntry = async (
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : (header.doc_date ? new Date(header.doc_date) : null),
             AC_CODE: d.ac_code,
             JOB_NO: d.job_no || null,
+            DEPT_CODE: d.dept_code || null,
             HEADER_AC_CODE: d.header_ac_code,
             REMARKS: d.remarks || null,
             AMOUNT: Math.abs(Number(d.amount) || 0),
@@ -485,6 +605,7 @@ export const procBulkAccountEntry = async (
             QTY: d.qty,
             PRICE: d.price,
             SIGN_CODE: d.sign_code,
+            ...postingAmounts(d, header),
           }))
         },
 
@@ -563,13 +684,13 @@ export const procBulkAccountEntry = async (
       }
     );
 
-    await connection.commit();
-
     const outHeader = (result.outBinds as any)?.p_header?.[0];
     const generatedDocNo = outHeader?.DOC_NO || header.doc_no;
+    if (oneChar(header.canceled) !== 'Y') {
+      await validateSavedPosting(connection, header.company_code, header.doc_type, String(generatedDocNo));
+    }
     if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
-      try {
-        await connection.execute(
+        const repaired = await connection.execute(
           `BEGIN PROC_FIX_INVDETAIL_SELF_INV(:p_company_code, :p_doc_no, :p_status, :p_message); END;`,
           {
             p_company_code: header.company_code,
@@ -578,11 +699,10 @@ export const procBulkAccountEntry = async (
             p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
           }
         );
-        await connection.commit();
-      } catch (uErr) {
-        console.warn('[procBulkAccountEntry] Could not update TR_AC_INVDETAIL.INV_NO:', uErr);
-      }
+        const repairResult = repaired.outBinds as any;
+        if (repairResult?.p_status === 'ERROR') throw new Error(repairResult.p_message || 'Invoice reference repair failed');
     }
+    await connection.commit();
 
     res.json({
       success: true,
@@ -602,9 +722,10 @@ export const procBulkAccountEntry = async (
       } catch { }
     }
 
-    res.status(500).json({
+    const businessError = err.status || (Number(err.errorNum) >= 20000 && Number(err.errorNum) <= 20999);
+    res.status(err.status || (businessError ? 400 : 500)).json({
       success: false,
-      message: "Transaction failed",
+      message: businessError ? String(err.message).split('\n')[0].replace(/^ORA-\d+:\s*/, '') : "Transaction failed",
       details: err?.message
     });
 

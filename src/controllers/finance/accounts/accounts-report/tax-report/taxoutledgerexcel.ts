@@ -1,3 +1,4 @@
+import { taxReportContext, taxInvoiceTotal, formatTaxReportMoney } from "./taxReportValues";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 // @ts-ignore
@@ -106,7 +107,8 @@ interface XlCell { v: unknown; s: number }
 function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
 
 // ─── Excel Buffer Builder ─────────────────────────────────────────────────────
-function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: string): Buffer {
+function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: string, companyName: string, decimals: number): Buffer {
+  const formatBalance = (value: number) => formatTaxReportMoney(value, decimals);
   type Row = (XlCell | null)[];
   const skip = null;
   const NCOLS = 17;
@@ -114,7 +116,7 @@ function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: str
   const tableRows: Row[] = [];
 
   // Row 1 — Company
-  tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+  tableRows.push([xc(companyName, "company"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 2 — Report Title
   tableRows.push([xc("Tax Register Report", "title"), ...Array(NCOLS - 1).fill(skip)]);
@@ -168,7 +170,7 @@ function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: str
   rows.forEach((r) => {
     const invAmount     = Number(r.inv_amount)  || 0;
     const taxableInvAmt = Number(r.taxable_amt) || 0;
-    const totInvAmount  = Number(r.inv_amount)  || 0;
+    const totInvAmount = taxInvoiceTotal(r);
     const taxAmount     = Number(r.tax_amount)  || 0;
 
     totalInvAmount     += invAmount;
@@ -400,7 +402,7 @@ export const getTaxInvoiceExcelReport = async (req: Request, res: Response): Pro
     rows.forEach((r) => {
       const invAmount     = Number(r.inv_amount)  || 0;
       const taxableInvAmt = Number(r.taxable_amt) || 0;
-      const totInvAmount  = Number(r.inv_amount)  || 0;
+      const totInvAmount = taxInvoiceTotal(r);
       const taxAmount     = Number(r.tax_amount)  || 0;
 
       totalInvAmount     += invAmount;
@@ -631,7 +633,8 @@ export const exportTaxInvoiceExcel = async (req: Request, res: Response): Promis
     const { rows, connection: conn } = await fetchRows(req);
     connection = conn;
 
-    const buffer = buildTaxInvoiceExcelBuffer(rows, text(loginid) || "ADMIN", text(parameter));
+    const context = await taxReportContext(conn, text(req.body.code1));
+    const buffer = buildTaxInvoiceExcelBuffer(rows, text(loginid) || "ADMIN", text(parameter), context.companyName, context.decimals);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="TaxRegisterReport.xlsx"`);

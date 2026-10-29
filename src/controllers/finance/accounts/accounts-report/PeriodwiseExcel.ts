@@ -1,3 +1,5 @@
+import { loadLedgerCompanyName } from "./ledgerReportRows";
+import { ageingReportLabels } from "./ageingReportBuckets";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 // @ts-ignore
@@ -368,12 +370,13 @@ function buildHeaderRows(
   code2: string,
   code6: string,
   code7: string,
-  NCOLS: number
+  NCOLS: number,
+  companyName: string
 ): (XlCell | null)[][] {
   const rows: (XlCell | null)[][] = [];
 
   // Row 1 — Company
-  rows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+  rows.push([xc(companyName, "company"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 2 — Title
   rows.push([xc(title, "title"), ...Array(NCOLS - 1).fill(skip)]);
@@ -406,21 +409,21 @@ function buildHeaderRows(
 // 1 & 2 ── DETAIL reports (InvDetail + DueDetail)
 //          Columns: Inv No | Inv Date | Inv Amt | Un-Alloc | age×7 | Total | Salesman
 // ═══════════════════════════════════════════════════════════════════════════════
-const AGE_LABELS = ["Below 30", "30-60", "60-90", "90-120", "120-160", "160-200", "Above 200"];
-
 function buildDetailExcelRows(
   rows: any[],
   loginid: string,
   code2: string,
   code6: string,
   code7: string,
-  title: string
+  title: string,
+  ageLabels: string[],
+  companyName: string
 ): { tableRows: (XlCell | null)[][]; colWidths: number[] } {
   // 13 columns: InvNo | InvDate | InvAmt | UnAlloc | age×7 | Total | Salesman
   const NCOLS = 13;
   const colWidths = [18, 10, 12, 12, 10, 10, 10, 10, 10, 10, 10, 12, 14];
 
-  const tableRows = buildHeaderRows(title, loginid, code2, code6, code7, NCOLS);
+  const tableRows = buildHeaderRows(title, loginid, code2, code6, code7, NCOLS, companyName);
 
   // Row 6 — Table header
   tableRows.push([
@@ -428,7 +431,7 @@ function buildDetailExcelRows(
     xc("Inv Date",          "tableHead"),
     xc("Inv Amount",        "tableHead"),
     xc("Un-Allocated",      "tableHead"),
-    ...AGE_LABELS.map((l) => xc(l, "tableHead")),
+    ...ageLabels.map((l) => xc(l, "tableHead")),
     xc("Total",             "tableHead"),
     xc("Salesperson",       "tableHead"),
   ]);
@@ -586,13 +589,15 @@ function buildSummaryExcelRows(
   code2: string,
   code6: string,
   code7: string,
-  title: string
+  title: string,
+  ageLabels: string[],
+  companyName: string
 ): { tableRows: (XlCell | null)[][]; colWidths: number[] } {
   // 14 columns
   const NCOLS = 14;
   const colWidths = [22, 14, 8, 12, 10, 12, 10, 10, 10, 10, 10, 10, 10, 12];
 
-  const tableRows = buildHeaderRows(title, loginid, code2, code6, code7, NCOLS);
+  const tableRows = buildHeaderRows(title, loginid, code2, code6, code7, NCOLS, companyName);
 
   // Row 6 — Table header
   tableRows.push([
@@ -602,7 +607,7 @@ function buildSummaryExcelRows(
     xc("Credit Limit",  "tableHead"),
     xc("Credit Period", "tableHead"),
     xc("Un-Allocated",  "tableHead"),
-    ...AGE_LABELS.map((l) => xc(l, "tableHead")),
+    ...ageLabels.map((l) => xc(l, "tableHead")),
     xc("Total",         "tableHead"),
   ]);
 
@@ -708,14 +713,15 @@ function buildOutstandingExcelRows(
   rows: any[],
   loginid: string,
   code2: string,
-  code6: string
+  code6: string,
+  companyName: string
 ): { tableRows: (XlCell | null)[][]; colWidths: number[] } {
   const NCOLS = 6;
   const colWidths = [22, 12, 14, 14, 14, 10];
 
   // Header rows (no code7 date-type for outstanding)
   const tableRows: (XlCell | null)[][] = [];
-  tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+  tableRows.push([xc(companyName, "company"), ...Array(NCOLS - 1).fill(skip)]);
   tableRows.push([xc("Outstanding List Report", "title"), ...Array(NCOLS - 1).fill(skip)]);
   tableRows.push([
     xc(`Date : ${formatDateStr(new Date())}`, "section"),
@@ -847,7 +853,7 @@ export const exportInvDetailExcel = async (req: Request, res: Response): Promise
 
     const { tableRows, colWidths } = buildDetailExcelRows(
       rows, text(loginid) || "ADMIN", text(code2), text(code6), text(code7),
-      "Period Wise Ageing — INV Date Wise Detail"
+      "Period Wise Ageing — INV Date Wise Detail", ageingReportLabels(req.body), await loadLedgerCompanyName(conn, text(req.body.code1))
     );
     const buffer = buildExcelBuffer(tableRows, colWidths, "INV Detail");
 
@@ -872,7 +878,7 @@ export const exportInvSummaryExcel = async (req: Request, res: Response): Promis
 
     const { tableRows, colWidths } = buildSummaryExcelRows(
       rows, text(loginid) || "ADMIN", text(code2), text(code6), text(code7),
-      "Period Wise Ageing — INV Date Wise Summary"
+      "Period Wise Ageing — INV Date Wise Summary", ageingReportLabels(req.body), await loadLedgerCompanyName(conn, text(req.body.code1))
     );
     const buffer = buildExcelBuffer(tableRows, colWidths, "INV Summary");
 
@@ -897,7 +903,7 @@ export const exportDueDetailExcel = async (req: Request, res: Response): Promise
 
     const { tableRows, colWidths } = buildDetailExcelRows(
       rows, text(loginid) || "ADMIN", text(code2), text(code6), text(code7),
-      "Period Wise Ageing — Due Date Wise Detail"
+      "Period Wise Ageing — Due Date Wise Detail", ageingReportLabels(req.body), await loadLedgerCompanyName(conn, text(req.body.code1))
     );
     const buffer = buildExcelBuffer(tableRows, colWidths, "Due Detail");
 
@@ -922,7 +928,7 @@ export const exportDueSummaryExcel = async (req: Request, res: Response): Promis
 
     const { tableRows, colWidths } = buildSummaryExcelRows(
       rows, text(loginid) || "ADMIN", text(code2), text(code6), text(code7),
-      "Period Wise Ageing — Due Date Wise Summary"
+      "Period Wise Ageing — Due Date Wise Summary", ageingReportLabels(req.body), await loadLedgerCompanyName(conn, text(req.body.code1))
     );
     const buffer = buildExcelBuffer(tableRows, colWidths, "Due Summary");
 
@@ -946,7 +952,7 @@ export const exportOutstandingListExcel = async (req: Request, res: Response): P
     connection = conn;
 
     const { tableRows, colWidths } = buildOutstandingExcelRows(
-      rows, text(loginid) || "ADMIN", text(code2), text(code6)
+      rows, text(loginid) || "ADMIN", text(code2), text(code6), await loadLedgerCompanyName(conn, text(req.body.code1))
     );
     const buffer = buildExcelBuffer(tableRows, colWidths, "Outstanding List");
 

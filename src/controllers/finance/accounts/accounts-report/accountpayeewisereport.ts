@@ -1,3 +1,4 @@
+import { prepareLedgerRows } from "./ledgerReportRows";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
@@ -120,7 +121,7 @@ export const getAccountPayeeWiseReport = async (
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
-    const rows = (dataResult.rows as any[]).map((row) =>
+    const rawRows = (dataResult.rows as any[]).map((row) =>
       Object.keys(row).reduce((acc: any, key) => {
         acc[key.toLowerCase()] = row[key];
         return acc;
@@ -128,6 +129,7 @@ export const getAccountPayeeWiseReport = async (
     );
 
     // Currency = CURR_CODE of the first row
+    const rows = prepareLedgerRows(rawRows, false);
     const reportCurrency = text(rows[0]?.curr_code).trim(); // "" when no rows
     const money = makeMoney(currencyDecimals(reportCurrency));
     const formatBalance = (value: number) =>
