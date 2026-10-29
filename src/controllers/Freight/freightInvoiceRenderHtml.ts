@@ -324,12 +324,12 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const volume = getProp(shipment, "volume") != null ? fmtMoney(getProp(shipment, "volume"), 2) : "";
   
   // Clean container string (remove literal null or \rnull)
-  const rawContainers = String(getProp(shipment, "container_no") || "").replace(/\r|\n/g, " ").replace(/\bnull\b/gi, "").trim();
-  const containers = rawContainers;
+  const rawContainers = String(getProp(shipment, "container_no") || "").replace(/\bnull\b/gi, "").trim();
+  const containers = esc(rawContainers).replace(/\r\n|\r|\n/g, "<br/>");
 
   // Clean product details (handle newlines safely without overlap)
   const rawProd = String(getProp(shipment, "prod_description") || getProp(shipment, "description1") || "").trim();
-  const prodDetails = rawProd.replace(/\r\n|\r|\n/g, " &bull; ");
+  const prodDetails = esc(rawProd).replace(/\r\n|\r|\n/g, "<br/>");
 
   const shipmentDate = fmtDate(getProp(shipment, "confirm_date") || getProp(shipment, "bl_date") || getProp(shipment, "issue_date") || first.invoice_date, 'dash-short');
 
@@ -1020,8 +1020,8 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
           <td><strong>Volume:</strong> &nbsp;${volume}</td>
         </tr>
         <tr>
-          <td><strong>Product Details :</strong> ${esc(prodDetails)}</td>
-          <td><strong>Containers:</strong> &nbsp;${esc(containers)}</td>
+          <td><strong>Product Details :</strong> ${prodDetails}</td>
+          <td><strong>Containers:</strong> &nbsp;${containers}</td>
           <td colspan="2"><strong>HBL No:</strong> &nbsp;${esc(hblNo)}</td>
         </tr>
         <tr>

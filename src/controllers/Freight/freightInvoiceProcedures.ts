@@ -198,7 +198,18 @@ export const frtInvoiceConfirm = async (req: Request, res: Response): Promise<vo
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const invoiceRow = (checkResult.rows as any[])?.[0];
+    let invoiceRow = (checkResult.rows as any[])?.[0];
+    if (!invoiceRow) {
+      const fallbackResult = await connection.execute(
+        `SELECT INV_STATUS 
+           FROM TN_INVOICE 
+          WHERE COMPANY_CODE = :company_code 
+            AND INVOICE_NO = :invoice_no`,
+        { company_code: companyCode, invoice_no: invoiceNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      invoiceRow = (fallbackResult.rows as any[])?.[0];
+    }
     if (!invoiceRow) {
       res.status(404).json({ success: false, message: `Invoice ${invoiceNo} not found.` });
       return;
