@@ -1,19 +1,13 @@
+import { normalizeAccountingSign, postingAmounts } from "./financePostingAmounts";
+import { validateFinanceDocumentScope } from "./financeDocumentScope";
+import { validateSavedPosting } from "./financePostingValidation";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { IUser } from '../../../../interfaces/user.interface';
 
-const normalizeSignInd = (value: unknown, fallback = 1): 1 | -1 => {
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "cr" || normalized === "credit") return 1;
-    if (normalized === "dr" || normalized === "debit") return -1;
-  }
-  const numeric = Number(value);
-  if (numeric === 1 || numeric === -1) return numeric as 1 | -1;
-  return fallback === -1 ? -1 : 1;
-};
+const normalizeSignInd = normalizeAccountingSign;
 
 const defaultDetailSign = (docType?: string): 1 | -1 =>
   docType === "PI" || docType === "PO" ? 1 : -1;
@@ -80,7 +74,7 @@ export const procBulkAccountEntry = async (
     const invoiceDetail = req.body?.invoiceDetails || req.body?.invoiceDetail || [];
     const expenseDetail = req.body?.expenseDetails || req.body?.expenseDetail || [];
     const jobDetail = req.body?.jobDetails || req.body?.jobDetail || [];
-    const loginid = req.body?.loginid || header?.create_user || header?.edit_user;
+    const loginid = user?.loginid;
 
     if (!header) {
 
@@ -92,6 +86,11 @@ export const procBulkAccountEntry = async (
       return;
     }
 
+    validateFinanceDocumentScope(user?.company_code, header, [details, invoiceDetail, expenseDetail, jobDetail]);
+    if (oneChar(header.canceled) === 'Y') {
+      res.status(400).json({ success: false, message: 'Use the document cancellation action to cancel a voucher and release its allocations' });
+      return;
+    }
     const tenantId = getCurrentTenantId();
 
     if (!tenantId) {
@@ -105,6 +104,18 @@ export const procBulkAccountEntry = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+    if (header.doc_no && String(header.doc_no) !== '0') {
+      const existing = await connection.execute<{ CANCELED: string }>(
+        `SELECT canceled FROM TR_AC_HEADER
+          WHERE company_code=:cc AND doc_type=:dt AND doc_no=:dn FOR UPDATE`,
+        { cc: header.company_code, dt: header.doc_type, dn: String(header.doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (existing.rows?.[0]?.CANCELED === 'Y') {
+        res.status(400).json({ success: false, message: 'Cancelled vouchers cannot be edited or reactivated' });
+        return;
+      }
+    }
 
    if (oneChar(header.canceled) !== 'Y' && header.doc_date) {
      // 1. Fetch current active financial period and accounting period lock rules
@@ -465,11 +476,13 @@ export const procBulkAccountEntry = async (
           :p_detail,
           :p_invdetail,
           :p_expdetail,
-          :p_jobdetail
+          :p_jobdetail,
+          :p_gst_lines_json
         );
       END;
       `,
       {
+        p_gst_lines_json: { type: oracledb.CLOB, val: JSON.stringify(header.gst_lines || []) },
         p_header: {
           type: "TY_TR_AC_HEADER_ACENTRY_TAB",
           dir: oracledb.BIND_INOUT,
@@ -592,6 +605,7 @@ export const procBulkAccountEntry = async (
             QTY: d.qty,
             PRICE: d.price,
             SIGN_CODE: d.sign_code,
+            ...postingAmounts(d, header),
           }))
         },
 
@@ -670,10 +684,12 @@ export const procBulkAccountEntry = async (
       }
     );
 
-    await connection.commit();
-
     const outHeader = (result.outBinds as any)?.p_header?.[0];
     const generatedDocNo = outHeader?.DOC_NO || header.doc_no;
+    if (oneChar(header.canceled) !== 'Y') {
+      await validateSavedPosting(connection, header.company_code, header.doc_type, String(generatedDocNo));
+    }
+    await connection.commit();
     if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
       try {
         await connection.execute(
@@ -709,9 +725,10 @@ export const procBulkAccountEntry = async (
       } catch { }
     }
 
-    res.status(500).json({
+    const businessError = err.status || (Number(err.errorNum) >= 20000 && Number(err.errorNum) <= 20999);
+    res.status(err.status || (businessError ? 400 : 500)).json({
       success: false,
-      message: "Transaction failed",
+      message: businessError ? String(err.message).split('\n')[0].replace(/^ORA-\d+:\s*/, '') : "Transaction failed",
       details: err?.message
     });
 
