@@ -198,28 +198,109 @@ const EXTRA_CSS = `
   body, table.emp-table { font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
   .doc-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0 10px 0; }
   body .doc-title-row h1 { margin: 0; font-size: 16px; font-weight: 800; color: #00378c !important; letter-spacing: 0; }
-  table.emp-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; margin-top: 6px; border: 0; }
-  table.emp-table thead th { background: #00378c !important; color: #ffffff !important; font-weight: 700; font-size: 10px; padding: 8px 6px; text-align: left; border: 0 !important; box-shadow: inset 0 0 0 1000px #00378c; }
-  table.emp-table tbody td { padding: 5px 6px; border: 0; border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; font-size: 10px; font-weight: 400; background: #fcfdfe; }
-  table.emp-table td, table.emp-table th { vertical-align: top; word-break: break-word; }
-  table.emp-table thead th.center, table.emp-table tbody td.center { text-align: center; }
-  table.emp-table thead th.num, table.emp-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  table.emp-table .nowrap { white-space: nowrap; }
-  table.emp-table tbody tr:nth-child(even) td { background: #f6f9fd; }
+  table.emp-table { width: 100%; max-width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 6px; border: 0; }
+  table.emp-table th.g, table.emp-table td.g { padding: 0 !important; border: 0 !important; white-space: normal !important; text-align: left; vertical-align: top; }
+  table.emp-table thead th.g { background: #00378c !important; box-shadow: inset 0 0 0 1000px #00378c; }
+  table.emp-table tbody td.g { background: #fcfdfe; border-bottom: 1px solid #cbd5e1 !important; }
+  table.emp-table tbody tr.rec:nth-child(even) td.g { background: #f6f9fd; }
+  table.emp-table tr.rec { page-break-inside: avoid; break-inside: avoid; }
+  .emp-grid { display: grid; width: 100%; }
+  .emp-grid .gc, .emp-grid .hc { min-width: 0; box-sizing: border-box; white-space: normal !important; overflow-wrap: anywhere; word-break: break-word; font-size: 8.5px; line-height: 1.3; }
+  .emp-grid .gc { padding: 3px 4px; color: #1e293b; font-weight: 400; text-align: left; }
+  .emp-grid .gc.center { text-align: center; }
+  .emp-grid .hc { padding: 5px 4px; color: #ffffff !important; background: #00378c !important; font-weight: 700; line-height: 1.2; display: flex; align-items: center; justify-content: flex-start; text-align: left; }
+  .emp-grid .hc.center { justify-content: center; text-align: center; }
+  .emp-grid .hc.l2 { border-top: 1px solid rgba(255,255,255,0.3); }
   .emp-empty { border: 1px dashed #cbd5e1; background: #f8fafc; text-align: center; padding: 40px 12px; margin-top: 14px; color: #64748b; font-weight: 700; }
-  @media print { table.emp-table thead { display: table-header-group; } table.emp-table tr { page-break-inside: avoid; } }
+  @media print { table.emp-table thead { display: table-header-group; } }
 `;
 const FONT_LINK = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
 
 // ─────────────────────────────────────────────────────────────
 // Body Renderer
 // ─────────────────────────────────────────────────────────────
-function colKind(key: string, rows: ReportRow[]): "num" | "date" | "center" | "text" {
-  const sample = rows.map((r) => r[key]).find((v) => v != null && v !== "");
-  if (sample instanceof Date || (typeof sample === "string" && /^\d{4}-\d{2}-\d{2}/.test(sample))) return "date";
-  if (/(_code|_id|_no|_status)$/.test(key)) return "center";
-  if (typeof sample === "number") return "num";
-  return "text";
+// Report layout: same grid as the legacy report - two stacked lines per employee.
+type FieldSpec = { aliases: string[]; pattern?: RegExp; date?: boolean };
+
+const FIELDS: Record<string, FieldSpec> = {
+  employee_id: { aliases: ["employee_id", "employee_code", "emp_code", "emp_id"] },
+  title: { aliases: ["title"] },
+  first_name: { aliases: ["first_name"] },
+  second_name: { aliases: ["second_name"] },
+  third_name: { aliases: ["third_name"] },
+  fourth_name: { aliases: ["fourth_name"] },
+  last_name: { aliases: ["last_name"] },
+  family_name: { aliases: ["family_name"] },
+  birth_date: { aliases: ["birth_date", "date_of_birth", "dob", "birthdate"], pattern: /birth.*date|date.*birth|^dob/, date: true },
+  birth_place: { aliases: ["birth_place", "place_of_birth", "birthplace", "pob"], pattern: /birth.*place|place.*birth/ },
+  gender: { aliases: ["gender", "sex"] },
+  father_name: { aliases: ["father_name", "fathers_name", "father"], pattern: /father/ },
+  mother_name: { aliases: ["mother_name", "mothers_name", "mother"], pattern: /mother/ },
+  religion: { aliases: ["religion"], pattern: /religion/ },
+  blood_group: { aliases: ["blood_group", "blood_grp", "bloodgroup", "blood_type"], pattern: /blood/ },
+  nationality: { aliases: ["nationality"], pattern: /national/ },
+  marital_status: { aliases: ["marital_status", "marital"], pattern: /marital|marriage/ },
+  spouse_name: { aliases: ["spouse_name", "spouse"], pattern: /spouse|wife|husband/ },
+  kids: { aliases: ["kids", "no_of_kids", "children", "no_of_children"], pattern: /kid|child/ },
+  ppt_no: { aliases: ["ppt_no", "passport_no", "passport_number"], pattern: /^ppt_?(no|num)|passport.*(no|num)/ },
+  ppt_country: { aliases: ["ppt_country", "passport_country"], pattern: /ppt.*countr|passport.*countr/ },
+  ppt_valid_from: { aliases: ["ppt_valid_from", "ppt_issue_date", "passport_valid_from"], pattern: /ppt.*(valid.*from|issue)/, date: true },
+  ppt_valid_to: { aliases: ["ppt_valid_to", "ppt_valid_till", "ppt_valid_upto", "ppt_expiry", "ppt_expiry_date", "ppt_exp_date"], pattern: /ppt.*(valid.*(to|till|upto)|exp)/, date: true },
+  ip_info: { aliases: ["ip_info", "ip_information", "ip_details"], pattern: /^ip(_|$)/ },
+};
+
+type LayoutCell = { label: string; span: number; fields: string[]; joiner?: string; center?: boolean };
+
+// Relative widths of the 12 grid columns (taken from the legacy report)
+const GRID = [52, 121, 124, 129, 87, 123, 67, 150, 42, 90, 100, 175];
+
+const LAYOUT: LayoutCell[][] = [
+  [
+    { label: "Emp.", span: 1, fields: ["employee_id"], center: true },
+    { label: "First Name", span: 1, fields: ["first_name"] },
+    { label: "Last Name", span: 1, fields: ["last_name"] },
+    { label: "Family Name", span: 1, fields: ["family_name"] },
+    { label: "Birth Date", span: 1, fields: ["birth_date"], center: true },
+    { label: "Birth Place", span: 1, fields: ["birth_place"] },
+    { label: "Gender", span: 1, fields: ["gender"], center: true },
+    { label: "Father's Name", span: 1, fields: ["father_name"] },
+    { label: "Mother's Name", span: 2, fields: ["mother_name"] },
+    { label: "Religion", span: 1, fields: ["religion"] },
+    { label: "IP Info", span: 1, fields: ["ip_info"] },
+  ],
+  [
+    { label: "Title", span: 1, fields: ["title"], center: true },
+    { label: "Second Name", span: 1, fields: ["second_name"] },
+    { label: "Third Name", span: 1, fields: ["third_name"] },
+    { label: "Fourth Name", span: 1, fields: ["fourth_name"] },
+    { label: "Blood Grp", span: 1, fields: ["blood_group"], center: true },
+    { label: "Nationality", span: 1, fields: ["nationality"] },
+    { label: "Marital", span: 1, fields: ["marital_status"], center: true },
+    { label: "Spouse Name", span: 1, fields: ["spouse_name"] },
+    { label: "Kids", span: 1, fields: ["kids"], center: true },
+    { label: "Passport No./Country", span: 2, fields: ["ppt_no", "ppt_country"], joiner: " / " },
+    { label: "Validity", span: 1, fields: ["ppt_valid_from", "ppt_valid_to"], joiner: " - ", center: true },
+  ],
+];
+
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// Finds which query column feeds each report field
+function resolveFields(keys: string[]) {
+  const normKeys = keys.map(norm);
+  const map: Record<string, string | undefined> = {};
+  const missing: string[] = [];
+  for (const [id, spec] of Object.entries(FIELDS)) {
+    let idx = -1;
+    for (const a of spec.aliases) {
+      idx = normKeys.indexOf(norm(a));
+      if (idx >= 0) break;
+    }
+    if (idx < 0 && spec.pattern) idx = keys.findIndex((k) => spec.pattern!.test(k.toLowerCase()));
+    if (idx >= 0) map[id] = keys[idx];
+    else missing.push(id);
+  }
+  return { map, missing };
 }
 
 function renderBody(rows: ReportRow[], filtersHtml = ""): string {
@@ -230,28 +311,47 @@ function renderBody(rows: ReportRow[], filtersHtml = ""): string {
   }
 
   const keys = Object.keys(rows[0]);
-  const kinds = keys.map((k) => colKind(k, rows));
-  const cls = (kind: string) =>
-    kind === "num" ? "num" : kind === "date" || kind === "center" ? "center nowrap" : "";
+  const { map, missing } = resolveFields(keys);
+  if (missing.length) {
+    console.warn("Employee Details: no column found for:", missing.join(", "), "| available columns:", keys.join(", "));
+  }
 
-  const headCells =
-    `<th class="center">SNo.</th>` +
-    keys.map((k, i) => `<th class="${cls(kinds[i])}">${escapeHtml(k.replace(/_/g, " ").toUpperCase())}</th>`).join("");
+  const valueOf = (row: ReportRow, fieldId: string): string => {
+    const k = map[fieldId];
+    if (!k) return "";
+    const v = row[k];
+    return FIELDS[fieldId].date ? fmtDate(v) : text(v).trim();
+  };
 
-  const bodyRows = rows
-    .map((r, idx) => {
-      const cells = keys
-        .map((k, i) => {
-          const v = r[k];
-          const display = kinds[i] === "date" ? fmtDate(v) : text(v);
-          return `<td class="${cls(kinds[i])}">${escapeHtml(display)}</td>`;
-        })
-        .join("");
-      return `<tr><td class="center">${idx + 1}</td>${cells}</tr>`;
+  // One CSS grid per employee (and one for the header) with identical column widths,
+  // so header and data always line up and a record never splits across pages.
+  const template = GRID.map((w) => `minmax(0,${w}fr)`).join(" ");
+  const gridCss = `<style>.emp-grid{grid-template-columns:${template};}</style>`;
+
+  const headCells = LAYOUT.map((line, li) =>
+    line
+      .map(
+        (c) =>
+          `<div class="hc${c.center ? " center" : ""}${li > 0 ? " l2" : ""}" style="grid-column:span ${c.span}">${escapeHtml(c.label)}</div>`,
+      )
+      .join(""),
+  ).join("");
+
+  const bodies = rows
+    .map((r) => {
+      const cells = LAYOUT.map((line) =>
+        line
+          .map((c) => {
+            const val = c.fields.map((f) => valueOf(r, f)).filter(Boolean).join(c.joiner ?? " ");
+            return `<div class="gc${c.center ? " center" : ""}" style="grid-column:span ${c.span}">${escapeHtml(val) || "&nbsp;"}</div>`;
+          })
+          .join(""),
+      ).join("");
+      return `<tr class="rec"><td class="g"><div class="emp-grid">${cells}</div></td></tr>`;
     })
     .join("");
 
-  return `${heading}${filtersHtml}<table class="emp-table"><thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+  return `${heading}${filtersHtml}${gridCss}<table class="emp-table"><thead><tr><th class="g"><div class="emp-grid">${headCells}</div></th></tr></thead><tbody>${bodies}</tbody></table>`;
 }
 
 // ─────────────────────────────────────────────────────────────
