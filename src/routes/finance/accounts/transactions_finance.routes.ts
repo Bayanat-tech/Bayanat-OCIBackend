@@ -5,6 +5,7 @@
  */
 
 import * as express from "express";
+import { getFinanceGstSetup, getFinanceGstDocument, getFinanceGstRegister } from '../../../controllers/finance/accounts/transactions/financeGst.controller';
 import passport from "passport";
 // Update the import path if the middleware is located elsewhere, for example:
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
@@ -135,6 +136,9 @@ router.use(tenantContextMiddleware);
 
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
+router.get('/gst/setup', getFinanceGstSetup);
+router.get('/gst/document', getFinanceGstDocument);
+router.post('/reports/gst-register/:format', getFinanceGstRegister);
 router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
 router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
 

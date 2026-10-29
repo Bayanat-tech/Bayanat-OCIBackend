@@ -257,7 +257,7 @@ export function buildFreightInvoiceHtmlAMKSA(rows: FreightInvoiceRow[], meta: Fr
 
 export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: FreightInvoiceMeta = {}): string {
   if (!rows || rows.length === 0) {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>No Data</title><style>body{font-family:Arial,sans-serif;padding:50px;text-align:center;color:#64748b;background:#f8fafc;}</style></head><body><h2>No Freight Invoice Data Found</h2><p>Please check the invoice number or principal code and try again.</p><button onclick="window.close()" style="margin-top:16px;padding:8px 18px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;">Close</button></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>No Data</title><style>body{font-family:'Inter',Arial,sans-serif;padding:50px;text-align:center;color:#64748b;background:#f8fafc;}</style></head><body><h2>No Freight Invoice Data Found</h2><p>Please check the invoice number or principal code and try again.</p><button onclick="window.close()" style="margin-top:16px;padding:8px 18px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;">Close</button></body></html>`;
   }
 
   const first = rows[0];
@@ -322,12 +322,19 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const netWt = getProp(shipment, "net_wt") != null ? fmtMoney(getProp(shipment, "net_wt"), 2) : "0.00";
   const grossWt = getProp(shipment, "gross_wt") != null ? fmtMoney(getProp(shipment, "gross_wt"), 2) : "";
   const volume = getProp(shipment, "volume") != null ? fmtMoney(getProp(shipment, "volume"), 2) : "";
-  const containers = getProp(shipment, "container_no") || "";
-  const prodDetails = getProp(shipment, "prod_description") || getProp(shipment, "description1") || "";
+  
+  // Clean container string (remove literal null or \rnull)
+  const rawContainers = String(getProp(shipment, "container_no") || "").replace(/\r|\n/g, " ").replace(/\bnull\b/gi, "").trim();
+  const containers = rawContainers;
+
+  // Clean product details (handle newlines safely without overlap)
+  const rawProd = String(getProp(shipment, "prod_description") || getProp(shipment, "description1") || "").trim();
+  const prodDetails = rawProd.replace(/\r\n|\r|\n/g, " &bull; ");
+
   const shipmentDate = fmtDate(getProp(shipment, "confirm_date") || getProp(shipment, "bl_date") || getProp(shipment, "issue_date") || first.invoice_date, 'dash-short');
 
   // Line items
-  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null);
   let totalExclTax = 0;
   let totalTax = 0;
 
@@ -365,8 +372,8 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 
   const totalInclTax = totalExclTax + totalTax;
 
-  // Fill up table to at least 10 rows for standard full-height appearance
-  const targetRowCount = 10;
+  // Single page fit: 8 total rows keeps everything strictly inside 1 A4 page
+  const targetRowCount = 8;
   const fillerCount = Math.max(0, targetRowCount - billableRows.length);
   const fillerRows = Array.from({ length: fillerCount })
     .map(() => `<tr class="filler-data-row">
@@ -434,11 +441,14 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TAX INVOICE - ${esc(invoiceNo)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm 8mm 10mm;
+      margin: 8mm 8mm 8mm 8mm;
     }
     * {
       box-sizing: border-box;
@@ -450,8 +460,8 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       padding: 0;
       background-color: #f1f5f9;
       color: #000000;
-      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-      font-size: 10.5px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 10px;
       line-height: 1.3;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -511,9 +521,9 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
-      padding: 7px 15px;
+      padding: 7px 14px;
       border-radius: 6px;
       cursor: pointer;
       border: none;
@@ -548,42 +558,43 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       background: rgba(255, 255, 255, 0.05);
     }
 
-    /* INVOICE PAPER VIEWPORT */
+    /* INVOICE PAPER VIEWPORT - SIZED PERFECTLY FOR A4 PRINTABLE AREA */
     .invoice-viewport {
-      padding: 24px 16px 48px 16px;
+      padding: 20px 12px 40px 12px;
       display: flex;
       justify-content: center;
     }
     .invoice-card {
-      width: 210mm;
-      max-width: 820px;
-      min-height: 297mm;
+      width: 100%;
+      max-width: 710px;
       background: #ffffff;
-      padding: 12mm 15mm 10mm 15mm;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+      padding: 16px 20px 14px 20px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
       box-sizing: border-box;
       position: relative;
       border-radius: 2px;
+      overflow: hidden;
     }
 
-    /* PRINT SPECIFIC STYLES */
+    /* PRINT SPECIFIC STYLES - ZERO MARGIN OVERFLOW */
     @media print {
       body, html {
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
       }
       .invoice-toolbar, .no-print {
         display: none !important;
       }
       .invoice-viewport {
         padding: 0 !important;
+        margin: 0 !important;
         display: block !important;
       }
       .invoice-card {
         width: 100% !important;
         max-width: 100% !important;
-        min-height: auto !important;
         box-shadow: none !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -595,47 +606,52 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .top-masthead {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: flex-end;
       margin-bottom: 2px;
     }
     .top-logo-block {
-      flex: 0 0 240px;
+      flex: 0 0 200px;
     }
     .logo-img {
-      height: 48px;
-      max-width: 220px;
+      height: 44px;
+      max-width: 190px;
       object-fit: contain;
       display: block;
     }
     .logo-sub {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #475569;
-      margin-top: 3px;
-      padding-left: 2px;
+      margin-top: 2px;
     }
     .title-centered {
       flex: 1;
       text-align: center;
-      padding-top: 8px;
     }
     .title-centered h1 {
       margin: 0;
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 900;
       letter-spacing: 3px;
       color: #000000;
     }
     .masthead-spacer {
-      flex: 0 0 240px;
+      flex: 0 0 200px;
+    }
+
+    /* HORIZONTAL DIVIDER LINE UNDER MASTHEAD */
+    .masthead-divider-line {
+      border-bottom: 2px solid #000000;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      width: 100%;
     }
 
     /* CLIENT & METADATA SECTION */
     .header-details-row {
       display: flex;
       justify-content: space-between;
-      gap: 16px;
-      margin-top: 6px;
+      gap: 14px;
       margin-bottom: 4px;
     }
     .client-col {
@@ -643,15 +659,15 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .to-label {
       font-weight: 700;
-      font-size: 11px;
+      font-size: 10.5px;
       display: inline-block;
-      margin-right: 8px;
+      margin-right: 6px;
     }
     .underlined-field {
       border-bottom: 1px solid #000000;
-      min-height: 17px;
-      line-height: 17px;
-      font-size: 10.5px;
+      min-height: 16px;
+      line-height: 16px;
+      font-size: 10px;
       margin-bottom: 2px;
       white-space: nowrap;
       overflow: hidden;
@@ -660,10 +676,13 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .client-name-bold {
       font-weight: 700;
-      font-size: 11px;
+      font-size: 10.5px;
       display: inline-block;
       vertical-align: bottom;
-      width: calc(100% - 28px);
+      width: calc(100% - 26px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .meta-col {
       width: 50%;
@@ -675,17 +694,17 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .meta-table td {
       padding: 1px 0;
-      font-size: 10.5px;
+      font-size: 10px;
       vertical-align: top;
     }
     .meta-lbl {
-      width: 115px;
+      width: 110px;
       font-weight: 700;
       white-space: nowrap;
       color: #000000;
     }
     .meta-col-sep {
-      width: 12px;
+      width: 10px;
       text-align: center;
       font-weight: 700;
       color: #000000;
@@ -693,26 +712,26 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .meta-val-cell {
       border-bottom: 1px solid #000000;
       font-weight: 700;
-      padding-left: 5px;
+      padding-left: 4px;
       color: #000000;
     }
     .page-indicator {
       text-align: right;
-      font-size: 9.5px;
-      padding-top: 3px;
+      font-size: 9px;
+      padding-top: 2px;
       color: #000000;
     }
 
     /* SHIPMENT DETAILS BOX */
     .shipment-container {
       border: 1.5px solid #000000;
-      margin-top: 5px;
+      margin-top: 4px;
       margin-bottom: 0;
     }
     .shipment-banner {
       font-weight: 800;
-      font-size: 10.5px;
-      padding: 2.5px 6px;
+      font-size: 10px;
+      padding: 2px 6px;
       border-bottom: 1.5px solid #000000;
       background: #ffffff;
       text-transform: uppercase;
@@ -721,14 +740,18 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .shipment-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 10px;
+      font-size: 9.5px;
+      table-layout: fixed;
     }
     .shipment-table td {
       border-right: 1px solid #000000;
       border-bottom: 1px solid #000000;
-      padding: 2.5px 6px;
+      padding: 2.5px 5px;
       vertical-align: top;
       color: #000000;
+      line-height: 1.35;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
     .shipment-table td:last-child {
       border-right: none;
@@ -750,22 +773,22 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .grid-table th {
       border: 1px solid #000000;
       font-weight: 700;
-      font-size: 10.5px;
-      padding: 3.5px 4px;
+      font-size: 10px;
+      padding: 3px 3px;
       background: #ffffff;
       text-align: center;
-      line-height: 1.2;
+      line-height: 1.15;
       color: #000000;
     }
     .grid-table td {
       border: 1px solid #000000;
-      font-size: 10px;
-      padding: 2.5px 5px;
+      font-size: 9.5px;
+      padding: 2.5px 4px;
       vertical-align: middle;
       color: #000000;
     }
     .col-sno { text-align: center; }
-    .col-service { text-align: left; text-transform: uppercase; }
+    .col-service { text-align: left; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .col-qty { text-align: center; font-weight: 700; }
     .col-rate { text-align: right; }
     .col-amt-excl { text-align: right; font-weight: 700; }
@@ -774,7 +797,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .col-amt-incl { text-align: right; font-weight: 700; }
 
     .filler-data-row td {
-      height: 20px;
+      height: 19px;
       border: 1px solid #000000;
     }
 
@@ -782,7 +805,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .totals-row td {
       border: 1px solid #000000;
       border-top: 1.5px solid #000000;
-      padding: 4px 5px;
+      padding: 3px 4px;
       vertical-align: bottom;
       font-weight: 700;
     }
@@ -791,21 +814,21 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       text-align: left;
     }
     .tax-notes-txt {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .words-amt-txt {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 700;
-      line-height: 1.35;
+      line-height: 1.3;
       text-transform: uppercase;
     }
 
     /* TERMS & CONDITIONS */
     .terms-section {
-      margin-top: 6px;
-      font-size: 10px;
+      margin-top: 5px;
+      font-size: 9.5px;
       line-height: 1.35;
       color: #000000;
     }
@@ -818,9 +841,9 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .bank-and-sig {
       display: flex;
       justify-content: space-between;
-      margin-top: 6px;
-      font-size: 9.5px;
-      line-height: 1.4;
+      margin-top: 5px;
+      font-size: 9px;
+      line-height: 1.35;
       color: #000000;
     }
     .bank-col {
@@ -833,20 +856,20 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .signature-area {
       width: 32%;
       text-align: right;
-      padding-top: 36px;
+      padding-top: 30px;
       font-weight: 700;
-      font-size: 11px;
+      font-size: 10.5px;
       color: #000000;
     }
 
     /* FOOTER BOX */
     .outer-footer-box {
       border: 1.5px solid #000000;
-      margin-top: 8px;
-      padding: 4px 6px;
+      margin-top: 6px;
+      padding: 3px 5px;
       text-align: center;
-      font-size: 9.5px;
-      line-height: 1.35;
+      font-size: 9px;
+      line-height: 1.3;
       color: #000000;
     }
     .footer-bold {
@@ -894,6 +917,9 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       </div>
       <div class="masthead-spacer">&nbsp;</div>
     </div>
+
+    <!-- HORIZONTAL DIVIDER LINE -->
+    <div class="masthead-divider-line"></div>
 
     <!-- CLIENT & METADATA -->
     <div class="header-details-row">
@@ -975,11 +1001,17 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     <div class="shipment-container">
       <div class="shipment-banner">${shipmentHeader}</div>
       <table class="shipment-table">
+        <colgroup>
+          <col style="width: 32%;" />
+          <col style="width: 28%;" />
+          <col style="width: 22%;" />
+          <col style="width: 18%;" />
+        </colgroup>
         <tr>
-          <td style="width: 32%;"><strong>Origin :</strong> ${esc(origin)}</td>
-          <td style="width: 28%;"><strong>No Of Packings:</strong> &nbsp;${esc(noOfPackings)}</td>
-          <td style="width: 22%;"><strong>Net Wt:</strong> &nbsp;${netWt}</td>
-          <td style="width: 18%;"><strong>Date :</strong> &nbsp;${shipmentDate}</td>
+          <td><strong>Origin :</strong> ${esc(origin)}</td>
+          <td><strong>No Of Packings:</strong> &nbsp;${esc(noOfPackings)}</td>
+          <td><strong>Net Wt:</strong> &nbsp;${netWt}</td>
+          <td><strong>Date :</strong> &nbsp;${shipmentDate}</td>
         </tr>
         <tr>
           <td><strong>Destination :</strong> ${esc(destination)}</td>
@@ -1002,18 +1034,18 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     <table class="grid-table">
       <colgroup>
         <col style="width: 5%;" />
-        <col style="width: 41%;" />
-        <col style="width: 8%;" />
-        <col style="width: 10%;" />
+        <col style="width: 39%;" />
+        <col style="width: 7%;" />
+        <col style="width: 11%;" />
         <col style="width: 13%;" />
         <col style="width: 6%;" />
-        <col style="width: 8%;" />
         <col style="width: 9%;" />
+        <col style="width: 10%;" />
       </colgroup>
       <thead>
         <tr>
           <th>S.No.</th>
-          <th style="text-align: left; padding-left: 6px;">Services</th>
+          <th style="text-align: left; padding-left: 5px;">Services</th>
           <th>Quantity</th>
           <th>Rate</th>
           <th>Amount (Excl.<br/>Tax)</th>
@@ -1057,7 +1089,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         <div>${esc(bank1Swift)}</div>
       </div>
 
-      <div class="bank-col" style="padding-top: 13px;">
+      <div class="bank-col" style="padding-top: 10px;">
         <div>${esc(bank2AcNo)}</div>
         <div>${esc(bank2Iban)}</div>
         <div>${esc(bank2Swift)}</div>
@@ -1090,10 +1122,10 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         btn.disabled = true;
       }
       var opt = {
-        margin:       [8, 10, 8, 10],
+        margin:       [6, 8, 6, 8],
         filename:     filename,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(element).save().then(function() {

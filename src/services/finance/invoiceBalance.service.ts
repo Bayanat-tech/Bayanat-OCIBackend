@@ -26,14 +26,20 @@ export const getInvoiceOutstandingBalance = async (
       `
       SELECT 
         :inv_no AS inv_no,
-        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(amount_origin, lcur_amount) ELSE 0 END)) AS original_amount,
+        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(lcur_amount, amount_origin) ELSE 0 END)) AS original_amount,
         NVL(SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END), 0) AS paid_amount,
-        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(amount_origin, lcur_amount) ELSE 0 END)) - 
+        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(lcur_amount, amount_origin) ELSE 0 END)) -
         NVL(SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END), 0) AS outstanding_amount
-      FROM TR_AC_INVDETAIL
+      FROM TR_AC_INVDETAIL i
       WHERE company_code = :company_code
         AND inv_no = :inv_no
         AND div_code = :div_code
+        AND (:has_ac = 0 OR ac_code = :ac_code)
+        AND NOT EXISTS (
+          SELECT 1 FROM TR_AC_HEADER h
+          WHERE h.company_code = i.company_code AND h.doc_type = i.doc_type
+            AND h.doc_no = i.doc_no AND h.canceled = 'Y'
+        )
       `,
       {
         inv_no: inv_no,
@@ -99,14 +105,20 @@ export const getMultipleInvoiceBalances = async (
       `
       SELECT 
         inv_no,
-        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(amount_origin, lcur_amount) ELSE 0 END)) AS original_amount,
+        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(lcur_amount, amount_origin) ELSE 0 END)) AS original_amount,
         NVL(SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END), 0) AS paid_amount,
-        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(amount_origin, lcur_amount) ELSE 0 END)) - 
+        ABS(MAX(CASE WHEN indicator_origin = 'Y' THEN NVL(lcur_amount, amount_origin) ELSE 0 END)) -
         NVL(SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END), 0) AS outstanding_amount
-      FROM TR_AC_INVDETAIL
+      FROM TR_AC_INVDETAIL i
       WHERE company_code = :company_code
         AND inv_no IN (${placeholders})
         AND div_code = :div_code
+        AND (:has_ac = 0 OR ac_code = :ac_code)
+        AND NOT EXISTS (
+          SELECT 1 FROM TR_AC_HEADER h
+          WHERE h.company_code = i.company_code AND h.doc_type = i.doc_type
+            AND h.doc_no = i.doc_no AND h.canceled = 'Y'
+        )
       GROUP BY inv_no
       `,
       binds,

@@ -21,12 +21,15 @@ export function postingAmounts(detail: Record<string, any>, header: Record<strin
     LCUR_AMOUNT: Math.abs(Number(detail.lcur_amount ?? amount * rate)),
   };
   for (let component = 1; component <= 4; component++) {
-    const percent = Number(detail[`tx_compnt_perc_${component}`] ?? 0);
-    const tax = roundTax(Number(detail[`tx_compnt_amt_${component}`] ?? amount * percent / 100));
-    const localTax = roundTax(Number(detail[`tx_compnt_lcuramt_${component}`] ?? tax * rate));
+    const treatment = detail[`tx_compnt_${component}_expmt`] ?? detail[`tx_compnt_${component}_exmpt`];
+    const withoutTax = ['N', 'Z', 'E'].includes(String(treatment || '').toUpperCase());
+    const percent = withoutTax ? 0 : Number(detail[`tx_compnt_perc_${component}`] ?? 0);
+    const tax = withoutTax ? 0 : roundTax(Number(detail[`tx_compnt_amt_${component}`] ?? amount * percent / 100));
+    const localTax = withoutTax ? 0 : roundTax(Number(detail[`tx_compnt_lcuramt_${component}`] ?? tax * rate));
     if (![percent, tax, localTax].every(Number.isFinite)) throw new Error('Invalid accounting tax amount.');
     result[`TX_COMPNT_AMT_${component}`] = tax;
     result[`TX_COMPNT_LCURAMT_${component}`] = localTax;
+    result[`TX_COMPNT_PERC_${component}`] = percent;
   }
   if (!Number.isFinite(result.LCUR_AMOUNT)) throw new Error('Invalid accounting local-currency amount.');
   return result;
