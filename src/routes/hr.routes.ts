@@ -11,11 +11,17 @@ import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
 import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
-
+import {updateConsolidateCancelFlag} from "../controllers/HR/updConsolidateCancelFlag.hr.controller"
 // Initialize the Express router
 const router = express.Router();
 
 console.log("HR Routes Loaded");
+
+router.put("/consolidate/cancel",
+    passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+   updateConsolidateCancelFlag);
 
 // Define a common GET API endpoint to retrieve HR master data based on the master name
 router.get(
