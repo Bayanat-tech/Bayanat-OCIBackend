@@ -6,26 +6,26 @@ import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "./report_common_pr";
 
-
 // ─── Types ────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
-
 type Orientation = "portrait" | "landscape";
-
 interface ReqParams {
   loginid: string;
   company_code: string;
   request_number: string;
   orientation: Orientation;
 }
-
-// Single dispatch key handled by PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS (one CASE branch)
+// Dispatch keys handled by PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS (one CASE branch each)
 const PARAM_FORM = "PR_REGISTER_FORM";
-const PARAM_PO = "PR_REGISTER_PO_NO";   // POs generated for this PR (TR_AC_LPO_HEADER.REF_NO)
-const PARAM_HISTORY = "PR_REGISTER_HISTORY"; // approval history (TTE_PREQUEST_HDR_HISTORY)
+const PARAM_PO = "PR_REGISTER_PO_NO";          // POs generated for this PR (TR_AC_LPO_HEADER.REF_NO)
+const PARAM_HISTORY = "PR_REGISTER_HISTORY";   // approval history (TTE_PREQUEST_HDR_HISTORY)
+
 const REPORT_TITLE = "PURCHASE REQUEST";
 const REPORT_NAME = "rpt_purchase_request_form";
+
+// Set env PR_FORM_DEBUG=1 to print the generated SQL in the server console
+const DEBUG = process.env.PR_FORM_DEBUG === "1";
 
 // ─── DB helpers ─────────────────────────────────────────────────────────────
 
@@ -80,6 +80,7 @@ function dateTimeText(value: unknown): string {
     .replace(", ", " ");
 }
 
+/** dd/mm/yyyy hh:mm:ss:mmm  (same as the reference form) */
 function dateTimeMsText(value: unknown): string {
   const base = dateTimeText(value);
   if (!base) return "";
@@ -113,6 +114,11 @@ function qtyFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
 }
 
+/** First value when a query param can be string | string[] */
+function firstQuery(v: unknown): string {
+  return Array.isArray(v) ? text(v[0]) : text(v);
+}
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -126,6 +132,7 @@ function extractParams(req: RequestWithUser): ReqParams {
     orientation: raw === "portrait" ? "portrait" : "landscape",
   };
 }
+
 // ─── Data loader ────────────────────────────────────────────────────────────
 
 /** Builds the SQL through the procedure, runs it and returns normalized rows. */
@@ -151,24 +158,24 @@ async function runProcSql(conn: oracledb.Connection, dispatchParam: string, p: R
   // PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS returns a CLOB
   const result = await conn.execute(
     `DECLARE
-        v_sql CLOB;
-      BEGIN
-        PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS(
-          :parameter, :loginid,
-          :code1,  :code2,  :code3,  :code4,
-          :number1, :number2, :number3, :number4,
-          :date1,   :date2,   :date3,   :date4,
-          v_sql
-        );
-        :out_sql := DBMS_LOB.SUBSTR(v_sql, 32767, 1);
-      END;`,
+       v_sql CLOB;
+     BEGIN
+       PROC_BUILD_DYNAMIC_SQL_ALMS_REPORTS(
+         :parameter, :loginid,
+         :code1,  :code2,  :code3,  :code4,
+         :number1, :number2, :number3, :number4,
+         :date1,   :date2,   :date3,   :date4,
+         v_sql
+       );
+       :out_sql := DBMS_LOB.SUBSTR(v_sql, 32767, 1);
+     END;`,
     binds
   );
 
   const rawSql = (result.outBinds as any).out_sql;
   if (!rawSql) throw new Error(`Procedure did not return SQL for ${dispatchParam}.`);
 
-  console.log(`=== GENERATED SQL (${dispatchParam}) ===\n`, rawSql, "\n=== END ===");
+  if (DEBUG) console.log(`=== GENERATED SQL (${dispatchParam}) ===\n`, rawSql, "\n=== END ===");
 
   const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
   const rows = normalize(dataResult.rows as any[]);
@@ -190,9 +197,6 @@ interface FormData {
 async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormData> {
   const conn = await getConn(req);
   try {
-    // One query: item rows from VW_PURCHASE_DETAILS_TXN, each row also carries the
-    // header columns (Created By, Flow, Description, Remarks, Division ...) from
-    // VW_PURCHASE_REQUEST_SUMMARY.
     const items = await runProcSql(conn, PARAM_FORM, p);
 
     const f = items[0];
@@ -215,9 +219,7 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
       }
       : null;
 
-    // Approval history needs its own table/query, so it is not part of the single-case form yet.
-    // POs generated for this PR (separate branch PR_REGISTER_PO_NO). Optional: the form still
-    // prints if the branch or the db link is not available.
+    // POs generated for this PR (optional: the form still prints if this fails)
     let pos: ReportRow[] = [];
     try {
       pos = await runProcSql(conn, PARAM_PO, p);
@@ -225,7 +227,7 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
       console.warn("[PR FORM] PO list not loaded:", e?.message);
     }
 
-    // Approval history (optional: form still prints if this fails)
+    // Approval history (optional: the form still prints if this fails)
     let history: ReportRow[] = [];
     try {
       history = await runProcSql(conn, PARAM_HISTORY, p);
@@ -239,87 +241,98 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
   }
 }
 
-// ─── HTML renderer (inline styles, same approach as PO Order Register) ────
+// ─── Header pairs (shared by HTML and Excel) ────────────────────────────────
 
-const PR_FORM_EXTRA_CSS = `
-    /* ── Title row ── */
-    .pr-title-row { display:flex; align-items:center; justify-content:space-between; margin:6px 0 8px 0; }
-    .pr-title { font-size:15px; font-weight:700; color:#0b4ca1; letter-spacing:1px; }
-    .pr-title b { font-size:17px; color:#0f172a; letter-spacing:.5px; margin-left:4px; }
-    .pr-pill { border:1px solid #9fb6d6; background:#e8f0fa !important; color:#0b4ca1; font-weight:700; font-size:10px;
-              padding:5px 16px; border-radius:8px; letter-spacing:.3px;
-              -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+function formHeaderPairs(data: FormData, requestNumber: string): { left: [string, string][]; right: [string, string][] } {
+  const { header, items } = data;
+  const first = items[0] ?? {};
+  const h: ReportRow = header ?? {};
+  const reqNo = text(h.request_number) || text(first.request_number) || requestNumber;
+  const reqDate = h.request_date ?? first.request_date;
 
-    /* ── Two separate boxes ── */
-    .pr-boxes { display:flex; gap:14px; align-items:stretch; margin-bottom:12px; }
-    .pr-box { flex:1 1 0; min-width:0; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff; }
-    .pr-box-h { background:#e8f0fa !important; color:#0b4ca1; font-weight:700; font-size:12px; padding:9px 14px;
-                -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    .pr-box-b { padding:8px 14px 10px 14px; }
-    .pr-kv { display:flex; align-items:flex-start; padding:3px 0; font-size:10.5px; }
-    .pr-k { flex:0 0 38%; color:#64748b; }
-    .pr-v { flex:1; min-width:0; font-weight:700; color:#0f172a; word-break:break-word; }
+  const poNos = Array.from(new Set((data.pos ?? []).map((p) => text(p.doc_no).trim()).filter(Boolean)));
+  const poText = poNos.length ? poNos.join(", ") : "-";
 
-    /* ── (existing .prh-* history rules stay here) ── */
-    .prh-box { margin-top:16px; border:1px solid #000; padding:14px 22px 8px 22px; width:100%; box-sizing:border-box;
-              font-family:Arial,Helvetica,sans-serif; color:#000; }
-    .prh-item { page-break-inside:avoid; break-inside:avoid; margin:0 0 6px 0; }
-    .prh-bar-wrap { text-align:center; margin:0 0 4px 0; }
-    .prh-bar { display:inline-block; width:200px; background:#000 !important; color:#fff !important; text-align:center;
-              font-weight:700; font-size:11px; line-height:1.3; padding:3px 0;
-              -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    .prh-row { display:flex; align-items:baseline; font-size:11px; padding:3px 0; color:#000; }
-    .prh-lbl { flex:0 0 150px; white-space:nowrap; }
-    .prh-col { flex:0 0 14px; }
-    .prh-val { flex:1; }
-  `;
+  const left: [string, string][] = [
+    ["Purchase Request Number", reqNo],
+    ["Created By", text(h.create_user ?? first.user_id)],
+    ["Flow", text(h.flow_code)],
+    ["Description", text(h.description)],
+    ["Remarks", text(h.remarks)],
+    ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
+    ["Division", text(h.req_div_code)],
+  ];
+  const right: [string, string][] = [
+    ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
+    ["Currency", text(h.currency_code ?? first.curr_code)],
+    ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
+    ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
+    ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
+    ["Request Date", dateText(reqDate)],
+    ["Last Action", text(h.last_action ?? first.last_action ?? first.purch_status)],
+    ["PO Generated", poText],
+  ];
+  return { left, right };
+}
 
-const S = {
-  wrap: "font-size:9.5px;line-height:1.3;color:#1e293b;",
-  title: "margin:0 0 8px 0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;text-align:center;letter-spacing:.5px;",
-  lbl: "padding:3px 6px 3px 0;font-weight:700;font-size:9.5px;vertical-align:top;white-space:nowrap;width:34%;",
-  val: "padding:3px 0;font-size:9.5px;vertical-align:top;word-break:break-word;",
-  valBig: "padding:3px 0;font-size:13px;font-weight:800;vertical-align:top;color:#0b3d91;",
-  th: "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:8.5px;padding:4px 3px;text-align:center;border:1px solid #9fb6d6;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  td: "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;word-break:break-word;overflow-wrap:anywhere;",
-  tdR: "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:right;word-break:break-word;",
-  tdC: "padding:4px 3px;border-bottom:1px solid #e2e8f0;vertical-align:top;font-size:9px;text-align:center;",
-  hdrTh: "background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;font-size:10px;padding:6px 8px;text-align:left;width:50%;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  hdrTd: "background:#f4f7fb !important;color:#1e293b;font-size:9.5px;padding:6px 8px;border-bottom:1px solid #dce6f4;vertical-align:top;width:50%;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  sub: "display:block;font-size:8px;color:#64748b;",
-  total: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  totalR: "background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:6px 3px;border-top:2px solid #0b4ca1;font-size:10px;text-align:right;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-  histBox: "margin-top:14px;border:1px solid #334155;padding:10px 16px;",
-  badge: "display:inline-block;min-width:160px;background:#000000 !important;color:#ffffff !important;font-weight:700;font-size:10px;text-align:center;padding:3px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
-};
+function remarkLines(raw: unknown): string[] {
+  const txt = text(raw).replace(/\s+/g, " ").trim();
+  if (!txt) return [];
+
+  const marker = /\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}>>/g;
+  const starts: number[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = marker.exec(txt)) !== null) {
+    // the user name = the ALL-CAPS words directly before the date
+    const words = txt.slice(0, m.index).trimEnd().split(" ");
+    let k = words.length;
+    while (k > 0 && /^[A-Z][A-Z.'\-]*$/.test(words[k - 1])) k--;
+    if (k === words.length) continue;
+    starts.push(k === 0 ? 0 : words.slice(0, k).join(" ").length + 1);
+  }
+
+  const cuts = Array.from(new Set(starts)).sort((a, b) => a - b);
+  if (!cuts.length) return [txt];
+
+  const lines: string[] = [];
+  if (cuts[0] > 0) lines.push(txt.slice(0, cuts[0]).trim());   // text before the first name, if any
+  cuts.forEach((c, i) => lines.push(txt.slice(c, i + 1 < cuts.length ? cuts[i + 1] : undefined).trim()));
+  return lines.filter(Boolean);
+}
 
 function renderFormBody(data: FormData, requestNumber: string, orientation: Orientation = "portrait"): string {
   const { items, history } = data;
   const { left, right } = formHeaderPairs(data, requestNumber);
 
-  // ── Header: one table, 2 columns, uses report_common "data-table" styling ──
-  const pairText = (p?: [string, string], bold = false) =>
-    p ? `${escapeHtml(p[0])}: ${bold ? `<b>${escapeHtml(p[1])}</b>` : escapeHtml(p[1])}` : "";
+  // ── Header: 2 columns, grey label + bold value ──
+  // ── Header: title + 2 separate boxes (label : value) ──
+  const kvTable = (title: string, pairs: [string, string][]) => {
+    const rows = pairs
+      .map(([k, v]) => {
+        const safe = escapeHtml(v || "-");
+        const val = k === "Remarks"
+          ? remarkLines(v).map((line) => escapeHtml(line)).join("<br/>") || "-"
+          : "<b>" + safe + "</b>";
 
-  const hdrCount = Math.max(left.length, right.length);
-  const hdrRows = Array.from({ length: hdrCount }, (_, i) => `
-      <tr>
-        <td>${pairText(left[i], i === 0)}</td>
-        <td>${pairText(right[i])}</td>
-      </tr>`).join("");
+        return "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td>" + val + "</td></tr>";
+      })
+      .join("");
+    return (
+      '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+      "</table>"
+    );
+  };
 
-  // ── Header: finance-style title + 2 separate boxes ──
-
-  const headerBlockHtml = `
-    <table class="data-table" width="100%">
-      <thead>
-        <tr>
-          <th width="50%">Request Details</th>
-          <th width="50%">Other Details</th>
-        </tr>
-      </thead>
-      <tbody>${hdrRows}</tbody>
-    </table>`;
+  const headerBlockHtml =
+    '<h1 class="report-title" style="margin:0 0 8px 0;">Purchase Request : ' +
+    escapeHtml(left[0]?.[1] ?? requestNumber) + "</h1>" +
+    '<table class="grn-two-col"><tbody><tr>' +
+    "<td>" + kvTable("Request Details", left) + "</td>" +
+    "<td>" + kvTable("Other Details", right) + "</td>" +
+    "</tr></tbody></table>";
 
   // ── Per-line numbers (shared by both layouts) ──
   const calc = items.map((r) => {
@@ -329,7 +342,6 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
     const lineTotal = amount + tax;               // Total Amt (I.T)
     const lcurrAfterTax = lineTotal * (num(r.currency_rate) || 1);
     const effQty = num(r.allocated_approved_quantity) > 0 ? num(r.allocated_approved_quantity) : num(r.item_qty);
-    // DISCOUNT_AMOUNT is a percentage in the entry form -> amount = rate x qty x % / 100
     const discAmt = (num(r.item_rate) * effQty * num(r.discount_amount)) / 100;
     return { r, amount, base, tax, lineTotal, lcurrAfterTax, discAmt };
   });
@@ -345,200 +357,140 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
 
   // ── Items: PORTRAIT = 7 columns (pairs share a cell) so it fits the page ──
   const portraitLines = calc.map(({ r, amount, tax, lineTotal, lcurrAfterTax, discAmt }) => `
-      <tr>
-        <td>${escapeHtml(r.sr_no)}. ${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""
+    <tr>
+      <td>${escapeHtml(r.sr_no)}. ${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span>${r.supplier_part_code ? `<br/><span class="muted">Part: ${escapeHtml(r.supplier_part_code)}</span>` : ""
     }${(r.supplier_name || r.supplier) ? `<br/><span class="muted">Supplier: ${escapeHtml(r.supplier_name || r.supplier)}</span>` : ""
     }</td>
-        <td class="num">${qtyFmt(r.item_qty)}<br/><span class="muted">Appr: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
-        <td class="num">${amtFmt(r.item_rate)}<br/><span class="muted">Disc: ${amtFmt(discAmt)}</span></td>
-        <td class="num">${amtFmt(amount)}</td>
-        <td class="num">${amtFmt(tax)}<br/><span class="muted">${escapeHtml(r.tx_compntcat_code_1)} @ ${pctFmt(r.tx_compnt_perc_1)}%</span></td>
-        <td class="num">${amtFmt(lineTotal)}</td>
-        <td class="num">${amtFmt(lcurrAfterTax)}<br/><span class="muted">${escapeHtml(r.curr_code)} @ ${rateFmt(r.currency_rate)}</span></td>
-      </tr>`).join("");
+      <td class="num">${qtyFmt(r.item_qty)}<br/><span class="muted">Appr: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
+      <td class="num">${amtFmt(r.item_rate)}<br/><span class="muted">Disc: ${amtFmt(discAmt)}</span></td>
+      <td class="num">${amtFmt(amount)}</td>
+      <td class="num">${amtFmt(tax)}<br/><span class="muted">${escapeHtml(r.tx_compntcat_code_1)} @ ${pctFmt(r.tx_compnt_perc_1)}%</span></td>
+      <td class="num">${amtFmt(lineTotal)}</td>
+      <td class="num">${amtFmt(lcurrAfterTax)}<br/><span class="muted">${escapeHtml(r.curr_code)} @ ${rateFmt(r.currency_rate)}</span></td>
+    </tr>`).join("");
 
   const portraitTable = `
-      <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
-      <thead>
-        <tr>
-          <th width="23%">Sr. / Item / Description</th>
-          <th width="9%"  class="right">Req Qty</th>
-          <th width="13%" class="right">Item Rate / Disc</th>
-          <th width="13%" class="right">Total Amt (E.T)</th>
-          <th width="15%" class="right">Tax Amt / Type</th>
-          <th width="13%" class="right">Total Amt (I.T)</th>
-          <th width="14%" class="right">LCURR After Tax</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${portraitLines}
-        <tr class="grand-total-row">
-          <td colspan="3">Total Amount</td>
-          <td class="num">${amtFmt(totAmount)}</td>
-          <td class="num">${amtFmt(totTax)}</td>
-          <td class="num">${amtFmt(totLine)}</td>
-          <td class="num">${amtFmt(totLcurr)}</td>
-        </tr>
-        <tr class="subtotal-row">
-          <td colspan="6" class="right">Total Discount</td>
-          <td class="num">${amtFmt(totDisc)}</td>
-        </tr>
-      </tbody>
-    </table>`;
+  <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
+    <thead>
+      <tr>
+        <th width="23%">Sr. / Item / Description</th>
+        <th width="9%"  class="right">Req Qty</th>
+        <th width="13%" class="right">Item Rate / Disc</th>
+        <th width="13%" class="right">Total Amt (E.T)</th>
+        <th width="15%" class="right">Tax Amt / Type</th>
+        <th width="13%" class="right">Total Amt (I.T)</th>
+        <th width="14%" class="right">LCURR After Tax</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${portraitLines}
+      <tr class="grand-total-row">
+        <td colspan="3">Total Amount</td>
+        <td class="num">${amtFmt(totAmount)}</td>
+        <td class="num">${amtFmt(totTax)}</td>
+        <td class="num">${amtFmt(totLine)}</td>
+        <td class="num">${amtFmt(totLcurr)}</td>
+      </tr>
+      <tr class="subtotal-row">
+        <td colspan="6" class="right">Total Discount</td>
+        <td class="num">${amtFmt(totDisc)}</td>
+      </tr>
+    </tbody>
+  </table>`;
 
   // ── Items: LANDSCAPE = all 15 columns of the reference form, each in its own column ──
   const landscapeLines = calc.map(({ r, amount, base, tax, lineTotal, discAmt }) => `
-      <tr>
-        <td class="center">${escapeHtml(r.sr_no)}</td>
-        <td>${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span></td>
-        <td>${escapeHtml(r.supplier_part_code)}</td>
-        <td class="num">${qtyFmt(r.item_qty)}</td>
-        <td class="num">${amtFmt(r.item_rate)}</td>
-        <td class="num">${amtFmt(discAmt)}</td>
-        <td class="num">${amtFmt(r.final_rate)}</td>
-        <td class="center">${escapeHtml(r.curr_code)}</td>
-        <td class="num">${rateFmt(r.currency_rate)}</td>
-        <td class="num">${amtFmt(amount)}<br/><span class="muted">${escapeHtml(r.supplier_name || r.supplier)}</span></td>
-        <td class="num">${amtFmt(base)}</td>
-        <td class="num">${escapeHtml(r.tx_compntcat_code_1)}<br/><span class="muted">${escapeHtml(r.tx_cat_code)}</span></td>
-        <td class="num">${pctFmt(r.tx_compnt_perc_1)}</td>
-        <td class="num">${amtFmt(tax)}</td>
-        <td class="num">${amtFmt(lineTotal)}<br/><span class="muted">Appr Qty: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
-      </tr>`).join("");
+    <tr>
+      <td class="center">${escapeHtml(r.sr_no)}</td>
+      <td>${escapeHtml(r.item_code)}<br/><span class="muted">${escapeHtml(r.item_desp)}</span></td>
+      <td>${escapeHtml(r.supplier_part_code)}</td>
+      <td class="num">${qtyFmt(r.item_qty)}</td>
+      <td class="num">${amtFmt(r.item_rate)}</td>
+      <td class="num">${amtFmt(discAmt)}</td>
+      <td class="num">${amtFmt(r.final_rate)}</td>
+      <td class="center">${escapeHtml(r.curr_code)}</td>
+      <td class="num">${rateFmt(r.currency_rate)}</td>
+      <td class="num">${amtFmt(amount)}<br/><span class="muted">${escapeHtml(r.supplier_name || r.supplier)}</span></td>
+      <td class="num">${amtFmt(base)}</td>
+      <td class="num">${escapeHtml(r.tx_compntcat_code_1)}<br/><span class="muted">${escapeHtml(r.tx_cat_code)}</span></td>
+      <td class="num">${pctFmt(r.tx_compnt_perc_1)}</td>
+      <td class="num">${amtFmt(tax)}</td>
+      <td class="num">${amtFmt(lineTotal)}<br/><span class="muted">Appr Qty: ${qtyFmt(r.allocated_approved_quantity)}</span></td>
+    </tr>`).join("");
 
   const landscapeTable = `
-    <table class="data-table" width="100%">
-      <thead>
-        <tr>
-          <th width="4%"  class="center">Sr. No.</th>
-          <th width="13%">Item Code</th>
-          <th width="8%">Supplier Part Code</th>
-          <th width="6%"  class="right">Request Qty</th>
-          <th width="6%"  class="right">Item Rate</th>
-          <th width="6%"  class="right">Discount Amt</th>
-          <th width="6%"  class="right">Final Rate</th>
-          <th width="5%"  class="center">Currency</th>
-          <th width="5%"  class="right">Ex Rate</th>
-          <th width="8%"  class="right">Amount</th>
-          <th width="8%"  class="right">Base Amount</th>
-          <th width="7%"  class="right">Tax Code</th>
-          <th width="5%"  class="right">TAX %</th>
-          <th width="6%"  class="right">Tax Amt</th>
-          <th width="7%"  class="right">Total Amt</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${landscapeLines}
-        <tr class="grand-total-row">
-          <td colspan="9">Total Amount</td>
-          <td class="num">${amtFmt(totAmount)}</td>
-          <td class="num">${amtFmt(totBase)}</td>
-          <td colspan="2"></td>
-          <td class="num">${amtFmt(totTax)}</td>
-          <td class="num">${amtFmt(totLine)}</td>
-        </tr>
-        <tr class="subtotal-row">
-          <td colspan="14" class="right">Total Discount</td>
-          <td class="num">${amtFmt(totDisc)}</td>
-        </tr>
-      </tbody>
-    </table>`;
+  <table class="data-table" width="100%">
+    <thead>
+      <tr>
+        <th width="4%"  class="center">Sr. No.</th>
+        <th width="13%">Item Code / Description</th>
+        <th width="8%">Supplier Part Code</th>
+        <th width="6%"  class="right">Request Qty</th>
+        <th width="6%"  class="right">Item Rate</th>
+        <th width="6%"  class="right">Discount Amt</th>
+        <th width="6%"  class="right">Final Rate</th>
+        <th width="5%"  class="center">Currency</th>
+        <th width="5%"  class="right">Ex Rate</th>
+        <th width="8%"  class="right">Amount / Supplier</th>
+        <th width="8%"  class="right">Base Amount</th>
+        <th width="7%"  class="right">Tax Code / Cat</th>
+        <th width="5%"  class="right">TAX %</th>
+        <th width="6%"  class="right">Tax Amt</th>
+        <th width="7%"  class="right">Total Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${landscapeLines}
+      <tr class="grand-total-row">
+        <td colspan="9">Total Amount</td>
+        <td class="num">${amtFmt(totAmount)}</td>
+        <td class="num">${amtFmt(totBase)}</td>
+        <td colspan="2"></td>
+        <td class="num">${amtFmt(totTax)}</td>
+        <td class="num">${amtFmt(totLine)}</td>
+      </tr>
+      <tr class="subtotal-row">
+        <td colspan="14" class="right">Total Discount</td>
+        <td class="num">${amtFmt(totDisc)}</td>
+      </tr>
+    </tbody>
+  </table>`;
 
   const itemsHtml = items.length === 0
     ? `<div class="empty">No items found for this request.</div>`
     : orientation === "landscape" ? landscapeTable : portraitTable;
+  const historyRows = history
+    .map(
+      (r) =>
+        "<tr>" +
+        "<td><b>" + escapeHtml(r.action_status) + "</b></td>" +
+        "<td>" + escapeHtml(r.last_updated_by) + "</td>" +
+        "<td>" + escapeHtml(dateTimeMsText(r.last_updated_dt)) + "</td>" +
+        "</tr>"
+    )
+    .join("");
 
-// ── Approval History (table layout – print safe) ──
-let historyHtml = "";
-
-try {
-  const hist = Array.isArray(history) ? history : [];
-
-  if (hist.length === 0) {
-    historyHtml = `
-      <div style="margin-top:20px; border:1px solid #999; padding:12px 16px; color:#666; font-size:12px;">
-        Approval History — No records
-      </div>`;
-  } else {
-    const reqNo =
-      text(data.header?.request_number) ||
-      text(items?.[0]?.request_number) ||
-      requestNumber ||
-      "-";
-
-    let bodyRows = "";
-
-    // Request Number row
-    bodyRows += `
-      <tr>
-        <td style="padding:6px 0 14px 0; font-size:12px; font-weight:700; vertical-align:top;">
-          Request Number &nbsp;:&nbsp; ${escapeHtml(reqNo)}
-        </td>
-        <td style="width:160px;"></td>
-      </tr>`;
-
-    hist.forEach((r) => {
-      const status = String(r.action_status || "-");
-      const by = String(r.last_updated_by || "-");
-      let dt = "-";
-      try {
-        dt = dateTimeMsText(r.last_updated_dt) || dateTimeText(r.last_updated_dt) || String(r.last_updated_dt || "-");
-      } catch {
-        dt = String(r.last_updated_dt || "-");
-      }
-
-      bodyRows += `
-        <tr>
-          <td style="padding:8px 12px 8px 0; vertical-align:top; font-size:11.5px; line-height:1.55;">
-            <div>
-              <span style="display:inline-block; min-width:125px; color:#374151;">Last Updated</span>
-              <span style="margin:0 4px;">:</span>
-              <span style="font-weight:600; color:#111;">${escapeHtml(by)}</span>
-            </div>
-            <div>
-              <span style="display:inline-block; min-width:125px; color:#374151;">Last Updated Dt</span>
-              <span style="margin:0 4px;">:</span>
-              <span style="color:#111;">${escapeHtml(dt)}</span>
-            </div>
-          </td>
-          <td style="width:160px; text-align:center; vertical-align:middle;">
-            <span class="prh-bar">${escapeHtml(status)}</span>
-          </td>
-        </tr>`;
-    });
-
-    historyHtml = `
-      <div style="margin-top:22px;">
-        <div style="font-size:13px; font-weight:700; color:#0b4ca1; margin-bottom:8px;">
-          Approval History
-        </div>
-        <div class="prh-box">
-          <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-            ${bodyRows}
-          </table>
-        </div>
-      </div>`;
-  }
-} catch (err: unknown) {
-  console.error("[PR FORM] historyHtml ERROR:", err);
-  const msg = err instanceof Error ? err.message : String(err);
-  historyHtml = `
-    <div style="margin-top:20px; padding:12px; border:2px solid #dc2626; color:#dc2626;">
-      Approval History ERROR: ${escapeHtml(msg)}
-    </div>`;
-}
+  const historyHtml = history.length === 0
+    ? ""
+    : '<table class="data-table prh-table" width="100%">' +
+    "<thead><tr>" +
+    "<th>Approval Status</th>" +
+    "<th>Last Updated By</th>" +
+    "<th>Last Updated Dt</th>" +
+    "</tr></thead>" +
+    "<tbody>" + historyRows + "</tbody>" +
+    "</table>";
 
   return `
 <div class="pr-form">
-  <h1 class="report-title" style="margin:0 0 8px 0;">${escapeHtml(REPORT_TITLE)}</h1>
   ${headerBlockHtml}
-  <div style="height:10px;"></div>
+
   ${itemsHtml}
   ${historyHtml}
 </div>`;
 }
 
-// ─── Excel engine (raw OOXML) – shared by Summary and Details ─────────────
+// ─── Excel engine (raw OOXML) ───────────────────────────────────────────────
 
 const XL_BLUE = "FF1D4ED8";
 const XL_WHITE = "FFFFFFFF";
@@ -552,6 +504,18 @@ interface XlMerge { s: { r: number; c: number }; e: { r: number; c: number } }
 const xlCell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
 const xlBorderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
+
+/** 0 -> A, 25 -> Z, 26 -> AA ... */
+function colLetter(index: number): string {
+  let n = index + 1;
+  let s = "";
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
 
 const XL_STYLE_DEFS: Record<string, any> = {
   title: {
@@ -705,7 +669,7 @@ function buildXlsx(opts: {
     let rowXml = `<row r="${rn}">`;
     row.forEach((c, ci) => {
       if (c === null) return;
-      const ref = String.fromCharCode(65 + ci) + rn;
+      const ref = colLetter(ci) + rn;
       const s = styleIndexFor(c.styleKey);
       if (typeof c.v === "number") {
         rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
@@ -718,101 +682,102 @@ function buildXlsx(opts: {
   });
 
   const mergesXml = merges.map((m) =>
-    `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
+    `<mergeCell ref="${colLetter(m.s.c)}${m.s.r + 1}:${colLetter(m.e.c)}${m.e.r + 1}"/>`
   ).join("");
   const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
 
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-    <sheetFormatPr defaultRowHeight="15"/>
-    <cols>${colXml}</cols>
-    <sheetData>${sheetDataXml}</sheetData>
-    ${mergeFinal}
-  </worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeFinal}
+</worksheet>`;
 
   const numFmtsXml = numFmts.length
     ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
     : "";
 
+  // OOXML order inside <font>: b, i, sz, color, name
   const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
-      <font>
-          ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
-          ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
-          <name val="Arial"/>
-          ${f.bold ? "<b/>" : ""}
-          ${f.italic ? "<i/>" : ""}
-      </font>`).join("")}
-  </fonts>`;
+    <font>
+      ${f.bold ? "<b/>" : ""}
+      ${f.italic ? "<i/>" : ""}
+      ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+      ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+      <name val="Arial"/>
+    </font>`).join("")}
+</fonts>`;
 
   const fillsXml = `<fills count="${fills.length}">
-      <fill><patternFill patternType="none"/></fill>
-      <fill><patternFill patternType="gray125"/></fill>
-      ${fills.slice(2).map((f) => `
-      <fill>
-          <patternFill patternType="solid">
-              <fgColor rgb="${f.color}"/>
-              <bgColor rgb="${f.color}"/>
-          </patternFill>
-      </fill>`).join("")}
-  </fills>`;
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    ${fills.slice(2).map((f) => `
+    <fill>
+      <patternFill patternType="solid">
+        <fgColor rgb="${f.color}"/>
+        <bgColor rgb="${f.color}"/>
+      </patternFill>
+    </fill>`).join("")}
+</fills>`;
 
   const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
   const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
-      <border>
-          <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
-          <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
-          <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
-          <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
-          <diagonal/>
-      </border>`).join("")}
-  </borders>`;
+    <border>
+      <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+      <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+      <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+      <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+      <diagonal/>
+    </border>`).join("")}
+</borders>`;
 
   const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
     const applyAlign = xf.align || xf.wrap;
     return `
-      <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
-          applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
-          applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
-          ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
-      </xf>`;
+    <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
+        applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
+        applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
+      ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+    </xf>`;
   }).join("")}
-  </cellXfs>`;
+</cellXfs>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-      ${numFmtsXml}
-      ${fontsXml}
-      ${fillsXml}
-      ${bordersXml}
-      <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-      ${cellXfsXml}
-      <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
-  </styleSheet>`;
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  ${numFmtsXml}
+  ${fontsXml}
+  ${fillsXml}
+  ${bordersXml}
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  ${cellXfsXml}
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-    <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
-  </workbook>`;
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-  </Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
 
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-  </Relationships>`;
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml"  ContentType="application/xml"/>
-    <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-    <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-    <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  </Types>`;
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
 
   const zip = new AdmZip();
   zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
@@ -823,7 +788,6 @@ function buildXlsx(opts: {
   zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
   return zip.toBuffer();
 }
-
 
 // Extra styles used by the Purchase Request Form sheet
 XL_STYLE_DEFS.kvLabel = {
@@ -851,39 +815,6 @@ XL_STYLE_DEFS.dataCenter = {
 
 // ─── Excel: Purchase Request Form ───────────────────────────────────────────
 
-function formHeaderPairs(data: FormData, requestNumber: string): { left: [string, string][]; right: [string, string][] } {
-  const { header, items } = data;
-  const first = items[0] ?? {};
-  const h: ReportRow = header ?? {};
-  const reqNo = text(h.request_number) || text(first.request_number) || requestNumber;
-  const reqDate = h.request_date ?? first.request_date;
-
-  // "PO Generated: 1001, 1002"  (a dash when no PO has been generated)
-  const poNos = Array.from(new Set((data.pos ?? []).map((p) => text(p.doc_no).trim()).filter(Boolean)));
-  const poText = poNos.length ? poNos.join(", ") : "-";
-
-  const left: [string, string][] = [
-    ["Purchase Request Number", reqNo],
-    ["Created By", text(h.create_user ?? first.user_id)],
-    ["Flow", text(h.flow_code)],
-    ["Description", text(h.description)],
-    ["Remarks", text(h.remarks)],
-    ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
-    ["Division", text(h.req_div_code)],
-  ];
-  const right: [string, string][] = [
-    ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
-    ["Currency", text(h.currency_code ?? first.curr_code)],
-    ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
-    ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
-    ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
-    ["Request Date", dateText(reqDate)],
-    ["Last Action", text(h.last_action ?? first.last_action ?? first.purch_status)],
-    ["PO Generated", poText],
-  ];
-  return { left, right };
-}
-
 function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: string): Buffer {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
@@ -893,7 +824,6 @@ function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: st
   // Sr, Code, Description, Supp Part, Supplier, Req Qty, Rate, Disc %, Disc Amt, Final Rate,
   // Currency, Ex Rate, Amount, Base Amt, Tax Cat, Tax Code, Tax %, Tax Amt, Appr Qty, Total Amt
   const colWidths = [7, 18, 34, 18, 28, 12, 12, 9, 12, 12, 10, 10, 14, 14, 10, 12, 8, 12, 12, 14];
-
   const blanks = (n: number): null[] => new Array(n).fill(null);
   const emptyRow = (): XlRow => blanks(COL_COUNT);
   const rows_: XlRow[] = [];
@@ -1000,13 +930,11 @@ function buildFormExcelBuffer(data: FormData, requestNumber: string, loginId: st
   return buildXlsx({ rows: rows_, merges, colCount: COL_COUNT, colWidth: 14, colWidths, sheetName: "Purchase Request" });
 }
 
-// ─── Route handler ──────────────────────────────────────────────────────────
+// ─── Route handlers ─────────────────────────────────────────────────────────
 
 export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
-  console.log(">>> PR FORM V9 (PO numbers line) LOADED <<<");
   try {
     const params = extractParams(req);
-    console.log("PR FORM orientation:", params.orientation, "body:", JSON.stringify(req.body), "query:", JSON.stringify(req.query));
     if (!params.request_number) {
       res.status(400).json({ success: false, message: "Request number is required." });
       return;
@@ -1021,7 +949,7 @@ export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Res
     const companyCode =
       params.company_code ||
       text(req.user?.company_code) ||
-      text(req.query.company_code) ||
+      firstQuery(req.query.company_code) ||
       "BSG";
 
     const headerHtml = await reportHeader({ company_code: companyCode, req });
@@ -1037,14 +965,12 @@ export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Res
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: PR_FORM_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
       orientation: params.orientation,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("X-Report-Version", "PR-FORM-V9");
     res.send(html);
   } catch (error: any) {
     console.error("PR Form HTML error:", error);
@@ -1061,7 +987,7 @@ export const getPrRegisterFormReportExcel = async (req: RequestWithUser, res: Re
     }
 
     const data = await loadFormData(req, params);
-    if (!data.items.length) {
+    if (!data.items.length && !data.header) {
       res.status(200).json({ success: false, message: "No data found for the selected request." });
       return;
     }
