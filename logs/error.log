@@ -7487,3 +7487,365 @@ Error: listen EADDRINUSE: address already in use 0.0.0.0:3500
     at listenInCluster (node:net:1997:12)
     at node:net:2206:7
     at processTicksAndRejections (node:internal/process/task_queues:90:21)
+2026-10-29 12:37:00 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-29 12:42:05 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: HR_API_ERROR Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-10-29T07:12:05.014Z 08DF3546521E8AEC] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-10-29T07:12:05.014Z 08DF3546521E8AEC]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-10-29 14:49:22 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m253[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m253[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-29 14:54:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-10-29T09:24:37.945Z 08DF324F63B45BB9] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-10-29T09:24:37.945Z 08DF324F63B45BB9]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-10-29 15:08:07 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m255[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m255[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m254[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m254[0m                 dutyResumeDate: dutyResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m117[0m:[93m3[0m
+    [7m117[0m   dutyResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/leave_request_flow.ts[0m:[93m255[0m:[93m17[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'Date'.
+
+[7m255[0m                 actualResumeDate: actualResumeDate ,
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m118[0m:[93m3[0m
+    [7m118[0m   actualResumeDate?: Date | null;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-29 15:09:03 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m901[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m901[0m           dutyResumeDate: hasDuty ? new Date(r.dutyResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m119[0m:[93m3[0m
+    [7m119[0m   dutyResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m902[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m902[0m           actualResumeDate: hasActual ? new Date(r.actualResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m120[0m:[93m3[0m
+    [7m120[0m   actualResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m901[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m901[0m           dutyResumeDate: hasDuty ? new Date(r.dutyResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m119[0m:[93m3[0m
+    [7m119[0m   dutyResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m902[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m902[0m           actualResumeDate: hasActual ? new Date(r.actualResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m120[0m:[93m3[0m
+    [7m120[0m   actualResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m901[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m901[0m           dutyResumeDate: hasDuty ? new Date(r.dutyResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m119[0m:[93m3[0m
+    [7m119[0m   dutyResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'dutyResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+[96msrc/controllers/HR/hr_leave_approval.ts[0m:[93m902[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType 'Date | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+
+[7m902[0m           actualResumeDate: hasActual ? new Date(r.actualResumeDate) : null,
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/services/hr.service.ts[0m:[93m120[0m:[93m3[0m
+    [7m120[0m   actualResumeDate?: string;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'actualResumeDate' which is declared here on type 'LeaveResumeDatesUpdate'
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-10-29 15:12:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-10-29T09:42:08.682Z 08DF34FF7050C3CF] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-10-29T09:42:08.682Z 08DF34FF7050C3CF]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
