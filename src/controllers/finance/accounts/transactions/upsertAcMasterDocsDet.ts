@@ -228,31 +228,27 @@ if(companyCode){
     companyFilter=" AND COMPANY_CODE = :companyCode";
 }
 
-const result=await connection.execute(
-`
-SELECT
-  COMPANY_CODE,
-  AC_CODE,
-  SRNO,
-  DOC_TYPE,
-  DOC_PATH,
-  EXP_DATE,
-  MANDATORY,
-  USER_ID,
-  USER_DT,
-  DOC_NAME
-FROM MS_AC_MASTER_DOCS_DET
-WHERE AC_CODE = :acCode
-${companyFilter}
-ORDER BY SRNO DESC
-`,
-binds,
-{ outFormat: oracledb.OUT_FORMAT_OBJECT }
+const result: any = await connection.execute(
+  `BEGIN PROC_GET_MS_AC_MASTER_DOCS_DET(:p_company_code, :p_ac_code, :p_cursor); END;`,
+  {
+    p_company_code: companyCode || null,
+    p_ac_code: acCode,
+    p_cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
+  },
+  { outFormat: oracledb.OUT_FORMAT_OBJECT }
 );
+const cursor = result.outBinds.p_cursor;
+const rows: any[] = [];
+let chunk: any[];
+while ((chunk = await cursor.getRows(1000)) && chunk.length > 0) {
+  rows.push(...chunk);
+}
+await cursor.close();
+const resultRows = rows;
 
 res.json({
     success:true,
-    data:result.rows || []
+    data:resultRows
 });
 
 }
@@ -329,15 +325,22 @@ if(companyCode){
     companyFilter=" AND COMPANY_CODE = :companyCode";
 }
 
-const result=await connection.execute(
-`
-DELETE FROM MS_AC_MASTER_DOCS_DET
-WHERE AC_CODE = :acCode
-  AND SRNO = :srno
-${companyFilter}
-`,
-binds
+const result: any = await connection.execute(
+  `BEGIN PROC_DELETE_MS_AC_MASTER_DOCS_DET(:p_company_code, :p_ac_code, :p_srno, :p_status, :p_message); END;`,
+  {
+    p_company_code: companyCode || null,
+    p_ac_code: acCode,
+    p_srno: srno,
+    p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+    p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+  }
 );
+const status = result.outBinds?.p_status;
+const message = result.outBinds?.p_message;
+if (status === 'ERROR') {
+  res.status(400).json({ success: false, message });
+  return;
+}
 
 await connection.commit();
 

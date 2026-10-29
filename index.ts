@@ -97,18 +97,29 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 // Tenant Status Diagnostic Endpoint
-app.get("/api/diagnostics/tenants", (req: Request, res: Response) => {
-  const { TenantManager } = require("./src/database/TenantManager");
-  const registeredTenants = TenantManager.getTenants();
-  
-  res.status(200).json({
-    success: true,
-    message: "Tenant Status",
-    registered_tenants: registeredTenants,
-    total_registered: registeredTenants.length,
-    note: "Check server logs for connection attempts and failures",
-    timestamp: new Date().toISOString(),
-  });
+app.get("/api/diagnostics/tenants", async (req: Request, res: Response) => {
+  try {
+    const { TenantManager } = require("./src/database/TenantManager");
+    const registeredTenants = typeof TenantManager.listActiveTenants === "function"
+      ? await TenantManager.listActiveTenants()
+      : [];
+    
+    res.status(200).json({
+      success: true,
+      message: "Tenant Status",
+      registered_tenants: registeredTenants,
+      total_registered: registeredTenants.length,
+      note: "Check server logs for connection attempts and failures",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    res.status(200).json({
+      success: false,
+      message: "Failed to retrieve active tenants",
+      error: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // Database Status Endpoint
@@ -136,9 +147,13 @@ async function startServer() {
     // await AttendanceEventScheduler.initializeScheduler();
     console.log(" All database connections initialized");
 
-    console.log("Initializing TypeORM service...");
-    await TypeORMService.initialize();
-    console.log("TypeORM initialized successfully");
+    try {
+      console.log("Initializing TypeORM service...");
+      await TypeORMService.initialize();
+      console.log("TypeORM initialized successfully");
+    } catch (typeormErr) {
+      console.warn("TypeORM service initialization warning (continuing):", typeormErr);
+    }
 
     try {
       console.log("Initializing passport strategies...");
@@ -157,7 +172,7 @@ async function startServer() {
       // Non-fatal: continue running server even if schedulers fail
     }
     console.log(`Listening on port ${PORT}...`);
-    app.listen(PORT, () => {
+    app.listen(Number(PORT), process.env.HOST || '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log("Health check: http://localhost:" + PORT + "/health");
     });

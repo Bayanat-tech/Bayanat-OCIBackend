@@ -1,3 +1,16 @@
+// src/pages/hr/Reports/AbsentMemoReportHtml.ts
+//
+// Absent Memo Report — HTML/print endpoint
+// Referenced from the Salary Addition/Deduction report page.
+//
+//  • Uses the same DB helper / tenant resolution as the Salary Adv/Ded report.
+//  • Calls PROC_BUILD_DYNAMIC_SQL_HR_REPORT with parameter
+//    'Hr_Report_SALARY_ADV_DED_FORM_SIMPLE' to get the SELECT text, then runs it.
+//  • Renders an A4 memo layout (info + subject + remarks + signatory)
+//    AND an employee/detail lines table (same style as Salary Adv/Ded report).
+//  • header/footer come from report_common (reportHeader / reportFooter).
+//  • applied filters shown via reportAppliedFilters.
+
 import { Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../database/TenantManager";
@@ -27,7 +40,11 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
 
 async function closeConn(conn?: oracledb.Connection) {
   if (conn)
-    try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+    try {
+      await conn.close();
+    } catch (e) {
+      console.warn("Close conn error:", e);
+    }
 }
 
 function normalize(rows: any[] = []): ReportRow[] {
@@ -58,17 +75,6 @@ function fmtAmount(n: number): string {
   });
 }
 
-function fmtDate(value: unknown): string {
-  if (!value) return "";
-  const d = new Date(value as any);
-  if (Number.isNaN(d.getTime())) return text(value).slice(0, 10);
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 function escapeHtml(value: unknown): string {
   return text(value)
     .replace(/&/g, "&amp;")
@@ -76,6 +82,17 @@ function escapeHtml(value: unknown): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// dd-Mon-yyyy (e.g. 06-Oct-2026) — manual month text so it never depends on locale data
+function fmtDate(value: unknown): string {
+  if (!value) return "";
+  const d = new Date(value as any);
+  if (Number.isNaN(d.getTime())) return text(value).slice(0, 10);
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${dd}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
 }
 
 // ─── Request Param Parser ────────────────────────────────────────────────────
@@ -169,86 +186,168 @@ const ABSENT_MEMO_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  table.info-table td { padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 11px; vertical-align: top; }
-  table.info-table td.lbl { width: 18%; background: #eff6ff; font-weight: 700; color: #00378c; }
+  @page { size: A4 portrait; }
 
-  .subject-row {
-    margin: 10px 0;
-    padding: 6px 8px;
-    background: #f1f5f9;
-    border-left: 4px solid #00378c;
-    font-weight: 700;
-    font-size: 12px;
+  .memo-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    padding: 5px 0;
+    margin: 0 0 10px;
+    border-bottom: 1px solid #cbd5e1;
   }
 
-  .remarks-box { margin: 8px 0; font-size: 11px; line-height: 1.5; white-space: pre-wrap; }
+  .memo-meta { text-align: right; font-size: 10.5px; line-height: 1.6; }
+  .memo-meta .k { font-weight: 400; margin-right: 6px; }
 
-  .amount-row {
-    margin: 12px 0;
-    padding: 8px;
+  .memo-party { margin: 14px 0 0 24px; font-size: 11px; }
+  .memo-party .k { font-size: 11px; margin-bottom: 6px; }
+  .memo-party .pname { font-weight: 700; margin-left: 16px; }
+  .memo-party .ppos { margin-left: 16px; }
+
+  .memo-subject { margin: 18px 0 2px 24px; font-size: 11px; }
+  .memo-subject .k { display: inline-block; width: 52px; }
+  .memo-subject b { font-weight: 700; }
+
+  .memo-body {
+    margin: 2px 0 14px 76px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .signatory {
+    margin: 34px 0 0 24px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.7;
+  }
+  .signatory .name { font-weight: 800; }
+
+  /* ── Employee / detail lines table (same as Salary Adv/Ded report) ── */
+  table.lines-table { width: 100%; border-collapse: collapse; margin: 18px 0 0; }
+  table.lines-table th {
+    padding: 5px 8px;
     background: #00378c;
     color: #fff;
-    font-weight: 800;
-    font-size: 13px;
-    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: left;
   }
-
-  .signatory { margin-top: 30px; font-size: 11px; }
-  .signatory .name { font-weight: 800; }
+  table.lines-table td { padding: 4px 6px; font-size: 9.5px; vertical-align: top; }
+  table.lines-table .num { text-align: right; }
+  table.lines-table tr.total td {
+    border-top: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b;
+    font-weight: 700;
+    font-size: 9.5px;
+  }
 `;
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
 
 function renderAbsentMemoBody(rows: ReportRow[], filtersHtml = ""): string {
+  const heading = `<div class="memo-title">ABSENT MEMO</div>`;
+
   if (!rows.length) {
     return `
-      <div class="doc-title-row"><div><h1>Absent Memo</h1></div></div>
+      ${heading}
       ${filtersHtml}
       <p class="center muted">No data found</p>
     `;
   }
 
   const r = rows[0];
-  const currency = text(r.curr_code);
   const empCode = text(r.emplyee_code ?? r.employee_code);
+  const empName = text(r.emp_name);
 
   const remarks = [text(r.remarks_1), text(r.remarks_2), text(r.remarks_3)]
     .filter(Boolean)
     .map((v) => escapeHtml(v))
     .join("\n");
 
+  // ── Detail lines (one row per HR_SALARY_ADVDED_FORM_DET record) ─────────────
+  const lineRows = rows.filter((x) => x.line_no != null || x.line_amount != null);
+  const total = lineRows.length
+    ? lineRows.reduce((sum, x) => sum + num(x.line_amount), 0)
+    : num(r.amount);
+
+  const linesHtml = lineRows.length
+    ? `<table class="lines-table">
+        <thead>
+          <tr>
+            <th style="width:16%">Employee Code</th>
+            <th>Employee Name</th>
+            <th style="width:20%">Pay Unit</th>
+            <th style="width:14%" class="num">Amount</th>
+            <th style="width:14%">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineRows
+            .map(
+              (x) => `<tr>
+            <td>${escapeHtml(x.line_emp_code ?? empCode)}</td>
+            <td>${escapeHtml(x.line_emp_name ?? empName)}</td>
+            <td>${escapeHtml(x.pay_comp_id)}</td>
+            <td class="num">${escapeHtml(fmtAmount(num(x.line_amount)))}</td>
+            <td>${escapeHtml(fmtDate(x.recover_from_dt))}</td>
+          </tr>`,
+            )
+            .join("")}
+          <tr class="total">
+            <td></td>
+            <td></td>
+            <td class="num">Total:</td>
+            <td class="num">${escapeHtml(fmtAmount(total))}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>`
+    : "";
+
   return `
-    <div class="doc-title-row">
-      <div><h1>Absent Memo</h1></div>
-    </div>
+    ${heading}
 
     ${filtersHtml}
 
-    <table class="info-table">
-      <tr>
-        <td class="lbl">Doc No</td><td>${escapeHtml(r.doc_no)}</td>
-        <td class="lbl">Doc Date</td><td>${escapeHtml(fmtDate(r.doc_date))}</td>
-      </tr>
-      <tr>
-        <td class="lbl">Doc Type</td><td>${escapeHtml(r.doc_type)}</td>
-        <td class="lbl">Ref No</td><td>${escapeHtml(r.ref_no)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">From</td><td>${escapeHtml(r.name_from)}<br/>${escapeHtml(r.addr_from)}</td>
-        <td class="lbl">To</td><td>${escapeHtml(r.name_to)}<br/>${escapeHtml(r.addr_to)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">Employee</td><td>${escapeHtml(empCode)} ${r.emp_name ? "| " + escapeHtml(r.emp_name) : ""}</td>
-        <td class="lbl">Currency / Rate</td><td>${escapeHtml(currency)} ${r.ex_rate != null ? "/ " + escapeHtml(r.ex_rate) : ""}</td>
-      </tr>
-    </table>
+    <div class="memo-meta">
+      <div><span class="k">Doc No.</span>: ${escapeHtml(r.doc_no)}</div>
+      <div><span class="k">Date</span>: ${escapeHtml(fmtDate(r.doc_date))}</div>
+      <div><span class="k">Doc Type</span>: ${escapeHtml(r.doc_type)}</div>
+      ${r.ref_no ? `<div><span class="k">Ref No.</span>: ${escapeHtml(r.ref_no)}</div>` : ""}
+    </div>
 
-    <div class="subject-row">Subject : ${escapeHtml(r.lettr_subject)}</div>
+    <div class="memo-party">
+      <div class="k">From</div>
+      <div class="pname">${escapeHtml(r.name_from)}</div>
+      <div class="ppos">${escapeHtml(r.addr_from)}</div>
+    </div>
 
-    <div class="remarks-box">${remarks}</div>
+    <div class="memo-party">
+      <div class="k">To</div>
+      <div class="pname">${escapeHtml(r.name_to)}</div>
+      <div class="ppos">${escapeHtml(r.addr_to)}</div>
+    </div>
 
-    <div class="amount-row">Total Amount : ${escapeHtml(currency)} ${fmtAmount(num(r.amount))}</div>
+    ${
+      empCode || empName
+        ? `<div class="memo-party">
+             <div class="k">Employee</div>
+             <div class="pname">${escapeHtml(empCode)}${empName ? " — " + escapeHtml(empName) : ""}</div>
+           </div>`
+        : ""
+    }
+
+    <div class="memo-subject">
+      <span class="k">Subject</span>
+      <b>${escapeHtml(r.lettr_subject)}</b>
+    </div>
+
+    <div class="memo-body">${remarks}</div>
+
+    ${linesHtml}
 
     ${
       r.signatory_name || r.signatory_position
@@ -269,14 +368,15 @@ export const getAbsentMemoReportHtml = async (
 ): Promise<void> => {
   try {
     const params = parseParams(req);
-    const rows   = await loadAbsentMemoData(req);
+    const rows = await loadAbsentMemoData(req);
 
-    const headerHtml  = await reportHeader({ company_code: params.companyCode, req });
+    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
     const filtersHtml = reportAppliedFilters([
       { label: "Doc No", value: [String(params.docNo)] },
+      ...(params.docType ? [{ label: "Doc Type", value: [params.docType] }] : []),
     ]);
-    const bodyHtml    = renderAbsentMemoBody(rows, filtersHtml);
-    const footerHtml  = reportFooter({
+    const bodyHtml = renderAbsentMemoBody(rows, filtersHtml);
+    const footerHtml = reportFooter({
       reportName: "rpt_absent_memo",
       userName: params.loginId,
       endLabel: "Powered by Bayanat Technology",
@@ -297,7 +397,7 @@ export const getAbsentMemoReportHtml = async (
   } catch (error: any) {
     console.error("Absent Memo Report HTML error:", error);
 
-    const oraNum  = error?.errorNum;
+    const oraNum = error?.errorNum;
     const oraCode = oraNum ? `ORA-${String(oraNum).padStart(5, "0")}` : undefined;
 
     res.status(error.status || 500).json({

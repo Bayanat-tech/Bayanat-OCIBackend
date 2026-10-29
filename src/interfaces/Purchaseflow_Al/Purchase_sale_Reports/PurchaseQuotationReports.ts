@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string;
-  doc_no:       string;
+  doc_type: string;
+  doc_no: string;
 }
 
 // ─── DB helpers (same as SalesInvoiceReports.ts) ───────────────────────────
@@ -83,10 +83,10 @@ function amtFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    doc_type:     text(b.doc_type),
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type),
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -160,6 +160,7 @@ interface PurchaseQuotationHeader {
   dlvr_contact: string;
   dlvr_email: string;
   disc_hdr_price: number;
+  disc_hdr_percent: number;
   curr_code: string;
 }
 
@@ -182,9 +183,14 @@ function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeade
     dlvr_contact: text(h.dlvr_contact),
     dlvr_email: text(h.dlvr_email),
     disc_hdr_price: num(h.disc_hdr_price),
+    disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
   };
 }
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const headerDiscOf = (h: PurchaseQuotationHeader, base: number) =>
+  round2(h.disc_hdr_price || (base * h.disc_hdr_percent) / 100);
 
 // ─── Shared visual system (identical extra CSS across all 3 reports) ──────
 
@@ -268,6 +274,11 @@ const PQ_EXTRA_CSS = `
     font-size: 10.5px;
     padding: 6px 6px;
   }
+    .totals-box { margin-bottom: 0; page-break-inside: avoid; }
+
+      .doc-title-row { margin: 2px 0 4px 0 !important; }
+  .doc-title-row .doc-sub { margin: 0 !important; }
+  .info-grid { margin-top: 0 !important; margin-bottom: 8px !important; }
 `;
 
 function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
@@ -310,6 +321,43 @@ function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
 
 // ─── Report 1: Quotation ────────────────────────────────────────────────────
 
+
+
+// ─── Shared items table (7 columns, fits portrait and landscape) ───────────
+
+function quotationItemsTableHtml(rows: ReportRow[]): string {
+  const bodyRows = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)}<br/><span class="muted">${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</span></td>
+        <td class="num">${qtyFmt(r.qty_puom)}<br/><span class="muted">${escapeHtml(r.p_uom)}</span></td>
+        <td class="num">${qtyFmt(r.qty_luom)}<br/><span class="muted">${escapeHtml(r.l_uom)}</span></td>
+        <td class="num">${qtyFmt(r.quantity)}</td>
+        <td class="num">${amtFmt(r.unit_price)}</td>
+        <td class="num">${amtFmt(r.disc_price)}<br/><span class="muted">${amtFmt(r.disc_percent)}%</span></td>
+        <td class="num strong">${amtFmt(r.amount)}</td>
+      </tr>`
+    )
+    .join("");
+
+  return `
+    <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
+      <thead>
+        <tr>
+          <th width="30%">Product / Description</th>
+          <th width="11%" class="right">P Qty / Uom</th>
+          <th width="9%"  class="right">L Qty / Uom</th>
+          <th width="10%" class="right">Qty in LUOM</th>
+          <th width="12%" class="right">Unit Rate</th>
+          <th width="12%" class="right">Disc Amt / %</th>
+          <th width="16%" class="right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>`;
+}
+
 /** Body only – no full HTML document */
 function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
@@ -319,7 +367,7 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
   const header = buildPurchaseQuotationHeader(rows);
 
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const overallDiscount = header.disc_hdr_price;
+  const overallDiscount = headerDiscOf(header, totalAmount);
   const grandTotal = totalAmount - overallDiscount;
 
   const bodyRows = rows
@@ -348,23 +396,7 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
       ${quotationDetailsBlockHtml(header)}
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Product / Description</th>
-          <th class="center">P Uom</th>
-          <th class="right">P Qty</th>
-          <th class="center">L Uom</th>
-          <th class="right">L Qty</th>
-          <th class="right">Quantity in LUOM</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Disc %</th>
-          <th class="right">Disc Amt</th>
-          <th class="right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
+        ${quotationItemsTableHtml(rows)}
 
     <div class="totals-box">
       <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>

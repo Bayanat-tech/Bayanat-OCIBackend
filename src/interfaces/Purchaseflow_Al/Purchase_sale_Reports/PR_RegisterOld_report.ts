@@ -101,7 +101,10 @@ function extractParams(req: RequestWithUser): ReqParams {
 // ─── Data loader ────────────────────────────────────────────────────────────
 
 async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatchParam: string): Promise<ReportRow[]> {
+  const tConn = Date.now();
   const conn = await getConn(req);
+  console.log(`[PR] getConn: ${Date.now() - tConn} ms`);
+
   try {
     const toDate = (iso: string): Date | null => {
       if (!iso || iso.toUpperCase() === "ALL") return null;
@@ -127,6 +130,7 @@ async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatc
       out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
+    const tProc = Date.now();
     const result = await conn.execute(
       `DECLARE
          v_sql VARCHAR2(32767);
@@ -142,13 +146,17 @@ async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatc
        END;`,
       binds
     );
+    console.log(`[PR] procedure (build SQL): ${Date.now() - tProc} ms`);
 
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
     console.log("=== GENERATED SQL ===\n", rawSql, "\n=== END ===");
 
+    const tQuery = Date.now();
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    console.log(`[PR] data query: ${Date.now() - tQuery} ms, rows: ${dataResult.rows?.length}`);
+
     return normalize(dataResult.rows as any[]);
   } finally {
     await closeConn(conn);
@@ -269,75 +277,90 @@ const PR_REGISTER_EXTRA_CSS = `
   }
 `;
 
-/** Body only – no full HTML document */
+
+const PR_S = {
+  head:  "background:#0b4ca1 !important;color:#ffffff !important;font-weight:700;font-size:11px;padding:6px 8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  total: "background:#eef2f7 !important;color:#1e3a8a !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  grand: "background:#0b4ca1 !important;color:#ffffff !important;font-weight:700;padding:8px 6px;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  th:    "background:#1e3a8a !important;color:#ffffff !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:left;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  thR:   "background:#1e3a8a !important;color:#ffffff !important;font-weight:700;font-size:9px;padding:5px 6px;text-align:right;word-break:break-word;-webkit-print-color-adjust:exact;print-color-adjust:exact;",
+  td:    "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;",
+  tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;word-break:break-word;",
+};
+ 
+const PR_WRAP = "font-size:9.5px;line-height:1.25;color:#1e293b;";
+const PR_TITLE = "margin:0;padding:0;font-size:15px;font-weight:800;color:#0b4ca1;line-height:1.2;";
+const PR_EMPTY = "padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;";
+
+
 function renderSummaryBody(rows: ReportRow[], loginId: string): string {
   const { groups, grandAmount } = groupByStatus(rows);
-
+  const S = PR_S;
+ 
   const groupsHtml = groups
     .map((g) => {
-      const lineRows = g.rows
+      const lines = g.rows
         .map(
           (r) => `
         <tr>
-          <td>${escapeHtml(r.request_number)}</td>
-          <td>${escapeHtml(dateText(r.request_date))}</td>
-          <td>${escapeHtml(r.create_user)}</td>
-          <td>${escapeHtml(r.description)}</td>
-          <td>${escapeHtml(r.curr_code)}</td>
-          <td class="right">${rateFmt(r.currency_rate)}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
+          <td style="${S.td}">${escapeHtml(r.request_number)}</td>
+          <td style="${S.td}">${escapeHtml(dateText(r.request_date))}</td>
+          <td style="${S.td}">${escapeHtml(r.create_user)}</td>
+          <td style="${S.td}">${escapeHtml(r.description)}</td>
+          <td style="${S.td}">${escapeHtml(r.curr_code)}</td>
+          <td style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
+          <td style="${S.tdR}">${amtFmt(r.amount)}</td>
         </tr>`
         )
         .join("");
-
+ 
       return `
-      <div class="status-block">
-        <div class="status-header">Purchase Status: ${escapeHtml(g.status)}</div>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Request No</th>
-              <th>Request Date</th>
-              <th>Create User</th>
-              <th>Description</th>
-              <th>Currency</th>
-              <th class="right">EX Rate</th>
-              <th class="right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lineRows}
-            <tr class="subtotal-row">
-              <td colspan="6">Total Amount for ${escapeHtml(g.status)}</td>
-              <td class="right">${amtFmt(g.amountTotal)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
+      <tbody style="break-inside:avoid;page-break-inside:avoid;">
+        <tr>
+          <td colspan="7" style="${S.head}">Purchase Status: ${escapeHtml(g.status)}</td>
+        </tr>
+        ${lines}
+        <tr>
+          <td colspan="6" style="${S.total}">Total Amount for ${escapeHtml(g.status)}</td>
+          <td style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
+        </tr>
+      </tbody>`;
     })
     .join("");
-
+ 
   return `
-    <div class="pr-register">
-      <div class="title">
-        <h1>${escapeHtml(REPORT_TITLE)}</h1>
-      </div>
-
-      ${
-        rows.length === 0
-          ? `<div class="empty">No records found for the selected filters.</div>`
-          : `
-        ${groupsHtml}
-
-        <table class="data-table" style="margin-top:10px;">
-          <tr class="grand-row">
-            <td colspan="6" style="padding:8px 14px;">Grand Total Amount</td>
-            <td class="right" style="padding:8px 14px;">${amtFmt(grandAmount)}</td>
-          </tr>
-        </table>`
-      }
+  <div class="pr-register" style="${PR_WRAP}">
+    <div style="margin:0 0 6px 0;padding:0;">
+      <h1 style="${PR_TITLE}">${escapeHtml(REPORT_TITLE)}</h1>
     </div>
-  `;
+ 
+    ${
+      rows.length === 0
+        ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+        : `
+      <table style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+        <colgroup><col style="width:14%"/><col style="width:11%"/><col style="width:12%"/><col style="width:33%"/><col style="width:9%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
+        <thead>
+          <tr>
+            <th style="${S.th}">Request No</th>
+            <th style="${S.th}">Request Date</th>
+            <th style="${S.th}">Create User</th>
+            <th style="${S.th}">Description</th>
+            <th style="${S.th}">Currency</th>
+            <th style="${S.thR}">EX Rate</th>
+            <th style="${S.thR}">Amount</th>
+          </tr>
+        </thead>
+        ${groupsHtml}
+        <tbody>
+          <tr>
+            <td colspan="6" style="${S.grand}">Grand Total Amount</td>
+            <td style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
+          </tr>
+        </tbody>
+      </table>`
+    }
+  </div>`;
 }
 
 // ─── Excel builder (raw OOXML, same styling engine as PO Order Register) ──
@@ -722,79 +745,81 @@ function groupByRequest(rows: ReportRow[]): { groups: RequestGroup[]; grandAmoun
 
 const DETAILS_REPORT_TITLE = "PURCHASE DETAILS REPORT";
 
-/** Body only – no full HTML document */
+
 function renderDetailsBody(rows: ReportRow[], loginId: string): string {
   const { groups, grandAmount } = groupByRequest(rows);
-
+  const S = PR_S;
+ 
   const groupsHtml = groups
     .map((g) => {
-      const lineRows = g.rows
+      const lines = g.rows
         .map(
           (r) => `
         <tr>
-          <td>${escapeHtml(r.sr_no)}</td>
-          <td>${escapeHtml(r.item_code)}</td>
-          <td>${escapeHtml(r.item_desp)}</td>
-          <td class="right">${amtFmt(r.item_rate)}</td>
-          <td class="right">${amtFmt(r.item_qty)}</td>
-          <td>${escapeHtml(r.curr_code)}</td>
-          <td class="right">${rateFmt(r.currency_rate)}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
+          <td style="${S.td}">${escapeHtml(r.sr_no)}</td>
+          <td style="${S.td}">${escapeHtml(r.item_code)}</td>
+          <td style="${S.td}">${escapeHtml(r.item_desp)}</td>
+          <td style="${S.tdR}">${amtFmt(r.item_rate)}</td>
+          <td style="${S.tdR}">${amtFmt(r.item_qty)}</td>
+          <td style="${S.td}">${escapeHtml(r.curr_code)}</td>
+          <td style="${S.tdR}">${rateFmt(r.currency_rate)}</td>
+          <td style="${S.tdR}">${amtFmt(r.amount)}</td>
         </tr>`
         )
         .join("");
-
+ 
       return `
-      <div class="status-block">
-        <div class="status-header">
-          Request No. ${escapeHtml(g.request_number)} &nbsp;•&nbsp; ${escapeHtml(dateText(g.request_date))} &nbsp;•&nbsp; ${escapeHtml(g.purch_status)}
-        </div>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Sr No</th>
-              <th>Item Code</th>
-              <th>Item Description</th>
-              <th class="right">Rate</th>
-              <th class="right">Qty</th>
-              <th>Currency</th>
-              <th class="right">EX Rate</th>
-              <th class="right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lineRows}
-            <tr class="subtotal-row">
-              <td colspan="7">Total Amount for ${escapeHtml(g.request_number)}</td>
-              <td class="right">${amtFmt(g.amountTotal)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
+      <tbody style="break-inside:avoid;page-break-inside:avoid;">
+        <tr>
+          <td colspan="8" style="${S.head}">
+            Request No. ${escapeHtml(g.request_number)}
+            &nbsp;|&nbsp; ${escapeHtml(dateText(g.request_date))}
+            &nbsp;|&nbsp; ${escapeHtml(g.purch_status)}
+          </td>
+        </tr>
+        ${lines}
+        <tr>
+          <td colspan="7" style="${S.total}">Total Amount for ${escapeHtml(g.request_number)}</td>
+          <td style="${S.total} text-align:right;">${amtFmt(g.amountTotal)}</td>
+        </tr>
+      </tbody>`;
     })
     .join("");
-
+ 
   return `
-    <div class="pr-register">
-      <div class="title">
-        <h1>${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
-      </div>
-
-      ${
-        rows.length === 0
-          ? `<div class="empty">No records found for the selected filters.</div>`
-          : `
-        ${groupsHtml}
-
-        <table class="data-table" style="margin-top:10px;">
-          <tr class="grand-row">
-            <td colspan="7" style="padding:8px 14px;">Grand Total Amount</td>
-            <td class="right" style="padding:8px 14px;">${amtFmt(grandAmount)}</td>
-          </tr>
-        </table>`
-      }
+  <div class="pr-register" style="${PR_WRAP}">
+    <div style="margin:0 0 6px 0;padding:0;">
+      <h1 style="${PR_TITLE}">${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
     </div>
-  `;
+ 
+    ${
+      rows.length === 0
+        ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+        : `
+      <table style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+        <colgroup><col style="width:6%"/><col style="width:13%"/><col style="width:33%"/><col style="width:11%"/><col style="width:9%"/><col style="width:8%"/><col style="width:8%"/><col style="width:12%"/></colgroup>
+        <thead>
+          <tr>
+            <th style="${S.th}">Sr No</th>
+            <th style="${S.th}">Item Code</th>
+            <th style="${S.th}">Item Description</th>
+            <th style="${S.thR}">Rate</th>
+            <th style="${S.thR}">Qty</th>
+            <th style="${S.th}">Currency</th>
+            <th style="${S.thR}">EX Rate</th>
+            <th style="${S.thR}">Amount</th>
+          </tr>
+        </thead>
+        ${groupsHtml}
+        <tbody>
+          <tr>
+            <td colspan="7" style="${S.grand}">Grand Total Amount</td>
+            <td style="${S.grand} text-align:right;">${amtFmt(grandAmount)}</td>
+          </tr>
+        </tbody>
+      </table>`
+    }
+  </div>`;
 }
 
 function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
@@ -1138,8 +1163,13 @@ function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
 export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
+    const t0 = Date.now();
     const params = extractParams(req);
+    console.log("[PR] params:", params);
+
     const rows = await loadPrRegisterOldData(req, params, "PR_REGISTER_OLD_SUMMARY_19082026");
+    console.log(`[PR] load data total: ${Date.now() - t0} ms`);
+
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
@@ -1151,7 +1181,10 @@ export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, re
       text(req.query.company_code) ||
       "BSG";
 
+    const tHeader = Date.now();
     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    console.log(`[PR] reportHeader: ${Date.now() - tHeader} ms`);
+
     const footerHtml = reportFooter({
       reportName: REPORT_NAME,
       userName: params.loginid,
@@ -1169,6 +1202,7 @@ export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, re
       showPrintButton: true,
     });
 
+    console.log(`[PR] TOTAL request: ${Date.now() - t0} ms`);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {

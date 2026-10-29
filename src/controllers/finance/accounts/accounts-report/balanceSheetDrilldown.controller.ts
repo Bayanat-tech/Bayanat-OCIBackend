@@ -483,24 +483,24 @@ async function loadAcRows(
 
   const sql = `
     SELECT
-      TR_AC_DETAIL.company_code,
-      TR_AC_DETAIL.ac_code,
+      VW_AC_FINANCE_POSTING_DETAIL.company_code,
+      VW_AC_FINANCE_POSTING_DETAIL.ac_code,
       max(ac_name) ac_name,
       00000000000.000000 opening,
       sum(round(lcur_amount * sign_ind, 3)) amount,
       sum(case when sign_ind > 0 then lcur_amount else 0 end) debit_amount,
       sum(case when sign_ind < 0 then lcur_amount else 0 end) credit_amount,
-      TR_AC_DETAIL.div_code
-    FROM TR_AC_DETAIL, MS_ACCODES
-    WHERE TR_AC_DETAIL.ac_code      = MS_ACCODES.ac_code
-      AND TR_AC_DETAIL.company_code = :companyCode
-      AND TR_AC_DETAIL.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD')
+      VW_AC_FINANCE_POSTING_DETAIL.div_code
+    FROM VW_AC_FINANCE_POSTING_DETAIL, MS_ACCODES
+    WHERE VW_AC_FINANCE_POSTING_DETAIL.ac_code      = MS_ACCODES.ac_code
+      AND VW_AC_FINANCE_POSTING_DETAIL.company_code = :companyCode
+      AND VW_AC_FINANCE_POSTING_DETAIL.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
       AND ('All' IN (${blIn}) OR MS_ACCODES.pl_bl_code IN (${blIn}))
-      AND TR_AC_DETAIL.doc_type    <> 'EJV'
-      AND TR_AC_DETAIL.CANCELLED   <> 'Y'
-      AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
-    GROUP BY TR_AC_DETAIL.div_code, TR_AC_DETAIL.company_code, TR_AC_DETAIL.ac_code
-    ORDER BY TR_AC_DETAIL.ac_code
+      AND VW_AC_FINANCE_POSTING_DETAIL.doc_type    <> 'EJV'
+      AND NVL(VW_AC_FINANCE_POSTING_DETAIL.CANCELLED, 'N') <> 'Y'
+      AND ('All' = :divisionCode OR VW_AC_FINANCE_POSTING_DETAIL.div_code = :divisionCode)
+    GROUP BY VW_AC_FINANCE_POSTING_DETAIL.div_code, VW_AC_FINANCE_POSTING_DETAIL.company_code, VW_AC_FINANCE_POSTING_DETAIL.ac_code
+    ORDER BY VW_AC_FINANCE_POSTING_DETAIL.ac_code
   `;
 
   const conn = await getConn(req);
@@ -666,26 +666,26 @@ async function loadDetailRows(
 
   const sql = `
     SELECT
-      TR_AC_DETAIL.company_code, TR_AC_DETAIL.doc_type, TR_AC_DETAIL.doc_no,
-      TR_AC_DETAIL.doc_date, TR_AC_DETAIL.ac_code, TR_AC_DETAIL.remarks,
-      TR_AC_DETAIL.amount, TR_AC_DETAIL.sign_ind, TR_AC_DETAIL.curr_code,
-      TR_AC_DETAIL.ex_rate, TR_AC_DETAIL.lcur_amount, TR_AC_DETAIL.pdc_ind,
-      TR_AC_DETAIL.cheque_no, TR_AC_DETAIL.cheque_date, TR_AC_DETAIL.cheque_desc,
-      TR_AC_DETAIL.pdc_cleared_date,
+      VW_AC_FINANCE_POSTING_DETAIL.company_code, VW_AC_FINANCE_POSTING_DETAIL.doc_type, VW_AC_FINANCE_POSTING_DETAIL.doc_no,
+      VW_AC_FINANCE_POSTING_DETAIL.doc_date, VW_AC_FINANCE_POSTING_DETAIL.ac_code, VW_AC_FINANCE_POSTING_DETAIL.remarks,
+      VW_AC_FINANCE_POSTING_DETAIL.amount, VW_AC_FINANCE_POSTING_DETAIL.sign_ind, VW_AC_FINANCE_POSTING_DETAIL.curr_code,
+      VW_AC_FINANCE_POSTING_DETAIL.ex_rate, VW_AC_FINANCE_POSTING_DETAIL.lcur_amount, VW_AC_FINANCE_POSTING_DETAIL.pdc_ind,
+      VW_AC_FINANCE_POSTING_DETAIL.cheque_no, VW_AC_FINANCE_POSTING_DETAIL.cheque_date, VW_AC_FINANCE_POSTING_DETAIL.cheque_desc,
+      VW_AC_FINANCE_POSTING_DETAIL.pdc_cleared_date,
       MS_ACCODES_A.ac_name, MS_ACCODES_A.curr_code ac_curr_code,
       000000000.000 op_balance,
-      TR_AC_DETAIL.div_code, TR_AC_DETAIL.bank_ac_code,
+      VW_AC_FINANCE_POSTING_DETAIL.div_code, VW_AC_FINANCE_POSTING_DETAIL.bank_ac_code,
       MS_ACCODES_B.ac_name bank_ac_name
-    FROM TR_AC_DETAIL, MS_ACCODES MS_ACCODES_A, MS_ACCODES MS_ACCODES_B
-    WHERE TR_AC_DETAIL.ac_code      = MS_ACCODES_A.ac_code(+)
-      AND TR_AC_DETAIL.bank_ac_code = MS_ACCODES_B.ac_code(+)
-      AND TR_AC_DETAIL.company_code = :companyCode
-      AND ('All' IN (${acIn}) OR TR_AC_DETAIL.ac_code IN (${acIn}))
-      AND TR_AC_DETAIL.doc_date    < TO_DATE(:asOnDate, 'YYYY-MM-DD')
-      AND TR_AC_DETAIL.cancelled  <> 'Y'
-      AND TR_AC_DETAIL.doc_type   <> 'UJV'
-      AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
-    ORDER BY TR_AC_DETAIL.ac_code, TR_AC_DETAIL.doc_date, TR_AC_DETAIL.doc_no
+    FROM VW_AC_FINANCE_POSTING_DETAIL, MS_ACCODES MS_ACCODES_A, MS_ACCODES MS_ACCODES_B
+    WHERE VW_AC_FINANCE_POSTING_DETAIL.ac_code      = MS_ACCODES_A.ac_code(+)
+      AND VW_AC_FINANCE_POSTING_DETAIL.bank_ac_code = MS_ACCODES_B.ac_code(+)
+      AND VW_AC_FINANCE_POSTING_DETAIL.company_code = :companyCode
+      AND ('All' IN (${acIn}) OR VW_AC_FINANCE_POSTING_DETAIL.ac_code IN (${acIn}))
+      AND VW_AC_FINANCE_POSTING_DETAIL.doc_date    < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
+      AND NVL(VW_AC_FINANCE_POSTING_DETAIL.CANCELLED, 'N') <> 'Y'
+      AND VW_AC_FINANCE_POSTING_DETAIL.doc_type   <> 'UJV'
+      AND ('All' = :divisionCode OR VW_AC_FINANCE_POSTING_DETAIL.div_code = :divisionCode)
+    ORDER BY VW_AC_FINANCE_POSTING_DETAIL.ac_code, VW_AC_FINANCE_POSTING_DETAIL.doc_date, VW_AC_FINANCE_POSTING_DETAIL.doc_no
   `;
 
   const conn = await getConn(req);

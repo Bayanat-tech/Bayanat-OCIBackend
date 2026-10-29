@@ -22,7 +22,12 @@ export const createLocationType = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { loc_type, company_code, loc_name, loc_cbm, loc_wt, push_level } = req.body;
+    const loc_type = req.body.loc_type;
+    const company_code = req.body.company_code;
+    const loc_name = req.body.loc_name || req.body.loc_desc || loc_type;
+    const loc_cbm = req.body.loc_cbm;
+    const loc_wt = req.body.loc_wt;
+    const push_level = req.body.push_level;
 
     // Debug: Log what is being checked for existence
     console.log("Checking existence for:", { loc_type, loc_name, company_code });
@@ -96,7 +101,12 @@ export const updateLocationType = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { loc_type, company_code, loc_name, loc_cbm, loc_wt, push_level } = req.body;
+    const loc_type = req.body.loc_type;
+    const company_code = req.body.company_code;
+    const loc_name = req.body.loc_name || req.body.loc_desc || loc_type;
+    const loc_cbm = req.body.loc_cbm;
+    const loc_wt = req.body.loc_wt;
+    const push_level = req.body.push_level;
 
     // Check if location type exists by loc_type and company_code
     const existingLocationType = await LocationTypeService.findByLocTypeAndCompany(

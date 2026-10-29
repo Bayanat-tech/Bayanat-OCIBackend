@@ -74,7 +74,13 @@ function escapeXml(value: unknown): string {
 function qtyFmt(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0";
-  return n.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  if (Number.isInteger(n)) {
+    return n.toLocaleString("en-US");
+  }
+  return n.toLocaleString("en-US", {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 0,
+  });
 }
 
 // ─── Param extraction ───────────────────────────────────────────────────────
@@ -213,23 +219,23 @@ const PO_REGISTER_EXTRA_CSS = `
   }
 
   .po-register .title {
-  margin: 0 0 2px 0 !important;
-  padding: 0 !important;
-}
-.po-register .title h1 {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.2;
-}
-.po-register .title .sub {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.3;
-}
+    margin: 0 0 2px 0 !important;
+    padding: 0 !important;
+  }
+  .po-register .title h1 {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2;
+  }
+  .po-register .title .sub {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.3;
+  }
 
-.po-register table.data-table {
-  margin-top: 4px !important;
-}
+  .po-register table.data-table {
+    margin-top: 4px !important;
+  }
   .po-register table.data-table th {
     padding: 5px 6px;
     font-size: 9px;
@@ -259,22 +265,6 @@ const PO_REGISTER_EXTRA_CSS = `
     vertical-align: middle;
   }
 
-  .po-register .grand {
-    margin: 10px 0 0 auto;
-    width: 220px;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .po-register .grand .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 12px;
-    background: #0b4ca1;
-    color: #fff;
-    font-weight: 700;
-    font-size: 11px;
-  }
-
   .po-register .empty {
     padding: 28px;
     margin-top: 8px;
@@ -282,6 +272,33 @@ const PO_REGISTER_EXTRA_CSS = `
     text-align: center;
     color: #64748b;
   }
+
+  /* ── PO group header / subtotal / grand total (light blue) ── */
+  .po-register tr.po-head td,
+  .po-register tr.po-total td,
+  .po-register tr.po-grand td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: #0b3d91 !important;
+    font-weight: 700;
+  }
+  .po-register tr.po-head td {
+    background: #dce6f4 !important;
+    padding: 6px 8px;
+  }
+  .po-register tr.po-head td:first-child { border-left: 3px solid #0b4ca1; }
+  .po-register tr.po-total td {
+    background: #f4f7fb !important;
+    border-top: 1px solid #c5d5ea;
+    padding: 5px 6px;
+  }
+  .po-register tr.po-grand td {
+    background: #cfe0f5 !important;
+    border-top: 2px solid #0b4ca1;
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+  .po-register tbody.po-group { break-inside: avoid; page-break-inside: avoid; }
 `;
 
 
@@ -289,74 +306,88 @@ const PO_REGISTER_EXTRA_CSS = `
 
 
 function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const { groups, grandQty } = groupByPo(rows);
 
-  const grandQty = rows.reduce((s, r) => s + num(r.quantity), 0);
+  const EX = "-webkit-print-color-adjust:exact;print-color-adjust:exact;";
+  const S = {
+    head:  `background:#dce6f4 !important;color:#0b3d91 !important;font-weight:700;padding:6px 8px;border-left:3px solid #0b4ca1;${EX}`,
+    total: `background:#f4f7fb !important;color:#0b3d91 !important;font-weight:700;padding:5px 6px;border-top:1px solid #c5d5ea;${EX}`,
+    grand: `background:#cfe0f5 !important;color:#0b3d91 !important;font-weight:700;padding:8px 6px;border-top:2px solid #0b4ca1;font-size:11px;${EX}`,
+    th:    `background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;padding:5px 6px;text-align:left;border-bottom:2px solid #0b4ca1;${EX}`,
+    thR:   `background:#e8f0fa !important;color:#0b4ca1 !important;font-weight:700;padding:5px 6px;text-align:right;border-bottom:2px solid #0b4ca1;${EX}`,
+    td:    "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;",
+    tdR:   "padding:4px 6px;border-bottom:1px solid #e2e8f0;vertical-align:top;text-align:right;white-space:nowrap;",
+  };
 
-  const lineRows = rows
-    .map(
-      (r) => `
+  const groupsHtml = groups
+    .map((g) => {
+      const lines = g.rows
+        .map(
+          (r) => `
         <tr>
-          <td>${escapeHtml(r.doc_no)}</td>
-          <td>${escapeHtml(dateText(r.doc_date))}</td>
-          <td>${escapeHtml(r.ac_name)}${
-            text(r.cancelled).toUpperCase() === "Y"
-              ? ` <span class="badge">Cancelled</span>`
-              : ""
-          }</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
-          <td>${escapeHtml(dateText(r.required_dt || r.doc_date))}</td>
-          <td>${escapeHtml(r.remarks || r.det_remarks)}</td>
-          <td class="right amount">${qtyFmt(r.quantity)}</td>
-          <td>${escapeHtml(r.l_uom)}</td>
+          <td style="${S.td}">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+          <td style="${S.td}">${escapeHtml(dateText(r.required_dt || r.doc_date))}</td>
+          <td style="${S.td}">${escapeHtml(r.remarks || r.det_remarks)}</td>
+          <td class="right num" style="${S.tdR}">${qtyFmt(r.quantity)}</td>
+          <td style="${S.td}">${escapeHtml(r.l_uom)}</td>
         </tr>`
-    )
+        )
+        .join("");
+
+      return `
+      <tbody style="break-inside:avoid;page-break-inside:avoid;">
+                <tr class="grand-total-row">
+          <td colspan="5" style="${S.head}">
+            PO NO = ${escapeHtml(g.doc_no)}
+            &nbsp;|&nbsp; PO Date = ${escapeHtml(dateText(g.doc_date))}
+            &nbsp;|&nbsp; Supplier = ${escapeHtml(g.ac_name)}
+            ${g.cancelled ? "&nbsp;|&nbsp; Status = Cancelled" : ""}
+          </td>
+        </tr>
+        ${lines}
+        <tr class="subtotal-row">
+          <td colspan="3" style="${S.total}">Total for : ${escapeHtml(g.doc_no)}</td>
+          <td class="right num" style="${S.total} text-align:right;">${qtyFmt(g.qtyTotal)}</td>
+          <td style="${S.total}"></td>
+        </tr>
+      </tbody>`;
+    })
     .join("");
 
- return `
-  <div class="po-register">
-    <div style="margin:0; padding:0;">
-      <h1 style="margin:0; padding:0; font-size:16px; font-weight:800; color:#0b4ca1; line-height:1.2;">
-        ${escapeHtml(REPORT_TITLE)} - ${escapeHtml(REPORT_SUBTITLE)}
+  return `
+  <div class="po-register" style="font-size:9.5px;line-height:1.25;color:#1e293b;">
+    <div style="margin:0 0 6px 0;padding:0;">
+      <h1 style="margin:0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;">
+        Purchase Orders - Order Register
       </h1>
     </div>
 
     ${
       rows.length === 0
-        ? `<div class="empty">No records found for the selected filters.</div>`
+        ? `<div style="padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;">No records found for the selected filters.</div>`
         : `
-      <table class="data-table" style="margin-top:8px !important; border-collapse:collapse; width:100%;">
+      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;">
         <thead>
           <tr>
-            <th>Document No.</th>
-            <th>Doc Date</th>
-            <th>Supplier</th>
-            <th>Product</th>
-            <th>Required Date</th>
-            <th>Remarks</th>
-            <th class="right">P.O Qty</th>
-            <th>UOM</th>
+            <th style="${S.th}">Product</th>
+            <th style="${S.th}">Required Date</th>
+            <th style="${S.th}">Remarks</th>
+            <th class="right" style="${S.thR}">P.O Qty</th>
+            <th style="${S.th}">UOM</th>
           </tr>
         </thead>
+        ${groupsHtml}
         <tbody>
-          ${lineRows}
-          <tr style="background:#0b4ca1; color:#ffffff; font-weight:700;">
-            <td colspan="6" style="padding:8px 14px; border:none; color:#ffffff;">Grand Total Qty</td>
-            <td class="right" style="padding:8px 14px; border:none; color:#ffffff; text-align:right;">${qtyFmt(grandQty)}</td>
-            <td style="padding:8px 14px; border:none;"></td>
+          <tr class="grand-total-row">
+            <td colspan="3" style="${S.grand}">Grand Total Qty</td>
+            <td class="right num" style="${S.grand} text-align:right;">${qtyFmt(grandQty)}</td>
+            <td style="${S.grand}"></td>
           </tr>
         </tbody>
       </table>`
     }
-  </div>
-`;  }
+  </div>`;
+}
 
 
 function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
@@ -368,53 +399,49 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
 
-  const COL_COUNT = 8; // Document No., Doc Date, Supplier, Product, Required Date, Remarks, P.O Qty, UOM
+  const COL_COUNT = 5; // Product, Required Date, Remarks, P.O Qty, UOM
 
-  interface XlCell { v: unknown; styleKey: string }
-  type Row = (XlCell | null)[];
-  const rows_: Row[] = [];
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+interface XlCell { v: unknown; styleKey: string }
+type Row = (XlCell | null)[];
+const rows_: Row[] = [];
+const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+const blanks = (n: number): null[] => new Array(n).fill(null);
+const mergeRow = (r: number, c1 = 0, c2 = COL_COUNT - 1) => merges.push({ s: { r, c: c1 }, e: { r, c: c2 } });
 
-  const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+// Title
+rows_.push([cell("Purchase Orders - Order Register", "title"), ...blanks(4)]);
+mergeRow(0);
 
-  // ── Title ──
+// Meta
+rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, cell(`Print User: ${loginId}`, "meta"), null, null]);
+mergeRow(1, 0, 1);
+mergeRow(1, 2, 4);
+
+rows_.push(blanks(COL_COUNT));
+
+// Header
+rows_.push([
+  cell("Product", "header"), cell("Required Date", "header"), cell("Remarks", "header"),
+  cell("P.O Qty", "header"), cell("UOM", "header"),
+]);
+
+// Groups
+const { groups, grandQty } = groupByPo(rows);
+
+groups.forEach((g) => {
+  const hr = rows_.length;
   rows_.push([
-    cell("Purchase Orders - Order Register", "title"),
-    null, null, null, null, null, null, null,
+    cell(
+      `PO NO = ${g.doc_no}   |   PO Date = ${dateText(g.doc_date)}   |   Supplier = ${g.ac_name}${g.cancelled ? "   |   Status = Cancelled" : ""}`,
+      "poHead"
+    ),
+    ...blanks(4),
   ]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  mergeRow(hr);
 
-  // ── Meta ──
-  rows_.push([
-    cell(`Print Date: ${printDateTime}`, "meta"), null, null,
-    cell(`Print User: ${loginId}`, "meta"), null, null, null, null,
-  ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
-
-  rows_.push(new Array(COL_COUNT).fill(null));
-
-  // ── Header ──
-  rows_.push([
-    cell("Document No.", "header"),
-    cell("Doc Date", "header"),
-    cell("Supplier", "header"),
-    cell("Product", "header"),
-    cell("Required Date", "header"),
-    cell("Remarks", "header"),
-    cell("P.O Qty", "header"),
-    cell("UOM", "header"),
-  ]);
-
-  // ── Data rows ──
-  let grandQty = 0;
-  rows.forEach((r) => {
-    grandQty += num(r.quantity);
-    const cancelled = text(r.cancelled).toUpperCase() === "Y";
+  g.rows.forEach((r) => {
     rows_.push([
-      cell(text(r.doc_no), "data"),
-      cell(dateText(r.doc_date), "data"),
-      cell(text(r.ac_name) + (cancelled ? " (Cancelled)" : ""), "data"),
       cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       cell(dateText(r.required_dt || r.doc_date), "data"),
       cell(text(r.remarks || r.det_remarks), "data"),
@@ -423,27 +450,24 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
     ]);
   });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  const tr = rows_.length;
+  rows_.push([cell(`Total for : ${g.doc_no}`, "poTotal"), null, null, cell(g.qtyTotal, "poTotalNum"), null]);
+  mergeRow(tr, 0, 2);
+});
 
-  // ── Grand total ──
-  const gtRow = rows_.length;
-  rows_.push([
-    cell("Grand Total Qty", "grandTotal"),
-    null, null, null, null, null,
-    cell(grandQty, "grandTotalNum"),
-    null,
-  ]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
+rows_.push(blanks(COL_COUNT));
 
-  // ── Footer ──
-  rows_.push([
-    null, null, null, null, null, null, null,
-    cell("Powered by Bayanat Technology", "footer"),
-  ]);
+// Grand total
+const gtRow = rows_.length;
+rows_.push([cell("Grand Total Qty", "grandTotal"), null, null, cell(grandQty, "grandTotalNum"), null]);
+mergeRow(gtRow, 0, 2);
+
+// Footer
+rows_.push([null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   // ── Style definitions ──
   const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
-  const styleDefs: Record<string, any> = {
+    const styleDefs: Record<string, any> = {
     title: {
       font: { bold: true, sz: 16, color: { rgb: WHITE } },
       fill: { fgColor: { rgb: BLUE } },
@@ -470,20 +494,36 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       numFmt: "#,##0.000",
       border: { bottom: borderThin("FFF3F4F6") },
     },
-    grandTotal: {
-      font: { bold: true, sz: 12, color: { rgb: WHITE } },
-      fill: { fgColor: { rgb: BLUE } },
-      alignment: { horizontal: "left", vertical: "center" },
-    },
-    grandTotalNum: {
-      font: { bold: true, sz: 12, color: { rgb: WHITE } },
-      fill: { fgColor: { rgb: BLUE } },
-      alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.000",
-    },
     footer: {
       font: { italic: true, sz: 8, color: { rgb: "FF64748B" } },
       alignment: { horizontal: "right" },
+    },
+    poHead: {
+      font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+      fill: { fgColor: { rgb: "FFDCE6F4" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    poTotal: {
+      font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+      fill: { fgColor: { rgb: "FFF4F7FB" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    poTotalNum: {
+      font: { bold: true, sz: 10, color: { rgb: "FF0B3D91" } },
+      fill: { fgColor: { rgb: "FFF4F7FB" } },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "#,##0.000",
+    },
+    grandTotal: {
+      font: { bold: true, sz: 11, color: { rgb: "FF0B3D91" } },
+      fill: { fgColor: { rgb: "FFCFE0F5" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    grandTotalNum: {
+      font: { bold: true, sz: 11, color: { rgb: "FF0B3D91" } },
+      fill: { fgColor: { rgb: "FFCFE0F5" } },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "#,##0.000",
     },
   };
 
@@ -565,9 +605,10 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
   // ── Sheet XML ──
-  const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="16" customWidth="1"/>`
-  ).join("");
+  const colWidths = [42, 16, 32, 14, 10];
+const colXml = colWidths
+  .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
+  .join("");
 
   let sheetDataXml = "";
   rows_.forEach((row, ri) => {

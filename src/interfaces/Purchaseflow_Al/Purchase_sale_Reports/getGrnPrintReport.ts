@@ -268,9 +268,9 @@ const GRN_EXTRA_CSS = `
   .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
   .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
  
-  .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
-  .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
-  .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
+  .totals-box { margin-top: 10px; margin-left: auto; width: 260px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 11.5px; border-bottom: 1px solid #f1f5f9; }
+.totals-box .row.grand { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
  
   /* ── Items table: fixed layout with widths pinned per column via
      nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
@@ -441,17 +441,16 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
             <th>P. Qty</th>
             <th>LUOM</th>
             <th>L. Qty</th>
-            <th>Qty in LUOM</th>
+            <th>Net Qty</th>
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
       </table>
-      <table class="grn-totals">
-        <tbody>
-          <tr><td>Total P. Qty</td><td class="num">${qtyFmt(totals.totalPQty)}</td></tr>
-          <tr><td>Total L. Qty</td><td class="num">${qtyFmt(totals.totalLQty)}</td></tr>
-          <tr class="grand"><td>Total Quantity</td><td class="num">${qtyFmt(totals.totalQty)}</td></tr>
-        </tbody>
+      <div class="totals-box">
+  <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
+  <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
+  <div class="row grand"><span>Net Qty</span><span>${qtyFmt(totals.totalQty)}</span></div>
+</div>
       </table>`;
   }
  
@@ -469,44 +468,34 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   // ── Signature strip ──
   const signHtml = `
   <div class="grn-sign">
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Prepared By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Checked By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Approved By</div>
     </div>
- 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Receiver's Name &amp; Signature</div>
     </div>
- 
   </div>`;
- 
   // ── Body: report title first, then details / items / remarks / terms ──
   const bodyHtml = `
     <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
- 
     ${detailsHtml}
- 
     <div class="group">
-      <div class="group-title">Items</div>
       ${itemsHtml}
     </div>
- 
     ${remarksHtml}
     ${termsHtml}`;
  
@@ -591,18 +580,20 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   rows_.push([null, null, null, null, null, null, null]);
  
   const totalRows: [string, number][] = [
-    ["Total P. Qty", totals.totalPQty],
-    ["Total L. Qty", totals.totalLQty],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
-  });
- 
-  const gtRow = rows_.length;
-  rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
+  ["Total P. Qty", totals.totalPQty],
+  ["Total L. Qty", totals.totalLQty],
+];
+totalRows.forEach(([label, value]) => {
+  const r = rows_.length;
+  rows_.push([cell(label, "groupTotal"), null, null, null, null, null, cell(value, "groupTotalNum")]);
+  merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
+});
+
+const gtRow = rows_.length;
+rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, null, cell(totals.totalQty, "grandTotalNum")]);
+merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
+
+rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
  
   // ── Style registration engine ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
@@ -650,6 +641,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
+    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
  
   const fonts: FontDef[] = [{}];

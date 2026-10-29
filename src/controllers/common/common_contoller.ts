@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
+import { scopeAlmsApprovalQuery } from "../../utils/workflowVisibility";
 
 export const procBuildCommonProcedurewmc = async (
   req: Request,
@@ -150,6 +151,11 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
+
     const result = await connection.execute(
       `
       DECLARE
@@ -319,6 +325,11 @@ export const proc_build_dynamic_ins_upd_common = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
+
     const result = await connection.execute(
       `
       DECLARE
@@ -443,6 +454,54 @@ export const proc_build_dynamic_ins_upd_common = async (
 };
 
 
+
+async function handleCityDropdown(connection: oracledb.Connection, req: Request, res: Response): Promise<boolean> {
+  const param = String(req.body.parameter || "").trim();
+  if (param.toUpperCase() !== "DROP_DOWN_CITY") return false;
+
+  let countryCode = String(
+    req.body.country_code ||
+    req.body.COUNTRY_CODE ||
+    (req.body.code1 && req.body.code1 !== req.body.company_code && req.body.code1 !== "01" ? req.body.code1 : req.body.code2) ||
+    ""
+  ).trim().toUpperCase();
+
+  if (countryCode && countryCode.includes("-")) {
+    countryCode = countryCode.split("-")[0].trim();
+  }
+
+  let query = `
+    SELECT CITY_NAME AS "label", CITY_NAME AS "value", MIN(CITY_CODE) AS "city_code", MIN(COUNTRY_CODE) AS "country_code", MIN(STATE_PROVINCE) AS "state"
+    FROM CUSTOMERS.MS_CITY
+    WHERE IS_ACTIVE = 'Y'
+  `;
+  const binds: any = {};
+  if (countryCode) {
+    query += ` AND (
+      UPPER(COUNTRY_CODE) = :cc
+      OR UPPER(COUNTRY_CODE) = SUBSTR(:cc, 1, 2)
+      OR UPPER(COUNTRY_CODE) IN (SELECT UPPER(COUNTRY_CODE) FROM MS_COUNTRY WHERE UPPER(COUNTRY_CODE) = :cc OR UPPER(COUNTRY_NAME) = :cc)
+    )`;
+    binds.cc = countryCode;
+  }
+  query += ` GROUP BY CITY_NAME ORDER BY CITY_NAME ASC`;
+
+  try {
+    const cityRes = await connection.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const rows = (cityRes.rows as any[]) || [];
+    res.json({
+      success: true,
+      data: rows,
+      totalCount: rows.length,
+    });
+    return true;
+  } catch (err: any) {
+    console.error("Error executing DROP_DOWN_CITY query:", err);
+    res.status(500).json({ success: false, error: "Failed to load cities", details: err.message });
+    return true;
+  }
+}
+
 export const proc_build_dynamic_sql_common = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
@@ -488,6 +547,10 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
     }
 
     connection = await TenantManager.getConnection(tenantId);
+
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
 
     const result = await connection.execute(
       `
@@ -547,7 +610,8 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
 
     console.log("Generated SQL:", rawSql);
 
-    const dataResult = await connection.execute<any[]>(rawSql, [], {
+    const scoped = scopeAlmsApprovalQuery(param, rawSql, (req as any).user);
+    const dataResult = await connection.execute<any[]>(scoped.sql, scoped.binds, {
       outFormat: oracledb.OUT_FORMAT_ARRAY
     });
 
@@ -657,6 +721,10 @@ export const proc_build_dynamic_sql_common20 = async (
 
     connection = await TenantManager.getConnection(tenantId);
 
+    if (await handleCityDropdown(connection, req, res)) {
+      return;
+    }
+
     const result = await connection.execute(
 
       `
@@ -718,10 +786,10 @@ export const proc_build_dynamic_sql_common20 = async (
         code2,
         code3,
         code4,
-        code5,
-        code6,
-        code7,
-        code8,
+        code5: (code5 && typeof code5 === 'string' && (code5.includes('NaN') || code5.trim() === '' || code5.toLowerCase() === 'null' || code5.toLowerCase() === 'undefined')) ? null : (code5 || null),
+        code6: (code6 && typeof code6 === 'string' && (code6.includes('NaN') || code6.trim() === '' || code6.toLowerCase() === 'null' || code6.toLowerCase() === 'undefined')) ? null : (code6 || null),
+        code7: (code7 && typeof code7 === 'string' && (code7.includes('NaN') || code7.trim() === '' || code7.toLowerCase() === 'null' || code7.toLowerCase() === 'undefined')) ? null : (code7 || null),
+        code8: (code8 && typeof code8 === 'string' && (code8.includes('NaN') || code8.trim() === '' || code8.toLowerCase() === 'null' || code8.toLowerCase() === 'undefined')) ? null : (code8 || null),
         code9,
         code10,
         code11,
@@ -858,34 +926,7 @@ export const proc_build_dynamic_ins_upd_column90 = async (
   let connection;
 
   try {
-    const {
-      parameter,
-      loginid,
-
-      // INSERT / UPDATE STRING VALUES (1–90)
-      val1s1, val1s2, val1s3, val1s4, val1s5,
-      val1s6, val1s7, val1s8, val1s9, val1s10,
-      val1s11, val1s12, val1s13, val1s14, val1s15,
-      val1s16, val1s17, val1s18, val1s19, val1s20,
-      val1s21, val1s22, val1s23, val1s24, val1s25,
-      val1s26, val1s27, val1s28, val1s29, val1s30,
-      val1s31, val1s32, val1s33, val1s34, val1s35,
-      val1s36, val1s37, val1s38, val1s39, val1s40,
-      val1s41, val1s42, val1s43, val1s44, val1s45,
-      val1s46, val1s47, val1s48, val1s49, val1s50,
-      val1s51, val1s52, val1s53, val1s54, val1s55,
-      val1s56, val1s57, val1s58, val1s59, val1s60,
-      val1s61, val1s62, val1s63, val1s64, val1s65,
-      val1s66, val1s67, val1s68, val1s69, val1s70,
-      val1s71, val1s72, val1s73, val1s74, val1s75,
-      val1s76, val1s77, val1s78, val1s79, val1s80,
-      val1s81, val1s82, val1s83, val1s84, val1s85,
-      val1s86, val1s87, val1s88, val1s89, val1s90,
-
-      // INSERT / UPDATE NUMBER VALUES (1–10)
-      val1n1, val1n2, val1n3, val1n4, val1n5,
-      val1n6, val1n7, val1n8, val1n9, val1n10
-    } = req.body;
+    const { parameter, loginid } = req.body;
 
     if (!parameter) {
       res.status(400).json({
@@ -911,88 +952,144 @@ export const proc_build_dynamic_ins_upd_column90 = async (
 
     connection = await TenantManager.getConnection(tenantId);
 
-    // Call procedure to build INSERT / UPDATE SQL
-    const result = await connection.execute(
-      `
-      DECLARE
-        v_sql CLOB;
-      BEGIN
-        PROC_BUILD_DYNAMIC_INS_UPD_COLUMN90(
-          :parameter,
-          :loginid,
+    let dynamicSql: string | null = null;
 
-          :val1s1,  :val1s2,  :val1s3,  :val1s4,  :val1s5,
-          :val1s6,  :val1s7,  :val1s8,  :val1s9,  :val1s10,
-          :val1s11, :val1s12, :val1s13, :val1s14, :val1s15,
-          :val1s16, :val1s17, :val1s18, :val1s19, :val1s20,
-          :val1s21, :val1s22, :val1s23, :val1s24, :val1s25,
-          :val1s26, :val1s27, :val1s28, :val1s29, :val1s30,
-          :val1s31, :val1s32, :val1s33, :val1s34, :val1s35,
-          :val1s36, :val1s37, :val1s38, :val1s39, :val1s40,
-          :val1s41, :val1s42, :val1s43, :val1s44, :val1s45,
-          :val1s46, :val1s47, :val1s48, :val1s49, :val1s50,
-          :val1s51, :val1s52, :val1s53, :val1s54, :val1s55,
-          :val1s56, :val1s57, :val1s58, :val1s59, :val1s60,
-          :val1s61, :val1s62, :val1s63, :val1s64, :val1s65,
-          :val1s66, :val1s67, :val1s68, :val1s69, :val1s70,
-          :val1s71, :val1s72, :val1s73, :val1s74, :val1s75,
-          :val1s76, :val1s77, :val1s78, :val1s79, :val1s80,
-          :val1s81, :val1s82, :val1s83, :val1s84, :val1s85,
-          :val1s86, :val1s87, :val1s88, :val1s89, :val1s90,
-
-          :val1n1, :val1n2, :val1n3, :val1n4, :val1n5,
-          :val1n6, :val1n7, :val1n8, :val1n9, :val1n10,
-
-          v_sql
-        );
-        :out_sql := v_sql;
-      END;
-      `,
-      {
-        parameter,
-        loginid,
-
-        val1s1, val1s2, val1s3, val1s4, val1s5,
-        val1s6, val1s7, val1s8, val1s9, val1s10,
-        val1s11, val1s12, val1s13, val1s14, val1s15,
-        val1s16, val1s17, val1s18, val1s19, val1s20,
-        val1s21, val1s22, val1s23, val1s24, val1s25,
-        val1s26, val1s27, val1s28, val1s29, val1s30,
-        val1s31, val1s32, val1s33, val1s34, val1s35,
-        val1s36, val1s37, val1s38, val1s39, val1s40,
-        val1s41, val1s42, val1s43, val1s44, val1s45,
-        val1s46, val1s47, val1s48, val1s49, val1s50,
-        val1s51, val1s52, val1s53, val1s54, val1s55,
-        val1s56, val1s57, val1s58, val1s59, val1s60,
-        val1s61, val1s62, val1s63, val1s64, val1s65,
-        val1s66, val1s67, val1s68, val1s69, val1s70,
-        val1s71, val1s72, val1s73, val1s74, val1s75,
-        val1s76, val1s77, val1s78, val1s79, val1s80,
-        val1s81, val1s82, val1s83, val1s84, val1s85,
-        val1s86, val1s87, val1s88, val1s89, val1s90,
-
-        val1n1, val1n2, val1n3, val1n4, val1n5,
-        val1n6, val1n7, val1n8, val1n9, val1n10,
-
+    if (String(parameter).trim().toLowerCase() === "ms_companyinfo_ins_upd") {
+      // Call dedicated procedure for Company Info
+      const binds: Record<string, any> = {
+        loginid: loginid || "USER_PM",
         out_sql: {
           dir: oracledb.BIND_OUT,
           type: oracledb.STRING,
           maxSize: 32767
         }
-      }
-    );
+      };
 
-    interface ProcOut {
-      out_sql: string | null;
+      const validCompanyIndices = [
+        ...Array.from({ length: 42 }, (_, i) => i + 1),
+        ...Array.from({ length: 26 }, (_, i) => i + 45), // 45..70
+        ...Array.from({ length: 6 }, (_, i) => i + 72),  // 72..77
+      ];
+
+      const bindDefs: string[] = ["P_LOGINID => :loginid"];
+      for (const idx of validCompanyIndices) {
+        const key = `val1s${idx}`;
+        const val = req.body[key];
+        binds[key] = val != null ? String(val) : null;
+        bindDefs.push(`P_${key.toUpperCase()} => :${key}`);
+      }
+
+      // Safeguard: Preserve existing NOT NULL columns if not passed in req.body
+      if (binds.val1s1) {
+        try {
+          const existingRes = await connection.execute(
+            `SELECT COMPANY_NAME, ADDRESS1, ADDRESS2, CITY, COUNTRY, EMAIL FROM MS_COMPANYINFO WHERE COMPANY_CODE = :cc AND ROWNUM = 1`,
+            { cc: binds.val1s1 },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          if (existingRes.rows && existingRes.rows.length > 0) {
+            const row: any = existingRes.rows[0];
+            const cName = row.COMPANY_NAME ?? row[0];
+            const a1 = row.ADDRESS1 ?? row[1];
+            const a2 = row.ADDRESS2 ?? row[2];
+            const city = row.CITY ?? row[3];
+            const ctry = row.COUNTRY ?? row[4];
+            const email = row.EMAIL ?? row[5];
+
+            if (!binds.val1s2) binds.val1s2 = cName;
+            if (!binds.val1s3) binds.val1s3 = a1 || "Address 1";
+            if (!binds.val1s4) binds.val1s4 = a2 || "Address 2";
+            if (!binds.val1s6) binds.val1s6 = city || "City";
+            if (!binds.val1s7) binds.val1s7 = ctry || "Country";
+            if (!binds.val1s8) binds.val1s8 = email || "info@bayanat.com";
+          }
+        } catch (fetchErr) {
+          console.warn("Could not fetch existing MS_COMPANYINFO for fallback:", fetchErr);
+        }
+      }
+
+      // Hard fallback defaults for required NOT NULL fields in MS_COMPANYINFO
+      if (!binds.val1s3) binds.val1s3 = "Address 1";
+      if (!binds.val1s4) binds.val1s4 = "Address 2";
+      if (!binds.val1s6) binds.val1s6 = "City";
+      if (!binds.val1s7) binds.val1s7 = "OMAN";
+      if (!binds.val1s8) binds.val1s8 = "info@bayanat.com";
+
+      for (let i = 1; i <= 10; i++) {
+        const key = `val1n${i}`;
+        const val = req.body[key];
+        binds[key] = val != null && val !== "" ? Number(val) : null;
+        bindDefs.push(`P_${key.toUpperCase()} => :${key}`);
+      }
+      bindDefs.push(`P_SQL_OUT => v_sql`);
+
+      const result = await connection.execute(
+        `
+        DECLARE
+          v_sql CLOB;
+        BEGIN
+          PROC_BUILD_DYNAMIC_INS_UPD_COMPANYINFO(
+            ${bindDefs.join(",\n            ")}
+          );
+          :out_sql := v_sql;
+        END;
+        `,
+        binds
+      );
+
+      dynamicSql = (result.outBinds as any)?.out_sql;
+    } else {
+      // General PROC_BUILD_DYNAMIC_INS_UPD_COLUMN90
+      const binds: Record<string, any> = {
+        parameter,
+        loginid: loginid || "USER_PM",
+        out_sql: {
+          dir: oracledb.BIND_OUT,
+          type: oracledb.STRING,
+          maxSize: 32767
+        }
+      };
+
+      for (let i = 1; i <= 90; i++) {
+        const key = `val1s${i}`;
+        const val = req.body[key];
+        binds[key] = val != null ? String(val) : null;
+      }
+
+      for (let i = 1; i <= 10; i++) {
+        const key = `val1n${i}`;
+        const val = req.body[key];
+        binds[key] = val != null && val !== "" ? Number(val) : null;
+      }
+
+      const sPlaceholders = Array.from({ length: 90 }, (_, i) => `:val1s${i + 1}`).join(", ");
+      const nPlaceholders = Array.from({ length: 10 }, (_, i) => `:val1n${i + 1}`).join(", ");
+
+      const result = await connection.execute(
+        `
+        DECLARE
+          v_sql CLOB;
+        BEGIN
+          PROC_BUILD_DYNAMIC_INS_UPD_COLUMN90(
+            :parameter,
+            :loginid,
+            ${sPlaceholders},
+            ${nPlaceholders},
+            v_sql
+          );
+          :out_sql := v_sql;
+        END;
+        `,
+        binds
+      );
+
+      dynamicSql = (result.outBinds as any)?.out_sql;
     }
 
-    const outBinds = result.outBinds as ProcOut;
-    const dynamicSql = outBinds?.out_sql;
-
-    if (!dynamicSql) {
+    if (!dynamicSql || dynamicSql.toUpperCase().includes("INVALID PARAMETER")) {
       res.status(400).json({
         success: false,
-        message: "Procedure returned no SQL"
+        message: `Procedure returned: ${dynamicSql || "no SQL"}`
       });
       return;
     }
@@ -1024,4 +1121,3 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     }
   }
 };
-

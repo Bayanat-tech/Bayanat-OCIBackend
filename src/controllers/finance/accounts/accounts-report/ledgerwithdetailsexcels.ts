@@ -1,3 +1,4 @@
+import { prepareLedgerRows, loadLedgerCompanyName } from "./ledgerReportRows";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 // @ts-ignore
@@ -114,8 +115,10 @@ function buildLedgerWithDetailsExcelBuffer(
   loginid: string,
   parameter: string,
   code5: string,
-  code6: string
+  code6: string,
+  companyName: string
 ): Buffer {
+  rows = prepareLedgerRows(rows, false);
   type Row = (XlCell | null)[];
   const skip = null;
   const NCOLS = 9;
@@ -123,7 +126,7 @@ function buildLedgerWithDetailsExcelBuffer(
   const tableRows: Row[] = [];
 
   // Row 1 — Company
-  tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+  tableRows.push([xc(companyName, "company"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 2 — Report Title
   tableRows.push([xc(`Ledger With Details Report ${code5} - ${code6}`, "title"), ...Array(NCOLS - 1).fill(skip)]);
@@ -655,7 +658,8 @@ export const exportLedgerWithDetailsExcel = async (req: Request, res: Response):
       text(loginid) || "ADMIN",
       text(parameter),
       text(code5),
-      text(code6)
+      text(code6),
+      await loadLedgerCompanyName(conn, text(req.body.code1))
     );
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

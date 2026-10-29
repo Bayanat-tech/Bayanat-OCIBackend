@@ -35,7 +35,8 @@ export const createProducttype = async (
       });
     }
 
-    const { prodtype_code, prodtype_desc } = req.body;
+    const prodtype_code = Number(req.body.prodtype_code);
+    const prodtype_desc = req.body.prodtype_desc || req.body.prodtype_name || prodtype_code;
 
     const duplicate = await ProducttypeService.findDuplicate(
       prodtype_code,
@@ -89,7 +90,8 @@ export const updateProducttype = async (
       });
     }
 
-    const { prodtype_code, prodtype_desc } = req.body;
+    const prodtype_code = Number(req.body.prodtype_code);
+    const prodtype_desc = req.body.prodtype_desc || req.body.prodtype_name || prodtype_code;
 
     const exists = await ProducttypeService.findByCode(
       prodtype_code,

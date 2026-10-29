@@ -53,7 +53,31 @@ export const frtJobAlertDelete = actionProc("PROC_FRT_JOB_ALERT_DELETE", ["p_com
 
 export const frtJobAlertSave = async (req: Request, res: Response): Promise<void> => {
   const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
-  await saveLines(res, req, "PROC_FRT_JOB_ALERT_SAVE", "FRT_JOB_ALERT_TAB", "p_lines", lines.map(toAlertObject), "Job alerts saved successfully");
+  const reqOpType = stringValue(bodyValue(req, "op_type")) || "IMP";
+  let maxCode = 100;
+  lines.forEach((l: any) => {
+    const c = numberValue(l.op_code ?? l.OP_CODE);
+    if (c && c > maxCode) maxCode = c;
+  });
+
+  const alertObjects = lines.map((l: any, idx: number) => {
+    let opCode = numberValue(l.op_code ?? l.OP_CODE);
+    if (!opCode) {
+      maxCode++;
+      opCode = maxCode;
+    }
+    const opType = stringValue(l.op_type ?? l.OP_TYPE) || reqOpType;
+    return {
+      OP_CODE: opCode,
+      OP_DATE: toDate(l.op_date ?? l.OP_DATE) || new Date(),
+      REMARKS: stringValue(l.remarks ?? l.REMARKS ?? l.op_remarks ?? l.OP_REMARKS)?.slice(0, 40) ?? null,
+      OP_TYPE: opType.slice(0, 3),
+      OP_COUNT: numberValue(l.op_count ?? l.OP_COUNT) ?? 1,
+      OP_YESNO: yesNoValue(l.op_yesno ?? l.OP_YESNO)?.slice(0, 5) ?? "Y",
+    };
+  });
+
+  await saveLines(res, req, "PROC_FRT_JOB_ALERT_SAVE", "FRT_JOB_ALERT_TAB", "p_lines", alertObjects, "Job alerts saved successfully");
 };
 
 export const frtJobDepositList = listProc("PROC_FRT_JOB_DEPOSIT_LIST", "p_result");
@@ -164,6 +188,11 @@ function bindActionValue(req: Request, bindName: string) {
   const key = bindName.replace(/^p_/, "");
   if (key.includes("date")) return toDate(bodyValue(req, key));
   if (key === "op_code" || key === "sr_no") return numberValue(bodyValue(req, key));
+  if (key === "doc_nr") {
+    const raw = stringValue(bodyValue(req, key));
+    if (!raw) return null;
+    return /^\d+$/.test(raw) ? raw.padStart(5, "0") : raw;
+  }
   return bodyValue(req, key);
 }
 
@@ -173,29 +202,29 @@ function bodyValue(req: Request, key: string) {
 
 function toDocObject(row: Record<string, unknown>) {
   return {
-    DOC_NR: stringValue(row.doc_nr ?? row.DOC_NR),
-    COLLECTED: stringValue(row.collected ?? row.COLLECTED, "N"),
-    MANDATORY: stringValue(row.mandatory ?? row.MANDATORY, "N"),
-    DOC_PATH: stringValue(row.doc_path ?? row.DOC_PATH),
+    DOC_NR: stringValue(row.doc_nr ?? row.DOC_NR)?.slice(0, 5) ?? null,
+    COLLECTED: stringValue(row.collected ?? row.COLLECTED, "N")?.slice(0, 1) ?? "N",
+    MANDATORY: stringValue(row.mandatory ?? row.MANDATORY, "N")?.slice(0, 1) ?? "N",
+    DOC_PATH: stringValue(row.doc_path ?? row.DOC_PATH)?.slice(0, 250) ?? null,
     DOC_RECEIVED_DT: toDate(row.doc_received_dt ?? row.DOC_RECEIVED_DT),
-    DOC_RECEIVED_BY: stringValue(row.doc_received_by ?? row.DOC_RECEIVED_BY),
-    DOC_RECEIVED_MODE: stringValue(row.doc_received_mode ?? row.DOC_RECEIVED_MODE),
-    REMARKS: stringValue(row.remarks ?? row.REMARKS),
+    DOC_RECEIVED_BY: stringValue(row.doc_received_by ?? row.DOC_RECEIVED_BY)?.slice(0, 50) ?? null,
+    DOC_RECEIVED_MODE: stringValue(row.doc_received_mode ?? row.DOC_RECEIVED_MODE)?.slice(0, 50) ?? null,
+    REMARKS: stringValue(row.remarks ?? row.REMARKS)?.slice(0, 250) ?? null,
     DOC_SEND_DT: toDate(row.doc_send_dt ?? row.DOC_SEND_DT),
-    DOC_SEND_BY: stringValue(row.doc_send_by ?? row.DOC_SEND_BY),
-    DOC_SEND_MODE: stringValue(row.doc_send_mode ?? row.DOC_SEND_MODE),
-    DOCUMENT_TYPE: stringValue(row.document_type ?? row.DOCUMENT_TYPE),
+    DOC_SEND_BY: stringValue(row.doc_send_by ?? row.DOC_SEND_BY)?.slice(0, 50) ?? null,
+    DOC_SEND_MODE: stringValue(row.doc_send_mode ?? row.DOC_SEND_MODE)?.slice(0, 50) ?? null,
+    DOCUMENT_TYPE: stringValue(row.document_type ?? row.DOCUMENT_TYPE)?.slice(0, 50) ?? null,
   };
 }
 
 function toInstructionObject(row: Record<string, unknown>) {
   return {
     OP_CODE: numberValue(row.op_code ?? row.OP_CODE),
-    OP_ASSIGNED: stringValue(row.op_assigned ?? row.OP_ASSIGNED),
+    OP_ASSIGNED: stringValue(row.op_assigned ?? row.OP_ASSIGNED)?.slice(0, 10) ?? null,
     OP_DATE: toDate(row.op_date ?? row.OP_DATE),
-    OP_REMARKS: stringValue(row.op_remarks ?? row.OP_REMARKS),
+    OP_REMARKS: stringValue(row.op_remarks ?? row.OP_REMARKS)?.slice(0, 100) ?? null,
     END_DATE: toDate(row.end_date ?? row.END_DATE),
-    END_REMARKS: stringValue(row.end_remarks ?? row.END_REMARKS),
+    END_REMARKS: stringValue(row.end_remarks ?? row.END_REMARKS)?.slice(0, 100) ?? null,
   };
 }
 
@@ -203,10 +232,10 @@ function toAlertObject(row: Record<string, unknown>) {
   return {
     OP_CODE: numberValue(row.op_code ?? row.OP_CODE),
     OP_DATE: toDate(row.op_date ?? row.OP_DATE),
-    REMARKS: stringValue(row.remarks ?? row.REMARKS ?? row.op_remarks ?? row.OP_REMARKS),
-    OP_TYPE: stringValue(row.op_type ?? row.OP_TYPE),
+    REMARKS: stringValue(row.remarks ?? row.REMARKS ?? row.op_remarks ?? row.OP_REMARKS)?.slice(0, 40) ?? null,
+    OP_TYPE: stringValue(row.op_type ?? row.OP_TYPE)?.slice(0, 3) ?? null,
     OP_COUNT: numberValue(row.op_count ?? row.OP_COUNT),
-    OP_YESNO: yesNoValue(row.op_yesno ?? row.OP_YESNO),
+    OP_YESNO: yesNoValue(row.op_yesno ?? row.OP_YESNO)?.slice(0, 5) ?? null,
   };
 }
 
@@ -221,25 +250,25 @@ function toDepositObject(row: Record<string, unknown>) {
   return {
     SR_NO: numberValue(row.sr_no ?? row.SR_NO),
     INV_NO: numberValue(row.inv_no ?? row.INV_NO),
-    JOB_TYPE: stringValue(row.job_type ?? row.JOB_TYPE),
-    EXIT_BILL1: stringValue(row.exit_bill1 ?? row.EXIT_BILL1),
-    EXIT_BILL2: stringValue(row.exit_bill2 ?? row.EXIT_BILL2),
-    TXN_TYPE: stringValue(row.txn_type ?? row.TXN_TYPE, "JOB"),
+    JOB_TYPE: stringValue(row.job_type ?? row.JOB_TYPE)?.slice(0, 3) ?? null,
+    EXIT_BILL1: stringValue(row.exit_bill1 ?? row.EXIT_BILL1)?.slice(0, 20) ?? null,
+    EXIT_BILL2: stringValue(row.exit_bill2 ?? row.EXIT_BILL2)?.slice(0, 20) ?? null,
+    TXN_TYPE: stringValue(row.txn_type ?? row.TXN_TYPE, "JOB")?.slice(0, 3) ?? "JOB",
     AMOUNT: numberValue(row.amount ?? row.AMOUNT),
     DEPOSIT_DATE: toDate(row.deposit_date ?? row.DEPOSIT_DATE),
     DEPOSIT_EXPIRY_DATE: toDate(row.deposit_expiry_date ?? row.DEPOSIT_EXPIRY_DATE),
     SIGN_INDICATOR: numberValue(row.sign_indicator ?? row.SIGN_INDICATOR, 1),
-    CURRENCY: stringValue(row.currency ?? row.CURRENCY),
-    STATUS: stringValue(row.status ?? row.STATUS, "D"),
-    BE_NO: stringValue(row.be_no ?? row.BE_NO),
-    CLAIM_REF_NO: stringValue(row.claim_ref_no ?? row.CLAIM_REF_NO),
-    SUPP_CODE: stringValue(row.supp_code ?? row.SUPP_CODE),
-    CUST_CODE: stringValue(row.cust_code ?? row.CUST_CODE),
-    INV_REF: stringValue(row.inv_ref ?? row.INV_REF),
+    CURRENCY: stringValue(row.currency ?? row.CURRENCY)?.slice(0, 3) ?? null,
+    STATUS: stringValue(row.status ?? row.STATUS, "D")?.slice(0, 1) ?? "D",
+    BE_NO: stringValue(row.be_no ?? row.BE_NO)?.slice(0, 25) ?? null,
+    CLAIM_REF_NO: stringValue(row.claim_ref_no ?? row.CLAIM_REF_NO)?.slice(0, 25) ?? null,
+    SUPP_CODE: stringValue(row.supp_code ?? row.SUPP_CODE)?.slice(0, 10) ?? null,
+    CUST_CODE: stringValue(row.cust_code ?? row.CUST_CODE)?.slice(0, 10) ?? null,
+    INV_REF: stringValue(row.inv_ref ?? row.INV_REF)?.slice(0, 100) ?? null,
     COLLECTED_DATE: toDate(row.collected_date ?? row.COLLECTED_DATE),
-    DEPOSIT_REMARKS: stringValue(row.deposit_remarks ?? row.DEPOSIT_REMARKS),
+    DEPOSIT_REMARKS: stringValue(row.deposit_remarks ?? row.DEPOSIT_REMARKS)?.slice(0, 250) ?? null,
     DEMURAGE_AMOUNT: numberValue(row.demurage_amount ?? row.DEMURAGE_AMOUNT),
-    DEPOSIT_TYPE: stringValue(row.deposit_type ?? row.DEPOSIT_TYPE, "CNTRLNR"),
+    DEPOSIT_TYPE: stringValue(row.deposit_type ?? row.DEPOSIT_TYPE, "CNTRLNR")?.slice(0, 10) ?? "CNTRLNR",
   };
 }
 

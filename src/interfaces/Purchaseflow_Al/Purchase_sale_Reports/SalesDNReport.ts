@@ -109,10 +109,27 @@ function numberToWords(n: number): string {
 
   return (neg ? "Minus " : "") + (result || "Zero");
 }
+function currencyInfo(code: string): { name: string; sub: string; dec: number } {
+  switch ((code || "").toUpperCase()) {
+    case "OMR": return { name: "OMANI RIAL", sub: "Baisa", dec: 3 };
+    case "QAR":
+    case "QR": return { name: "QATARI RIYAL", sub: "Dirham", dec: 2 };
+    case "INR": return { name: "INDIAN RUPEES", sub: "Paise", dec: 2 };
+    case "AED": return { name: "UAE DIRHAM", sub: "Fils", dec: 2 };
+    default: return { name: code || "AMOUNT", sub: "", dec: 2 };
+  }
+}
 
-function currencyLabel(currCode: string): string {
-  if (currCode === "QAR" || currCode === "QR") return "QATARI RIYAL";
-  return currCode || "AMOUNT";
+function amountToWords(value: number, currCode: string): string {
+  const { name, sub, dec } = currencyInfo(currCode);
+  const factor = Math.pow(10, dec);
+  const total = Math.round(Math.abs(value) * factor);
+  const whole = Math.floor(total / factor);
+  const frac = total % factor;
+
+  let words = numberToWords(whole);
+  if (frac > 0) words += ` and ${numberToWords(frac)} ${sub}`.trimEnd();
+  return `${name} - ${value < 0 ? "Minus " : ""}${words} only`;
 }
 
 // ─── Param extraction ───────────────────────────────────────────────────────
@@ -151,6 +168,7 @@ async function loadSalesDnData(req: RequestWithUser, p: ReqParams): Promise<Repo
       { company_code: p.company_code, doc_type: p.doc_type, doc_no: p.doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
+
     return normalize(result.rows as any[]);
   } finally {
     await closeConn(conn);
@@ -174,6 +192,7 @@ interface DnHeader {
   user_id: string;
   delivery_to: string;
   disc_hdr_price: number;
+  disc_hdr_percent: number;
   curr_code: string;
   remarks: string;
   cancelled: boolean;
@@ -199,17 +218,40 @@ function buildHeader(rows: ReportRow[]): DnHeader {
     user_id: text(h.user_id),
     delivery_to: text(h.delivery_to) || text(h.dlvr_term),
     disc_hdr_price: num(h.disc_hdr_price),
+    disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code),
     remarks: text(h.remarks),
     cancelled: text(h.cancelled || h.canceled).toUpperCase() === "Y",
   };
 }
 
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+const qtyOf = (r: ReportRow) => num(r.quantity) || num(r.qty_puom);
+
+
+const lineDiscOf = (r: ReportRow) => {
+  const gross = qtyOf(r) * num(r.unit_price);
+  return round2(num(r.disc_price) || (gross * num(r.disc_percent)) / 100);
+};
+
 function computeTotals(rows: ReportRow[], header: DnHeader) {
-  const totalQty = rows.reduce((s, r) => s + (num(r.quantity) || num(r.qty_puom)), 0);
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount;
+  const totalQty = rows.reduce((s, r) => s + qtyOf(r), 0);
+
+  // Gross = qty × rate 
+  const totalAmount = round2(rows.reduce((s, r) => s + qtyOf(r) * num(r.unit_price), 0));
+
+  const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
+
+
+  const lineNet = totalAmount - lineDiscount;
+  const headerDiscount = round2(
+    header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100
+  );
+
+  const overallDiscount = round2(lineDiscount + headerDiscount);
+  const grandTotal = round2(totalAmount - overallDiscount);
+
   return { totalQty, totalAmount, overallDiscount, grandTotal };
 }
 
@@ -397,7 +439,7 @@ function printMetaHtml(title: string, subtitle: string, cancelled: boolean): str
 function renderSalesDnBody(rows: ReportRow[]): string {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
-  const amountInWords = `${currencyLabel(header.curr_code)} - ${numberToWords(totals.grandTotal)} only`;
+ 
 
   const bodyRows = rows
     .map(
@@ -406,9 +448,8 @@ function renderSalesDnBody(rows: ReportRow[]): string {
           <td>${i + 1}</td>
           <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
           <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity || r.qty_puom)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
+          <td class="right">${qtyFmt(qtyOf(r))}</td>
+          
         </tr>`
     )
     .join("");
@@ -446,8 +487,7 @@ function renderSalesDnBody(rows: ReportRow[]): string {
             <th>Product / Description</th>
             <th>Unit</th>
             <th class="right">Qty</th>
-            <th class="right">Unit Rate</th>
-            <th class="right">Gross Value</th>
+            
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -455,26 +495,24 @@ function renderSalesDnBody(rows: ReportRow[]): string {
 
       <div class="totals-box">
         <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-        <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
-        <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.overallDiscount)}</span></div>
-        <div class="row grand"><span>Grand Total</span><span>${amtFmt(totals.grandTotal)}</span></div>
+        
       </div>
 
-      <div class="amount-words">${escapeHtml(amountInWords)}</div>
+     
                   ${header.remarks ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>` : ""}
 
       <table class="dn-sign-table">
         <tr>
           ${["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"]
-            .map(
-              (label) => `
+        .map(
+          (label) => `
             <td>
               <div class="sign-space"></div>
               <div class="sign-line"></div>
               <div class="sign-label">${label}</div>
             </td>`
-            )
-            .join("")}
+        )
+        .join("")}
         </tr>
       </table>`
     }
@@ -489,9 +527,9 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
-  const amountInWords = `${currencyLabel(header.curr_code)} - ${numberToWords(totals.grandTotal)} only`;
+  const amountInWords = amountToWords(totals.grandTotal, header.curr_code);
 
-  const COL_COUNT = 6;
+  const COL_COUNT = 7;
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -500,55 +538,39 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null]);
+merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`Print User: ${loginId}`, "meta"), null, null, cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+rows_.push([cell(`Print User: ${loginId}`, "meta"), null, cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null]);
+merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
+merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
 
-  rows_.push([cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 5 } });
+rows_.push([cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null]);
+merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
 
-  rows_.push([null, null, null, null, null, null]);
+rows_.push([null, null, null, null]);
 
+rows_.push([
+  cell("S.No", "header"), cell("Product / Description", "header"),
+  cell("Unit", "header"), cell("Qty", "header"),
+]);
+
+rows.forEach((r, i) => {
   rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Amount", "header"),
+    cell(i + 1, "data"),
+    cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+    cell(text(r.p_uom), "data"),
+    cell(qtyOf(r), "dataNum"),
   ]);
+});
 
-  rows.forEach((r, i) => {
-    rows_.push([
-      cell(i + 1, "data"),
-      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-      cell(text(r.p_uom), "data"),
-      cell(num(r.quantity) || num(r.qty_puom), "dataNum"),
-      cell(num(r.unit_price), "dataNum"),
-      cell(num(r.amount), "dataNum"),
-    ]);
-  });
+rows_.push([null, null, null, null]);
 
-  rows_.push([null, null, null, null, null, null]);
+const qtyRow = rows_.length;
+rows_.push([cell("Total Quantity", "groupTotal"), null, null, cell(totals.totalQty, "groupTotalNum")]);
+merges.push({ s: { r: qtyRow, c: 0 }, e: { r: qtyRow, c: 2 } });
 
-  const totalRows: [string, number][] = [
-    ["Total Quantity", totals.totalQty],
-    ["Total Amount", totals.totalAmount],
-    ["Overall Discount", totals.overallDiscount],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 3 } });
-  });
-
-  const gtRow = rows_.length;
-  rows_.push([cell("Grand Total", "grandTotal"), null, null, null, cell(totals.grandTotal, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 3 } });
-
-  rows_.push([cell(amountInWords, "meta"), null, null, null, null, null]);
-  merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: 5 } });
-
-  rows_.push([null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }

@@ -1,3 +1,4 @@
+import { taxReportContext } from "./taxReportValues";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../../database/TenantManager";
@@ -6,12 +7,24 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../../com
 import { RequestWithUser } from "../../../../../interfaces/common.interface";
 import { escapeHtml } from "../../../../purchase_sales/report/common/formatters";
 
+/** Decimals for a currency code (OMR → 3, INR/USD → 2). Defaults to 3. */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
 
-const money = (v: any) => {
+const makeMoney = (decimals: number) => (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 };
 
@@ -21,10 +34,6 @@ const formatDateStr = (v: any) => {
   if (!v) return "";
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
-};
-
-const formatBalance = (value: number) => {
-  return value < 0 ? `(${money(Math.abs(value))})` : money(value);
 };
 
 /* ------------------------------------------------------------------ */
@@ -122,6 +131,15 @@ export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): P
       }, {})
     );
 
+    // Company code comes from the request (same slot the procedure uses)
+    const companyCode = text(req.body.company_code || code1).trim();
+
+    const context = await taxReportContext(connection, companyCode);
+    const reportCurrency = context.currency;
+    const money = makeMoney(context.decimals);
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
+
     // ── totals ──
     let totalInvAmount     = 0;
     let totalTaxableInvAmt = 0;
@@ -162,7 +180,7 @@ export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): P
     // ── Shared company header (logo + name + address from ms_company) ──
     // company_code comes from code1, same slot the dynamic-SQL procedure uses
     const companyHeaderHtml = await reportHeader({
-      company_code: text(code1),
+      company_code: companyCode,
       req: req as RequestWithUser,
     });
 
@@ -174,7 +192,11 @@ export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): P
           <tr><td class="meta-label">Date :</td><td>${escapeHtml(reportDate)}</td></tr>
           <tr><td class="meta-label">User :</td><td>${escapeHtml(generatedBy)}</td></tr>
           <tr><td class="meta-label">Report :</td><td>${escapeHtml(text(parameter))}</td></tr>
-          <tr><td class="meta-label">Currency :</td><td>OMR</td></tr>
+          ${
+            reportCurrency
+              ? `<tr><td class="meta-label">Currency :</td><td>${escapeHtml(reportCurrency)}</td></tr>`
+              : ""
+          }
         </table>
       </div>`;
 

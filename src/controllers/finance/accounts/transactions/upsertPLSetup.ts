@@ -3,6 +3,7 @@ import oracledb from "oracledb";
 
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+import { IUser } from "../../../../interfaces/user.interface";
 
 export const upsertPLSetup = async (
   req: Request,
@@ -14,9 +15,14 @@ export const upsertPLSetup = async (
   try {
 
     const data = req.body;
+    const companyCode = (req.user as IUser)?.company_code;
+    if (!companyCode || (data?.company_code && data.company_code !== companyCode)) {
+      res.status(403).json({ success: false, message: "P&L setup must belong to the signed-in company" });
+      return;
+    }
 
     // Validation
-    if (!data?.company_code || !data?.pl_code) {
+    if (!data?.pl_code) {
       res.status(400).json({
         success: false,
         message: "company_code and pl_code are required"
@@ -58,7 +64,7 @@ export const upsertPLSetup = async (
     // Create object
     const obj:any = new PLSetupObjClass({
 
-      COMPANY_CODE: data.company_code,
+      COMPANY_CODE: companyCode,
       PL_CODE: data.pl_code,
       PL_NAME: data.pl_name,
       PL_TYPE: data.pl_type,
@@ -87,6 +93,7 @@ export const upsertPLSetup = async (
     });
 
   } catch(err:any){
+    if (connection) await connection.rollback().catch(() => {});
 
     console.error(
       "Oracle Error:",

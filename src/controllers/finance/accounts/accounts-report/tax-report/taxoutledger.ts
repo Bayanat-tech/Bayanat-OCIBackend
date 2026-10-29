@@ -1,3 +1,4 @@
+import { taxReportContext, taxInvoiceTotal } from "./taxReportValues";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../../database/TenantManager";
@@ -6,11 +7,24 @@ import { escapeHtml } from "../../../../purchase_sales/report/common/formatters"
 import { buildReportDocument, reportFooter, reportHeader } from "../../../../common/report_common";
 import { RequestWithUser } from "../../../../../interfaces/common.interface";
 
-const money = (v: any) => {
+/** Decimals for a currency code (OMR → 3, INR/USD → 2). Defaults to 3. */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
+
+const makeMoney = (decimals: number) => (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 };
 const text = (v: any) => (v == null ? "" : String(v));
@@ -19,8 +33,6 @@ const formatDateStr = (v: any) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
-const formatBalance = (value: number) =>
-  value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
 const EXTRA_CSS = `
   @page { size: A4 landscape; margin: 6mm; }
@@ -125,6 +137,15 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
       }, {})
     );
 
+    // Company code comes from the request (same slot the procedure uses)
+    const companyCode = text(req.body.company_code || code1).trim();
+
+    const context = await taxReportContext(connection, companyCode);
+    const reportCurrency = context.currency;
+    const money = makeMoney(context.decimals);
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
+
     let totalInvAmount = 0;
     let totalTaxableInvAmt = 0;
     let totalTotInvAmount = 0;
@@ -134,7 +155,7 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
     rows.forEach((r) => {
       const invAmount = Number(r.inv_amount) || 0;
       const taxableInvAmt = Number(r.taxable_amt) || 0;
-      const totInvAmount = Number(r.inv_amount) || 0;
+      const totInvAmount = taxInvoiceTotal(r);
       const taxAmount = Number(r.tax_amount) || 0;
 
       totalInvAmount += invAmount;
@@ -180,7 +201,7 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
     const generatedBy = text(loginid) || "Unknown User";
 
     const headerHtml = await reportHeader({
-      company_code: text(code1),
+      company_code: companyCode,
       req: req as RequestWithUser,
     });
 
@@ -190,10 +211,14 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
         : `
         <div class="report-meta">
           <h1 class="meta-title">${escapeHtml(reportTitle)}</h1>
-          <div class="currency-pill">
+          ${
+            reportCurrency
+              ? `<div class="currency-pill">
             <span class="curr-label">Currency</span>
-            <span>OMR</span>
-          </div>
+            <span>${escapeHtml(reportCurrency)}</span>
+          </div>`
+              : ""
+          }
         </div>
         <table class="data-table statement-table">
           <colgroup>

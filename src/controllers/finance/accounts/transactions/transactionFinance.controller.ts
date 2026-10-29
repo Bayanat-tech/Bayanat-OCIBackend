@@ -1,3 +1,7 @@
+import { readGstLines } from './financeGst.controller';
+import { buildLpoDetailBindings, LPO_DETAIL_INSERT_SQL } from "./financeDetailContract";
+import { getCompanyTaxLabels } from "./companyTaxLabels";
+import { validateSavedPosting } from './financePostingValidation';
 import { Response } from 'express';
 import oracledb from 'oracledb';
 import constants from '../../../../helpers/constants';
@@ -23,6 +27,18 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
 async function closeConn(conn?: oracledb.Connection) {
   if (conn) try { await conn.close(); } catch (e: any) { console.warn('Close conn error:', e); }
 }
+async function finalizeLegacyPosting(conn: oracledb.Connection, req: RequestWithUser, type: string, no: string) {
+  let gstEnabled = false;
+  try {
+    const setup = await conn.execute<{ N: number }>(`SELECT COUNT(*) n FROM MS_AC_GST_SETUP WHERE company_code=:cc AND enabled='Y'`, { cc: req.user.company_code }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    gstEnabled = Number(setup.rows?.[0]?.N) === 1;
+  } catch (error: any) { if (error.errorNum !== 942) throw error; }
+  if (gstEnabled) await conn.execute('BEGIN PROC_APPLY_INDIA_GST(:cc,:dt,:dn,:lines); END;', {
+    cc: req.user.company_code, dt: type, dn: no,
+    lines: { type: oracledb.CLOB, val: JSON.stringify(req.body.gst_lines || []) },
+  });
+  await validateSavedPosting(conn, req.user.company_code, type, String(no));
+}
 function normalize(rows: any[]): any[] {
   return rows.map(row =>
     Object.keys(row).reduce((acc: any, k) => { acc[k.toLowerCase()] = row[k]; return acc; }, {})
@@ -31,14 +47,80 @@ function normalize(rows: any[]): any[] {
 
 function sendError(res: Response, err: any) {
   console.error(err);
-  res.status(err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-    .json({ success: false, message: err.message ?? 'Error occurred' });
+  const businessError = Number(err.errorNum) >= 20000 && Number(err.errorNum) <= 20999;
+  res.status(err.status ?? (businessError ? 400 : constants.STATUS_CODES.INTERNAL_SERVER_ERROR))
+    .json({ success: false, message: businessError
+      ? String(err.message).split('\n')[0].replace(/^ORA-\d+:\s*/, '')
+      : err.message ?? 'Error occurred' });
 }
 
 /** Safely trim any value to YYYY-MM-DD string or return null */
 function toDate(v: any): string | null {
   if (!v) return null;
   return typeof v === 'string' ? v.substring(0, 10) : new Date(v).toISOString().substring(0, 10);
+}
+// date validation for lpo-fy
+async function validateLpoFinancialYear(
+  conn: oracledb.Connection,
+  companyCode: string,
+  docDate: any,
+  docNo?: string,
+  docType?: string
+): Promise<string | null> {
+  const date = toDate(docDate);
+
+  if (!date) {
+    return "Doc Date is required.";
+  }
+
+  const fyFor = async (d: string): Promise<string | null> => {
+    const result = await conn.execute(
+      `SELECT FY_PERIOD
+         FROM MS_FY_PERIOD
+        WHERE COMPANY_CODE = :cc
+          AND DATE_FROM IS NOT NULL
+          AND TO_DATE(:dd, 'YYYY-MM-DD')
+              BETWEEN TRUNC(DATE_FROM) AND TRUNC(DATE_TO)
+          AND ROWNUM = 1`,
+      { cc: companyCode, dd: d },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    return (result.rows?.[0] as any)?.FY_PERIOD != null
+      ? String((result.rows?.[0] as any).FY_PERIOD)
+      : null;
+  };
+
+  const newFy = await fyFor(date);
+
+  if (!newFy) {
+    return `Doc Date ${date} does not fall in a configured financial year.`;
+  }
+
+  // For an existing LPO, prevent changing its financial year.
+  if (docNo && docType) {
+    const existing = await conn.execute(
+      `SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DOC_DATE
+         FROM TR_AC_LPO_HEADER
+        WHERE COMPANY_CODE = :cc
+          AND DOC_NO = :dn
+          AND DOC_TYPE = :dt`,
+      { cc: companyCode, dn: docNo, dt: docType },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const oldDate = (existing.rows?.[0] as any)?.DOC_DATE;
+
+    if (oldDate) {
+      const oldFy = await fyFor(String(oldDate).slice(0, 10));
+
+      if (oldFy && oldFy !== newFy) {
+        return `Doc Date cannot be moved from FY ${oldFy} to FY ${newFy}. Cancel and create a new document in the correct year.`;
+      }
+    }
+  }
+
+  return null;
 }
 
 /** Normalize tax-exempt flags to single-character 'S'/'N' or null */
@@ -148,15 +230,16 @@ async function spInsertDetailRows(
   if (!detail?.length) return;
 
   let headerAc: string | null = null;
+  let detailHeader: any = {};
   try {
     const hdr: any = await conn.execute(
-      `SELECT ac_code FROM TR_AC_HEADER 
+      `SELECT ac_code,curr_code,ex_rate,doc_date,div_code FROM TR_AC_HEADER
        WHERE company_code = :cc AND doc_type = :dt AND doc_no = :dn`,
       { cc: company_code, dt: doc_type, dn: doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows: any[] = hdr?.rows ?? [];
-    if (rows.length) headerAc = rows[0].AC_CODE ?? rows[0].ac_code ?? null;
+    if (rows.length) { detailHeader = rows[0]; headerAc = rows[0].AC_CODE ?? null; }
   } catch (e: any) {
     console.warn('Unable to fetch header ac_code:', e?.message ?? e);
   }
@@ -182,16 +265,16 @@ async function spInsertDetailRows(
   const buildBind = (d: any) => ({
     company_code, doc_type, doc_no,
     serial_no: d.serial_no,
-    doc_date: toDate(d.doc_date),
+    doc_date: toDate(d.doc_date ?? detailHeader.DOC_DATE),
     ac_code: d.ac_code ?? null,
     header_ac_code: d.header_ac_code ?? headerAc ?? null,
     bank_ac_code: d.bank_ac_code ?? null,
     remarks: d.remarks ?? null,
     amount: d.amount ?? 0,
     sign_ind: d.sign_ind ?? 1,
-    curr_code: d.curr_code ?? null,
-    ex_rate: d.ex_rate ?? 1,
-    lcur_amount: d.lcur_amount ?? d.amount ?? 0,
+    curr_code: d.curr_code ?? detailHeader.CURR_CODE ?? null,
+    ex_rate: d.ex_rate ?? detailHeader.EX_RATE ?? 1,
+    lcur_amount: d.lcur_amount ?? (Number(d.amount || 0) * Number(d.ex_rate ?? detailHeader.EX_RATE ?? 1)),
     pdc_ind: d.pdc_ind ?? null,
     cheque_no: d.cheque_no ?? null,
     cheque_date: toDate(d.cheque_date),
@@ -239,8 +322,8 @@ async function spInsertDetailRows(
   });
 
   // Split: never insert 9001 from client — SP_AC_TXN_CONTROL owns it
-  const normalRows = detail.filter((d: any) => d.serial_no !== 9001);
-  const reverseRows = detail.filter((d: any) => d.serial_no === 9001);
+  const normalRows = detail.filter((d: any) => Number(d.serial_no) < 9000);
+  const reverseRows: any[] = [];
 
   for (const d of reverseRows) {
     await conn.execute(spSql, buildBind(d));
@@ -499,7 +582,7 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
              asd.default_h_ac AS ac_code,
              a.ac_name,
              acs.tax_perc,
-             NVL(acs.lcur_decimal_nos, 3) AS lcur_decimal_nos
+             NVL(acs.lcur_decimal_nos, CASE WHEN NVL(asd.curr_code, a.curr_code) IN ('OMR', 'BHD', 'KWD') THEN 3 ELSE 2 END) AS lcur_decimal_nos
            FROM MS_AC_SETUP_DOC asd
            LEFT JOIN MS_ACCODES a
              ON asd.company_code = a.company_code
@@ -552,102 +635,30 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
   } finally { await closeConn(conn); }
 };
 
-async function copyTableRows(
-  conn: oracledb.Connection,
-  tbl: string,
-  newCompany: string,
-  sourceCompany: string
-): Promise<number> {
-  try {
-    const check = await conn.execute(
-      `SELECT count(*) FROM ${tbl} WHERE COMPANY_CODE = :newCompany`,
-      { newCompany }
-    );
-    if (((check.rows?.[0] as any)?.[0] || 0) > 0) return 0;
-
-    const cols = await conn.execute(
-      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = :tbl AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
-      { tbl }
-    );
-    if (!cols.rows?.length) return 0;
-
-    const colList = cols.rows
-      .map((r: any) => r[0] || r.COLUMN_NAME)
-      .filter((c: string) => c !== 'COMPANY_CODE');
-    if (!colList.length) return 0;
-
-    const selectCols = colList.join(', ');
-    const insertCols = 'COMPANY_CODE, ' + selectCols;
-
-    const res = await conn.execute(
-      `INSERT INTO ${tbl} (${insertCols})
-       SELECT :newCompany, ${selectCols}
-       FROM ${tbl}
-       WHERE COMPANY_CODE = :sourceCompany`,
-      { newCompany, sourceCompany }
-    );
-    return res.rowsAffected || 0;
-  } catch (err) {
-    console.warn(`[copyTableRows] Non-fatal error copying ${tbl}:`, err);
-    return 0;
-  }
-}
-
 export async function initializeCompanyFinanceSetup(
   conn: oracledb.Connection,
   newCompany: string,
   sourceCompany = 'BSG'
 ): Promise<{ success: boolean; details: Record<string, any> }> {
-  const details: Record<string, any> = {};
-
-  // 1. MS_COMPANYINFO
-  const checkInfo = await conn.execute(
-    `SELECT count(*) FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany`,
-    { newCompany }
-  );
-  if (!((checkInfo.rows?.[0] as any)?.[0] || 0)) {
-    const infoCols = await conn.execute(
-      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = 'MS_COMPANYINFO' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
-      []
+  try {
+    const result: any = await conn.execute(
+      `BEGIN PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:p_new_company, :p_source_company, 'ADMIN', :p_status, :p_message); END;`,
+      {
+        p_new_company: newCompany,
+        p_source_company: sourceCompany,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
     );
-    const colList = (infoCols.rows || [])
-      .map((r: any) => r[0] || r.COLUMN_NAME)
-      .filter((c: string) => !['COMPANY_CODE', 'COMPANY_NAME', 'AC_FY_PERIOD', 'OPN_FY_PERIOD'].includes(c));
-    const selectCols = colList.length ? ', ' + colList.join(', ') : '';
-
-    await conn.execute(
-      `INSERT INTO MS_COMPANYINFO (COMPANY_CODE, COMPANY_NAME, AC_FY_PERIOD, OPN_FY_PERIOD ${selectCols})
-       SELECT 
-         :newCompany, 
-         COALESCE((SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :newCompany), :newCompany),
-         COALESCE((SELECT AC_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225'),
-         COALESCE((SELECT OPN_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225')
-         ${selectCols}
-       FROM MS_COMPANYINFO
-       WHERE COMPANY_CODE = :sourceCompany`,
-      { newCompany, sourceCompany }
-    );
-    details.company_info = 'initialized';
+    const status = result.outBinds?.p_status;
+    const message = result.outBinds?.p_message;
+    return {
+      success: status !== 'ERROR',
+      details: { message }
+    };
+  } catch (err: any) {
+    return { success: false, details: { error: err.message } };
   }
-
-  // 2. MS_CURRENCY
-  details.currencies = await copyTableRows(conn, 'MS_CURRENCY', newCompany, sourceCompany);
-
-  // 3. MS_HR_DIVISION (Default branch/division)
-  details.divisions = await copyTableRows(conn, 'MS_HR_DIVISION', newCompany, sourceCompany);
-
-  // 4. Standard Statutory Chart of Accounts Groups (Levels 1, 2, and 3 only)
-  // Levels 4 & 5 (MS_ACCODES) and specific document account mappings (MS_AC_SETUP_DOC_ACCODE)
-  // are created specifically per company by the finance team.
-  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3']) {
-    details[lvl] = await copyTableRows(conn, lvl, newCompany, sourceCompany);
-  }
-
-  // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
-  details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
-
-  await conn.commit();
-  return { success: true, details };
 }
 
 export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promise<void> => {
@@ -711,6 +722,100 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     const normalizedData = Object.fromEntries(
       Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])
     );
+
+    if (!normalizedData.company_logo && companyCode) {
+      try {
+        const logoRes: any = await conn.execute(
+          `SELECT COMPANY_LOGO, COMPANY_LOGO_AWSURL FROM MS_COMPANY WHERE COMPANY_CODE = :cc`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (logoRes?.rows?.length) {
+          const lRow = logoRes.rows[0] as any;
+          normalizedData.company_logo = lRow.COMPANY_LOGO || lRow.company_logo || lRow.COMPANY_LOGO_AWSURL || lRow.company_logo_awsurl || null;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Query MS_COMPANYINFO and MS_AC_SETUP to guarantee currency and decimal settings
+    let companyCurrency = "";
+    let companyBaseCurr = "";
+    let lcurDecimalNos: number | null = null;
+    let amountDecimalNos: number | null = null;
+
+    try {
+      const compInfoRes: any = await conn.execute(
+        `SELECT CURRENCY FROM MS_COMPANYINFO WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc)) AND ROWNUM = 1`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (compInfoRes?.rows?.length) {
+        const cRow = compInfoRes.rows[0] as any;
+        if (cRow.CURRENCY) companyCurrency = String(cRow.CURRENCY).trim().toUpperCase();
+      }
+
+      const acSetupRes: any = await conn.execute(
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS,
+                FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO, DOC_DATE_EDITABLE
+         FROM MS_AC_SETUP
+         WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
+           AND ROWNUM = 1`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (acSetupRes?.rows?.length) {
+        const acRow = acSetupRes.rows[0] as any;
+        if (acRow.BASE_CURR_CODE) companyBaseCurr = String(acRow.BASE_CURR_CODE).trim().toUpperCase();
+        if (acRow.LCUR_DECIMAL_NOS != null) lcurDecimalNos = Number(acRow.LCUR_DECIMAL_NOS);
+        if (acRow.AMOUNT_DECIMAL_NOS != null) amountDecimalNos = Number(acRow.AMOUNT_DECIMAL_NOS);
+        normalizedData.financial_yr_start = acRow.FINANCIAL_YR_START || null;
+        normalizedData.financial_yr_end = acRow.FINANCIAL_YR_END || null;
+        normalizedData.doc_edit_from = acRow.DOC_EDIT_FROM || null;
+        normalizedData.doc_edit_to = acRow.DOC_EDIT_TO || null;
+        normalizedData.doc_date_editable = acRow.DOC_DATE_EDITABLE || 'Y';
+      }
+
+      // Query current active FY dates from MS_FY_PERIOD
+      if (normalizedData.ac_fy_period) {
+        try {
+          const currentFyRes: any = await conn.execute(
+            `SELECT DATE_FROM, DATE_TO FROM MS_FY_PERIOD
+             WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
+               AND TRIM(FY_PERIOD) = TRIM(:fy)
+               AND ROWNUM = 1`,
+            { cc: companyCode, fy: String(normalizedData.ac_fy_period) },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          if (currentFyRes?.rows?.length) {
+            normalizedData.current_fy_start = currentFyRes.rows[0].DATE_FROM || null;
+            normalizedData.current_fy_end = currentFyRes.rows[0].DATE_TO || null;
+          }
+        } catch (fErr) {
+          console.warn("[getCompanyInfo] Active FY dates lookup error:", fErr);
+        }
+      }
+    } catch (e) {
+      console.warn("[getCompanyInfo] Currency/Decimal enrichment warning:", e);
+    }
+
+    const effectiveCurr = companyCurrency || companyBaseCurr || normalizedData.currency || normalizedData.base_curr_code || "INR";
+    let effectiveDecimals = amountDecimalNos ?? lcurDecimalNos ?? normalizedData.amount_decimal_nos ?? normalizedData.lcur_decimal_nos;
+    if (effectiveDecimals == null || isNaN(effectiveDecimals)) {
+      if (["OMR", "BHD", "KWD"].includes(effectiveCurr)) {
+        effectiveDecimals = 3;
+      } else {
+        effectiveDecimals = 2; // Default for INR, USD, EUR, etc.
+      }
+    }
+
+    normalizedData.currency = effectiveCurr;
+    normalizedData.base_curr_code = effectiveCurr;
+    normalizedData.decimals = Number(effectiveDecimals);
+    normalizedData.lcur_decimal_nos = Number(effectiveDecimals);
+    normalizedData.amount_decimal_nos = Number(effectiveDecimals);
+    normalizedData.tax_treatment_labels = await getCompanyTaxLabels(conn, companyCode);
 
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -1085,11 +1190,11 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
     const invWhereNoDiv = `WHERE v.company_code = :cc AND ${invDocCond}
                           AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
     const invSql = `
-      SELECT v.*, h.ref_no
+      SELECT v.*, NVL(h.doc_no, v.doc_no) AS voucher_doc_no, NVL(h.ref_no, v.inv_no) AS ref_no
       FROM VW_TXN_INVOICE_CHILDREN v
       LEFT JOIN TR_AC_HEADER h
         ON h.company_code = v.company_code
-       AND h.doc_no       = v.inv_no
+       AND (h.doc_no = v.inv_no OR (h.ref_no IS NOT NULL AND (h.ref_no = v.inv_no OR UPPER(TRIM(h.ref_no)) = UPPER(TRIM(v.inv_no)))))
     `;
 
     let [inv, job, exp]: any[] = await Promise.all([
@@ -1176,39 +1281,285 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
 export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { inv_nos, div_code } = req.query;
+    const { inv_nos, div_code, ac_code, doc_type, exclude_doc_no } = req.query as any;
     if (!inv_nos || !div_code) { res.status(400).json({ success: false, message: 'inv_nos and div_code are required' }); return; }
     const list = (inv_nos as string).split(',').map(n => n.trim()).filter(Boolean);
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
     conn = await getConn(req);
+
+    const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO' || doc_type === 'DN';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN' || doc_type === 'IV';
+
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
-    const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
-    list.forEach((n, i) => (binds[`inv${i}`] = n));
-    const result = await conn.execute(
-      `SELECT o.*, h.ref_no 
-       FROM VW_INVOICE_OUTSTANDING o
-       LEFT JOIN TR_AC_HEADER h
-         ON h.company_code = o.company_code
-        AND h.doc_no       = o.inv_no
-       WHERE o.company_code = :cc AND o.div_code = :dc AND o.inv_no IN (${placeholders})`,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dc: div_code,
+      has_ac: ac_code ? 1 : 0,
+      ac: ac_code ? String(ac_code).trim() : '',
+      is_payment: isPayment ? 1 : 0,
+      is_receipt: isReceipt ? 1 : 0,
+      exclude_doc_no: exclude_doc_no ? String(exclude_doc_no).trim() : null,
+    };
+    list.forEach((n, i) => (binds[`inv${i}`] = n.trim().toUpperCase()));
+
     const found: Record<string, any> = {};
-    (result.rows || []).forEach((r: any) => {
-      const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
-      const org = Number(r.ORIGINAL_AMOUNT || 0);
-      const pd = Number(r.PAID_AMOUNT || 0);
-      found[r.INV_NO] = {
-        inv_no: r.INV_NO,
-        ref_no: r.REF_NO ?? '',
-        original_amount: org,
-        paid_amount: pd,
-        outstanding_amount: out,
-        payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
-        is_fully_paid: out <= 0.01,
+
+    // 1. Primary: query TR_AC_HEADER for authoritative gross amount & settlements
+    try {
+      const hdrRes = await conn.execute(
+        `SELECT 
+           h.doc_no AS inv_no,
+           h.ref_no,
+           NVL(h.canceled, 'N') AS canceled,
+           NVL((
+             SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
+             FROM TR_AC_INVDETAIL invd
+             WHERE invd.company_code = h.company_code
+               AND invd.doc_type     = h.doc_type
+               AND invd.doc_no       = h.doc_no
+               AND invd.indicator_origin = 'Y'
+           ), NVL((
+             SELECT ABS(NVL(d.lcur_amount, d.amount))
+             FROM TR_AC_DETAIL d
+             WHERE d.company_code = h.company_code
+               AND d.doc_type     = h.doc_type
+               AND d.doc_no       = h.doc_no
+               AND d.serial_no    = 9001
+           ), (
+             SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                        SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
+             FROM TR_AC_DETAIL d
+             WHERE d.company_code = h.company_code
+               AND d.doc_type     = h.doc_type
+               AND d.doc_no       = h.doc_no
+               AND d.serial_no    <> 9001
+           ))) AS original_amount,
+           NVL((
+             SELECT SUM(ABS(d.lcur_amount)) 
+             FROM TR_AC_INVDETAIL d 
+             JOIN TR_AC_HEADER pay_h
+               ON pay_h.company_code = d.company_code
+              AND pay_h.doc_no       = d.doc_no
+              AND pay_h.doc_type     = d.doc_type
+              AND NVL(pay_h.canceled, 'N') = 'N'
+             WHERE d.company_code = h.company_code 
+               AND d.div_code     = h.div_code 
+               AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+               AND (
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN'))
+                 OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
+               )
+               AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
+               AND NVL(d.indicator_origin, 'N') = 'N'
+               AND (:exclude_doc_no IS NULL OR d.doc_no <> :exclude_doc_no)
+           ), 0) AS paid_amount
+         FROM TR_AC_HEADER h
+         WHERE h.company_code = :cc 
+           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR h.div_code = :dc) 
+           AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
+             SELECT 1 FROM TR_AC_DETAIL d2 
+             WHERE d2.company_code = h.company_code 
+               AND d2.doc_type = h.doc_type 
+               AND d2.doc_no = h.doc_no 
+               AND d2.ac_code = :ac
+           ))
+           AND (
+             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
+             OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
+             OR (:is_receipt = 0 AND :is_payment = 0)
+           )
+           AND (
+             UPPER(TRIM(h.doc_no)) IN (${placeholders}) 
+             OR (h.ref_no IS NOT NULL AND UPPER(TRIM(h.ref_no)) IN (${placeholders}))
+           )`,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      (hdrRes.rows || []).forEach((r: any) => {
+        const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+        const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+        const voucherDocNo = String(r.INV_NO).trim();
+
+        if (isCanceled) {
+          const cancelObj = {
+            inv_no: vendorBillNo,
+            doc_no: voucherDocNo,
+            ref_no: voucherDocNo,
+            original_amount: 0,
+            paid_amount: 0,
+            outstanding_amount: 0,
+            payment_percentage: 0,
+            is_fully_paid: true,
+            is_cancelled: true,
+            error: `Invoice ${voucherDocNo}${r.REF_NO ? ' (Ref #' + r.REF_NO + ')' : ''} is CANCELLED. Cancelled invoices cannot be allocated in payments.`,
+          };
+          if (r.INV_NO) {
+            found[r.INV_NO] = cancelObj;
+            found[String(r.INV_NO).toUpperCase()] = cancelObj;
+          }
+          if (r.REF_NO) {
+            found[r.REF_NO] = cancelObj;
+            found[String(r.REF_NO).toUpperCase()] = cancelObj;
+          }
+          return;
+        }
+
+        const org = Number(r.ORIGINAL_AMOUNT || 0);
+        const pd = Number(r.PAID_AMOUNT || 0);
+        const out = Math.max(0, org - pd);
+        const resObj = {
+          inv_no: vendorBillNo,
+          doc_no: voucherDocNo,
+          ref_no: voucherDocNo,
+          original_amount: org,
+          paid_amount: pd,
+          outstanding_amount: out,
+          payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+          is_fully_paid: out <= 0.001,
+          is_cancelled: false,
+        };
+        if (r.INV_NO) {
+          found[r.INV_NO] = resObj;
+          found[String(r.INV_NO).toUpperCase()] = resObj;
+        }
+        if (r.REF_NO) {
+          found[r.REF_NO] = resObj;
+          found[String(r.REF_NO).toUpperCase()] = resObj;
+        }
+      });
+    } catch (e) {
+      console.warn('[getInvoiceOutstandingBalances] TR_AC_HEADER primary error:', e);
+    }
+
+    // 2. Secondary fallback: TR_AC_INVDETAIL for any legacy items not in TR_AC_HEADER
+    const missingInvs = list.filter(inv => !found[inv] && !found[inv.toUpperCase()]);
+    if (missingInvs.length > 0) {
+      const missingPlaceholders = missingInvs.map((_, i) => `:m_inv${i}`).join(',');
+      const missingBinds: Record<string, any> = {
+        cc: req.user.company_code,
+        dc: div_code,
+        has_ac: ac_code ? 1 : 0,
+        ac: ac_code ? String(ac_code).trim() : '',
+        is_payment: isPayment ? 1 : 0,
+        is_receipt: isReceipt ? 1 : 0,
       };
-    });
+      missingInvs.forEach((n, i) => (missingBinds[`m_inv${i}`] = n.trim().toUpperCase()));
+
+      try {
+        const invDetailRes = await conn.execute(
+          `SELECT 
+             inv.inv_no,
+             MAX(inv.doc_no) AS doc_no,
+             MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
+             MAX(NVL(h.canceled, 'N')) AS canceled,
+             NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.lcur_amount, inv.amount_origin) ELSE 0 END)), 0) AS original_amount,
+             NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
+           FROM TR_AC_INVDETAIL inv
+           LEFT JOIN TR_AC_HEADER h
+             ON h.company_code = inv.company_code
+            AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
+           WHERE inv.company_code = :cc 
+             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR inv.div_code = :dc) 
+             AND NVL(h.canceled, 'N') = 'N'
+             AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
+             AND (
+               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV', 'IV') OR h.doc_type IN ('SI', 'SV', 'IV')))
+               OR (:is_payment = 1 AND (inv.doc_type IN ('PI', 'PO') OR h.doc_type IN ('PI', 'PO')))
+               OR (:is_receipt = 0 AND :is_payment = 0)
+             )
+             AND (
+               UPPER(TRIM(inv.inv_no)) IN (${missingPlaceholders}) 
+               OR (inv.doc_no IS NOT NULL AND UPPER(TRIM(inv.doc_no)) IN (${missingPlaceholders}))
+             )
+           GROUP BY inv.inv_no`,
+          missingBinds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        (invDetailRes.rows || []).forEach((r: any) => {
+          const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+          if (isCanceled) return;
+
+          const org = Number(r.ORIGINAL_AMOUNT || 0);
+          const pd = Number(r.PAID_AMOUNT || 0);
+          const out = Math.max(0, org - pd);
+          if (org > 0) {
+            const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+            const voucherDocNo = String(r.DOC_NO || r.INV_NO).trim();
+            const resObj = {
+              inv_no: vendorBillNo,
+              doc_no: voucherDocNo,
+              ref_no: voucherDocNo,
+              original_amount: org,
+              paid_amount: pd,
+              outstanding_amount: out,
+              payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+              is_fully_paid: out <= 0.001,
+              is_cancelled: false,
+            };
+            if (r.INV_NO) {
+              found[r.INV_NO] = resObj;
+              found[String(r.INV_NO).toUpperCase()] = resObj;
+            }
+            if (r.DOC_NO) {
+              found[r.DOC_NO] = resObj;
+              found[String(r.DOC_NO).toUpperCase()] = resObj;
+            }
+            if (r.REF_NO) {
+              found[r.REF_NO] = resObj;
+              found[String(r.REF_NO).toUpperCase()] = resObj;
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('[getInvoiceOutstandingBalances] TR_AC_INVDETAIL fallback error:', e);
+      }
+    }
+
+    // 3. Fallback to VW_INVOICE_OUTSTANDING ONLY if no ac_code and no doc_type filter is present
+    // (VW_INVOICE_OUTSTANDING lacks account and doc_type columns, so it must NEVER be used when querying for a specific vendor/customer)
+    if (!ac_code && !isPayment && !isReceipt) {
+      const stillMissing = list.filter(inv => !found[inv] && !found[inv.toUpperCase()]);
+      if (stillMissing.length > 0) {
+        try {
+          const viewPlaceholders = stillMissing.map((_, i) => `:v_inv${i}`).join(',');
+          const viewBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+          stillMissing.forEach((n, i) => (viewBinds[`v_inv${i}`] = n.trim().toUpperCase()));
+
+          const result = await conn.execute(
+            `SELECT o.*, h.ref_no 
+             FROM VW_INVOICE_OUTSTANDING o
+             LEFT JOIN TR_AC_HEADER h
+               ON h.company_code = o.company_code
+              AND h.doc_no       = o.inv_no
+             WHERE o.company_code = :cc AND o.div_code = :dc AND UPPER(TRIM(o.inv_no)) IN (${viewPlaceholders})`,
+            viewBinds,
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          (result.rows || []).forEach((r: any) => {
+            const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
+            const org = Number(r.ORIGINAL_AMOUNT || 0);
+            const pd = Number(r.PAID_AMOUNT || 0);
+            const resObj = {
+              inv_no: r.INV_NO,
+              ref_no: r.REF_NO ?? '',
+              original_amount: org,
+              paid_amount: pd,
+              outstanding_amount: out,
+              payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+              is_fully_paid: out <= 0.01,
+            };
+            if (r.INV_NO) {
+              found[r.INV_NO] = resObj;
+              found[String(r.INV_NO).toUpperCase()] = resObj;
+            }
+          });
+        } catch (e) {
+          // ignore view error
+        }
+      }
+    }
+
     const balances = list.map(inv => found[inv] ?? { inv_no: inv, ref_no: '', original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
     res.json({ success: true, data: { balances, count: balances.length } });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -1446,6 +1797,7 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
           d.price,
           d.uom,
           d.prod_code,
+          d.cost_code,
           d.qty_rcv,
           d.amount_rcv,
           d.other_remarks,
@@ -1534,7 +1886,7 @@ export const getLPOPrint = async (req: RequestWithUser, res: Response): Promise<
 
     // details
     const det = await conn.execute(
-      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
+      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.cost_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
        FROM TR_AC_LPO_DETAIL d
        LEFT JOIN MS_ACCODES m
               ON m.company_code = d.company_code
@@ -1645,6 +1997,35 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     const { detail = [], children = {}, files = [], ...h } = req.body;
     conn = await getConn(req);
 
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
+
     // Step 1 — call header SP, get generated doc_no
     const hdrResult = await conn.execute(
       `BEGIN SP_CREATE_CHQ_HEADER(
@@ -1691,6 +2072,7 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
       `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
       { cc: req.user.company_code, dt: h.doc_type, dn: doc_no, lu: req.user.loginid }
     );
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(doc_no));
     await conn.commit();
 
     console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);
@@ -1770,6 +2152,37 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     conn = await getConn(req);
 
+    // PowerBuilder Rule (uo_ac_payment.sru): Cheque No Duplicate Check for BP (Bank Payment)
+    if (h.doc_type === 'BP' && h.cheque_no && h.bank_ac_code) {
+      const chqTrimmed = String(h.cheque_no).trim();
+      const chqDupRes: any = await conn.execute(
+        `SELECT doc_no, doc_date 
+         FROM TR_AC_HEADER
+         WHERE company_code = :cc
+           AND doc_type = 'BP'
+           AND bank_ac_code = :bk
+           AND UPPER(TRIM(cheque_no)) = UPPER(:cn)
+           AND NVL(canceled, 'N') <> 'Y'
+           AND TO_CHAR(doc_no) <> :dn
+           AND ROWNUM = 1`,
+        {
+          cc: req.user.company_code,
+          bk: String(h.bank_ac_code).trim(),
+          cn: chqTrimmed,
+          dn: String(h.doc_no).trim(),
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (chqDupRes.rows && chqDupRes.rows.length > 0) {
+        const existing = chqDupRes.rows[0];
+        res.status(400).json({
+          success: false,
+          message: `Cheque # "${chqTrimmed}" has already been issued from this bank account in Bank Payment (${existing.DOC_NO || existing.doc_no}). Duplicate cheque numbers are not allowed.`,
+        });
+        return;
+      }
+    }
+
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
       `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
@@ -1817,6 +2230,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
       { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
     );
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(h.doc_no));
     await conn.commit();
 
     res.json({
@@ -1847,6 +2261,106 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     }
 
     conn = await getConn(req);
+
+    // Period Lock & Current Financial Period Validation
+    try {
+      const activeFyRes: any = await conn.execute(
+        `SELECT 
+           v.ac_fy_period,
+           p.date_from AS fy_date_from,
+           p.date_to AS fy_date_to,
+           s.financial_yr_start,
+           s.financial_yr_end,
+           s.doc_edit_from,
+           s.doc_edit_to,
+           s.doc_date_editable
+         FROM VW_COMPANY_INFO v
+         LEFT JOIN MS_FY_PERIOD p 
+           ON p.company_code = v.company_code 
+          AND p.fy_period = TO_CHAR(v.ac_fy_period)
+         LEFT JOIN MS_AC_SETUP s
+           ON s.company_code = v.company_code
+         WHERE v.company_code = :cc`,
+        { cc: req.user.company_code },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const fyInfo = activeFyRes.rows?.[0] || {};
+      const currentFy = String(fyInfo.AC_FY_PERIOD || '226');
+      const docDateStr = String(v.doc_date || '').slice(0, 10);
+      const fyFrom = fyInfo.FY_DATE_FROM ? new Date(fyInfo.FY_DATE_FROM).toISOString().slice(0, 10) : null;
+      const fyTo = fyInfo.FY_DATE_TO ? new Date(fyInfo.FY_DATE_TO).toISOString().slice(0, 10) : null;
+      const editFrom = fyInfo.DOC_EDIT_FROM ? new Date(fyInfo.DOC_EDIT_FROM).toISOString().slice(0, 10) : null;
+
+      if (fyFrom && fyTo && (docDateStr < fyFrom || docDateStr > fyTo)) {
+        res.status(400).json({
+          success: false,
+          message: `Transaction entry is allowed only in current financial period ${currentFy} (${fyFrom} to ${fyTo}). Selected date ${docDateStr} is in an invalid financial period.`
+        });
+        return;
+      }
+      if (editFrom && docDateStr < editFrom) {
+        res.status(400).json({
+          success: false,
+          message: `Account period is locked prior to ${editFrom}. Backdated entry is not allowed.`
+        });
+        return;
+      }
+    } catch (fyErr) {
+      console.warn('[createPurchaseDocument] FY validation warning:', fyErr);
+    }
+
+    // Duplicate Freight Job Purchase Booking Validation
+    if (v.doc_type === 'PI' && Array.isArray(v.detail)) {
+      const jobNos = Array.from(new Set(
+        v.detail.map((d: any) => String(d.job_no || '').trim()).filter(Boolean)
+      ));
+      for (const jNo of jobNos) {
+        const checkBooked: any = await conn.execute(
+          `SELECT h.doc_no, d.remarks, d.amount, d.lcur_amount
+           FROM TR_AC_DETAIL d
+           JOIN TR_AC_HEADER h
+             ON h.company_code = d.company_code
+            AND h.doc_type = d.doc_type
+            AND h.doc_no = d.doc_no
+            AND NVL(h.canceled, 'N') = 'N'
+           WHERE h.company_code = :cc
+             AND h.doc_type = 'PI'
+             AND d.job_no = :job_no
+             AND d.serial_no < 9000`,
+          { cc: req.user.company_code, job_no: String(jNo) },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (checkBooked.rows && checkBooked.rows.length > 0) {
+          const bookedDoc = (checkBooked.rows[0] as any).DOC_NO;
+          res.status(400).json({
+            success: false,
+            message: `Job ${jNo} has already been booked in Purchase Invoice (${bookedDoc}). Duplicate purchase booking is completely blocked.`
+          });
+          return;
+        }
+      }
+    }
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) for PI
+    if (v.doc_type === 'PI' && (v.ref_no?.trim() || v.inv_no?.trim())) {
+      const checkRef = (v.ref_no?.trim() || v.inv_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: v.ac_code, ref: checkRef },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
 
     // Step 1 — create header, get generated doc_no
     const result = await conn.execute(
@@ -1887,9 +2401,15 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       const userInvNo = v.inv_no?.trim() || null;
       const invToSet = userInvNo || invoice_no || purchase_no;
       await conn.execute(
-        `UPDATE TR_AC_HEADER SET INVOICE_NUMBER = :inv
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-        { inv: invToSet, cc: req.user.company_code, dn: purchase_no, dt: v.doc_type }
+        `BEGIN PROC_UPDATE_HEADER_INVOICE_NO(:p_company_code, :p_doc_no, :p_doc_type, :p_inv_no, :p_status, :p_message); END;`,
+        {
+          p_company_code: req.user.company_code,
+          p_doc_no: purchase_no,
+          p_doc_type: v.doc_type,
+          p_inv_no: invToSet,
+          p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+          p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+        }
       );
     } catch (uerr) {
       console.warn('Failed to update TR_AC_HEADER.INVOICE_NUMBER:', uerr);
@@ -1916,6 +2436,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, v.doc_type, String(purchase_no));
     await conn.commit();
 
     // *** Response always reached on success ***
@@ -2009,6 +2530,7 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
       { cc: req.user.company_code, dt: v.doc_type, dn: sales_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, v.doc_type, String(sales_no));
     await conn.commit();
 
     // *** Response always reached on success ***
@@ -2037,8 +2559,22 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     conn = await getConn(req);
 
-    const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(
+const fyError = await validateLpoFinancialYear(
+  conn,
+  req.user.company_code,
+  v.doc_date
+);
+
+if (fyError) {
+  res.status(400).json({
+    success: false,
+    message: fyError
+  });
+  return;
+}
+
+const result = await conn.execute(
+  `BEGIN SP_CREATE_LPO_HEADER(
     :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
     :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
     :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:pdo,:dn
@@ -2080,21 +2616,10 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
-        v.detail.map((d: any) => ({
-          cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
-          sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
-          am: d.amount, cu: d.curr_code, er: d.ex_rate,
-          si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
-          qty: d.qty, pr: d.price, pc: d.prod_code,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
-          // dd:  toDate(v.doc_date), 
-          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        v.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, v, req.user.company_code, v.doc_type, doc_no, i)
+        )
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
     }
@@ -2178,6 +2703,44 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       pdo_type: req.body.pdo_type ?? old.PDO_TYPE,
     };
 
+    const fyError = await validateLpoFinancialYear(
+  conn,
+  req.user.company_code,
+  h.doc_date,
+  String(doc_no),
+  String(doc_type)
+);
+
+if (fyError) {
+  res.status(400).json({
+    success: false,
+    message: fyError
+  });
+  return;
+}
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
     //  Call your SP safely
     await conn.execute(
       `BEGIN SP_UPDATE_LPO(
@@ -2224,48 +2787,22 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     // Delete + reinsert details (your existing logic is fine)
     await conn.execute(
-      `DELETE FROM TR_AC_LPO_DETAIL
-       WHERE company_code = :cc
-         AND doc_no = :dn
-         AND doc_type = :dt`,
+      `BEGIN PROC_DEL_LPO_DETAIL(:p_company_code, :p_doc_no, :p_doc_type, :p_status, :p_message); END;`,
       {
-        cc: req.user.company_code,
-        dn: doc_no,
-        dt: doc_type
+        p_company_code: req.user.company_code,
+        p_doc_no: doc_no,
+        p_doc_type: doc_type,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
       }
     );
 
     if (req.body.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
-          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
-        ); END;`,
-        req.body.detail.map((d: any, i: number) => ({
-          cc: req.user.company_code,
-          dt: doc_type,
-          dn: doc_no,
-          sn: d.serial_no ?? (i + 1),
-          ac: d.ac_code,
-          hac: h.ac_code,
-          am: Number(d.amount || 0),
-          cu: d.curr_code ?? h.curr_code,
-          er: d.ex_rate ?? h.ex_rate ?? 1,
-          si: d.sign_ind ?? 1,
-          dv: d.div_code ?? h.div_code,
-          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1)),
-          qty: Number(d.qty ?? 1),
-          pr: Number(d.price ?? 0),
-          pc: d.prod_code ?? null,
-          or: d.other_remarks ?? null,
-          rm: d.remarks ?? null,
-          tcc: d.tx_cat_code ?? null,
-          tc: d.tx_compntcat_code_1 ?? null,
-          tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null,
-          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
-          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
-        }))
+        LPO_DETAIL_INSERT_SQL,
+        req.body.detail.map((d: any, i: number) =>
+          buildLpoDetailBindings(d, h, req.user.company_code, doc_type, doc_no, i)
+        )
       );
     }
 
@@ -2307,10 +2844,43 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
     const docType = typeof doc_type === 'string' ? doc_type : (Array.isArray(doc_type) ? doc_type[0] : String(doc_type));
 
     conn = await getConn(req);
+
+    // Accounting safeguard: Invoices cannot be cancelled if active settled payments exist
+    if (['PI', 'PO', 'SI', 'SV'].includes(docType.toUpperCase())) {
+      const paymentCheckRes = await conn.execute(
+        `SELECT NVL(SUM(ABS(d.lcur_amount)), 0) AS PAID_AMOUNT
+         FROM TR_AC_INVDETAIL d
+         JOIN TR_AC_HEADER pay_h
+           ON pay_h.company_code = d.company_code
+          AND pay_h.doc_no       = d.doc_no
+          AND pay_h.doc_type     = d.doc_type
+          AND NVL(pay_h.canceled, 'N') = 'N'
+         JOIN TR_AC_HEADER inv_h
+           ON inv_h.company_code = d.company_code
+          AND (d.inv_no = inv_h.doc_no OR (inv_h.ref_no IS NOT NULL AND d.inv_no = inv_h.ref_no))
+         WHERE inv_h.company_code = :cc
+           AND inv_h.doc_no       = :dn
+           AND inv_h.doc_type     = :dt
+           AND NVL(d.indicator_origin, 'N') = 'N'
+           AND NVL(d.lcur_amount, 0) <> 0`,
+        { cc: req.user.company_code, dn: docNo, dt: docType },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const paid = Number((paymentCheckRes.rows?.[0] as any)?.PAID_AMOUNT || 0);
+      if (paid > 0.0001) {
+        res.status(400).json({
+          success: false,
+          message: `Cannot cancel invoice ${docNo}. Active payments totaling ${paid.toFixed(3)} have already been settled against this invoice. Please unallocate or cancel the payment vouchers first.`,
+        });
+        return;
+      }
+    }
+
     await conn.execute(
       `BEGIN SP_CANCEL_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
       { cc: req.user.company_code, dn: docNo, dt: docType, lu: req.user.loginid }
     );
+    await conn.commit();
     res.json({ success: true, message: constants.MESSAGES.UPDATED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -2318,29 +2888,24 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
 export const deleteDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const doc_no = JSON.parse(req.query.doc_no as any);
+    const rawDocNo = req.query.doc_no;
+    if (typeof rawDocNo !== 'string' || !rawDocNo.trim() || !req.params.doc_type) {
+      res.status(400).json({ success: false, message: 'Document number and type are required' });
+      return;
+    }
+    // Accept both the current plain voucher number and legacy JSON-quoted strings.
+    const doc_no = rawDocNo.startsWith('"') ? JSON.parse(rawDocNo) : rawDocNo;
     const doc_type = req.params.doc_type;
     conn = await getConn(req);
     await conn.execute(
       `BEGIN SP_DELETE_DOCUMENT(:cc, :dn, :dt); END;`,
       { cc: req.user.company_code, dn: doc_no, dt: doc_type }
     );
+    await conn.commit();
     res.json({ success: true, message: constants.MESSAGES.DELETED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
-// export const deleteDetailItem = async (req: RequestWithUser, res: Response): Promise<void> => {
-//   let conn: oracledb.Connection | undefined;
-//   try {
-//     const { doc_no, doc_type, serial_no, div_code, table } = req.query as any;
-//     conn = await getConn(req);
-//     await conn.execute(
-//       `BEGIN SP_DELETE_DETAIL_ITEM(:cc, :dn, :dt, :dc, :sn, :tb); END;`,
-//       { cc: req.user.company_code, dn: doc_no, dt: doc_type, dc: div_code, sn: Number(serial_no), tb: table }
-//     );
-//     res.json({ success: true, data: 'Detail Item ' + constants.MESSAGES.DELETED_SUCCESSFULLY });
-//   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
-// };
 export const deleteDetailItem = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
@@ -2359,6 +2924,9 @@ export const deleteDetailItem = async (req: RequestWithUser, res: Response): Pro
       { cc: req.user.company_code, dt: doc_type, dn: doc_no, usr: req.user.loginid }
     );
 
+    req.body = { ...(req.body || {}), gst_lines: await readGstLines(conn, req.user.company_code, String(doc_type), String(doc_no)) };
+    await finalizeLegacyPosting(conn, req, String(doc_type), String(doc_no));
+    await conn.commit();
     res.json({ success: true, data: 'Detail Item ' + constants.MESSAGES.DELETED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -2377,6 +2945,7 @@ export const deleteChildrenItem = async (req: RequestWithUser, res: Response): P
         rd: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
       }
     );
+    await conn.commit();
     const rowsDeleted = (result.outBinds as any).rd;
     if (rowsDeleted > 0) {
       res.json({ success: true, data: `${String(table).toUpperCase()} ${constants.MESSAGES.DELETED_SUCCESSFULLY}` });
@@ -2452,6 +3021,30 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     }
 
     conn = await getConn(req);
+
+    // PB Logic Validation: Check for duplicate Supplier Invoice # (ref_no) on update for PI
+    if (h.doc_type === 'PI' && (h.ref_no?.trim() || h.invoice_no?.trim())) {
+      const checkRef = (h.ref_no?.trim() || h.invoice_no?.trim())!;
+      const checkDup: any = await conn.execute(
+        `SELECT doc_no, ref_no, invoice_number FROM TR_AC_HEADER
+         WHERE company_code = :cc AND doc_type = 'PI' AND ac_code = :ac
+           AND (UPPER(TRIM(ref_no)) = UPPER(TRIM(:ref)) OR UPPER(TRIM(invoice_number)) = UPPER(TRIM(:ref)))
+           AND doc_no <> :dn
+           AND NVL(canceled, 'N') <> 'Y'`,
+        { cc: req.user.company_code, ac: h.ac_code, ref: checkRef, dn: String(h.doc_no) },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (checkDup.rows && checkDup.rows.length > 0) {
+        const existingDocNo = checkDup.rows[0].DOC_NO || checkDup.rows[0].doc_no;
+        res.status(400).json({
+          success: false,
+          message: `Supplier Invoice # [${checkRef}] already exists for this vendor (Voucher #${existingDocNo}). Duplicate invoice numbers are not allowed.`
+        });
+        return;
+      }
+    }
+
+
 
     // Update header and delete existing child records
     await conn.execute(
@@ -2545,6 +3138,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
       { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
     );
 
+    await finalizeLegacyPosting(conn, req, h.doc_type, String(h.doc_no));
     await conn.commit(); // no-op, kept for safety
 
     console.log(`Updated purchase document ${h.doc_type} ${h.doc_no} with ${cleanDetail.length} detail rows`);
@@ -2571,6 +3165,252 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     const statusCode = err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR;
     const message = err.message ?? 'Error updating purchase document';
     res.status(statusCode).json({ success: false, message });
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const getCompanyFinanceSetup = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const companyCode = String(req.query.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_GET_COMPANY_FINANCE_SETUP(
+           :p_company_code,
+           :p_out_company,
+           :p_out_ac_setup,
+           :p_out_fy_periods
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_out_company: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_out_ac_setup: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_out_fy_periods: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR }
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const outBinds = result.outBinds as any;
+
+    const compCur = outBinds?.p_out_company;
+    const compRows = compCur ? await compCur.getRows(100) : [];
+    if (compCur) await compCur.close();
+
+    const setupCur = outBinds?.p_out_ac_setup;
+    const setupRows = setupCur ? await setupCur.getRows(100) : [];
+    if (setupCur) await setupCur.close();
+
+    const fyCur = outBinds?.p_out_fy_periods;
+    const fyRows = fyCur ? await fyCur.getRows(1000) : [];
+    if (fyCur) await fyCur.close();
+
+    const filteredFyPeriods = (fyRows || []).filter(
+      (p: any) => p && p.FY_PERIOD && String(p.FY_PERIOD).trim().toLowerCase() !== "all" && p.DATE_FROM && p.DATE_TO
+    );
+
+    res.json({
+      success: true,
+      data: {
+        company_info: compRows[0] || null,
+        ac_setup: setupRows[0] || null,
+        fy_periods: filteredFyPeriods
+      }
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const saveCompanyFinanceSetup = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const body = req.body || {};
+    const companyCode = String(body.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+    const userId = String(req.user.loginid || req.user.user_id || 'ADMIN').trim();
+
+    if (body.base_curr_code) {
+      const currCode = String(body.base_curr_code).trim().toUpperCase();
+      const currCheck = await conn.execute(
+        `SELECT COUNT(*) AS CNT FROM MS_CURRENCY WHERE UPPER(CURR_CODE) = :curr_code`,
+        { curr_code: currCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const cnt = (currCheck.rows as any[])?.[0]?.CNT || 0;
+      if (cnt === 0) {
+        res.status(400).json({ success: false, message: `Invalid Currency Code: "${currCode}". Please select a valid currency.` });
+        return;
+      }
+    }
+
+    if (body.ac_fy_period) {
+      const activePeriod = String(body.ac_fy_period).trim();
+      const periodRes = await conn.execute(
+        `SELECT TO_CHAR(DATE_FROM, 'YYYY-MM-DD') AS DF, TO_CHAR(DATE_TO, 'YYYY-MM-DD') AS DT 
+           FROM MS_FY_PERIOD 
+          WHERE COMPANY_CODE = :cc AND FY_PERIOD = :fp AND ROWNUM = 1`,
+        { cc: companyCode, fp: activePeriod },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const pRow: any = (periodRes.rows as any[])?.[0];
+      if (!pRow) {
+        res.status(400).json({ success: false, message: `Active Financial Period "${activePeriod}" does not exist in master.` });
+        return;
+      }
+
+      if (body.opn_fy_period) {
+        const opnPeriod = String(body.opn_fy_period).trim();
+        const opnRes = await conn.execute(
+          `SELECT TO_CHAR(DATE_FROM, 'YYYY-MM-DD') AS DF, TO_CHAR(DATE_TO, 'YYYY-MM-DD') AS DT 
+             FROM MS_FY_PERIOD 
+            WHERE COMPANY_CODE = :cc AND FY_PERIOD = :fp AND ROWNUM = 1`,
+          { cc: companyCode, fp: opnPeriod },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const opnRow: any = (opnRes.rows as any[])?.[0];
+        if (!opnRow) {
+          res.status(400).json({ success: false, message: `Opening Financial Period "${opnPeriod}" does not exist in master.` });
+          return;
+        }
+
+        const activeYear = pRow.DF ? pRow.DF.slice(0, 4) : null;
+        const opnYear = opnRow.DF ? opnRow.DF.slice(0, 4) : null;
+        if (activeYear && opnYear && activeYear !== opnYear) {
+          res.status(400).json({
+            success: false,
+            message: `Opening Financial Period (${opnPeriod}) belongs to year ${opnYear}, which cannot be used with Active Period (${activePeriod}) for year ${activeYear}.`
+          });
+          return;
+        }
+      }
+
+      if (body.doc_edit_from && body.doc_edit_to) {
+        if (body.doc_edit_from > body.doc_edit_to) {
+          res.status(400).json({ success: false, message: "Doc Edit From (Lock Date) cannot be after Doc Edit To (Max Date)." });
+          return;
+        }
+        if (pRow.DF && body.doc_edit_from < pRow.DF) {
+          res.status(400).json({ success: false, message: `Doc Edit From (${body.doc_edit_from}) cannot be earlier than Active Period Start (${pRow.DF}).` });
+          return;
+        }
+        if (pRow.DT && body.doc_edit_to > pRow.DT) {
+          res.status(400).json({ success: false, message: `Doc Edit To (${body.doc_edit_to}) cannot exceed Active Period End (${pRow.DT}).` });
+          return;
+        }
+      }
+    }
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_SAVE_COMPANY_FINANCE_SETUP(
+           :p_company_code,
+           :p_ac_fy_period,
+           :p_opn_fy_period,
+           :p_doc_edit_from,
+           :p_doc_edit_to,
+           :p_doc_date_editable,
+           :p_base_curr_code,
+           :p_amount_decimal_nos,
+           :p_price_decimal_nos,
+           :p_lcur_decimal_nos,
+           :p_user_id,
+           :p_status,
+           :p_message
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_ac_fy_period: body.ac_fy_period ? String(body.ac_fy_period).trim() : null,
+        p_opn_fy_period: body.opn_fy_period ? String(body.opn_fy_period).trim() : null,
+        p_doc_edit_from: body.doc_edit_from ? new Date(body.doc_edit_from) : null,
+        p_doc_edit_to: body.doc_edit_to ? new Date(body.doc_edit_to) : null,
+        p_doc_date_editable: body.doc_date_editable ? String(body.doc_date_editable).trim().toUpperCase() : 'Y',
+        p_base_curr_code: body.base_curr_code ? String(body.base_curr_code).trim().toUpperCase() : null,
+        p_amount_decimal_nos: body.amount_decimal_nos != null ? Number(body.amount_decimal_nos) : 2,
+        p_price_decimal_nos: body.price_decimal_nos != null ? Number(body.price_decimal_nos) : 2,
+        p_lcur_decimal_nos: body.lcur_decimal_nos != null ? Number(body.lcur_decimal_nos) : 2,
+        p_user_id: userId,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
+    );
+
+    const outBinds = result.outBinds as any;
+    const status = outBinds?.p_status;
+    const message = outBinds?.p_message;
+
+    if (status === 'ERROR') {
+      res.status(400).json({ success: false, message: message || 'Failed to save company finance setup' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: message || 'Company finance setup updated successfully'
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const saveFyPeriod = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const body = req.body || {};
+    const companyCode = String(body.company_code || req.user.company_code || 'BSG').trim().toUpperCase();
+    const userId = String(req.user.loginid || req.user.user_id || 'ADMIN').trim();
+
+    const result = await conn.execute(
+      `BEGIN
+         PROC_SAVE_MS_FY_PERIOD(
+           :p_company_code,
+           :p_fy_period,
+           :p_date_from,
+           :p_date_to,
+           :p_sort_order,
+           :p_action,
+           :p_user_id,
+           :p_status,
+           :p_message
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_fy_period: String(body.fy_period || '').trim(),
+        p_date_from: body.date_from ? new Date(body.date_from) : null,
+        p_date_to: body.date_to ? new Date(body.date_to) : null,
+        p_sort_order: body.sort_order != null ? Number(body.sort_order) : 99,
+        p_action: String(body.action || 'UPD').trim().toUpperCase(),
+        p_user_id: userId,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
+    );
+
+    const outBinds = result.outBinds as any;
+    const status = outBinds?.p_status;
+    const message = outBinds?.p_message;
+
+    if (status === 'ERROR') {
+      res.status(400).json({ success: false, message: message || 'Failed to save financial period' });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: message || 'Financial period updated successfully'
+    });
+  } catch (err) {
+    sendError(res, err);
   } finally {
     await closeConn(conn);
   }

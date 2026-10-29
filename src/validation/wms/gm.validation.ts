@@ -51,7 +51,7 @@ export const countrySchema = (
     company_code: Joi.string().valid(userCompany).required(),
     country_code: Joi.required(),
     country_name: Joi.string().required(),
-    country_gcc: Joi.string().valid("Y", "N").required(),
+    country_gcc: Joi.string().valid("Y", "N").default("N").optional().allow("", null),
     short_desc: Joi.string().allow("", null),
     nationality: Joi.string().allow("", null),
   });
@@ -88,8 +88,9 @@ export const producttypeSchema = (
 ) => {
   const baseSchema = Joi.object().keys({
     company_code: Joi.string().valid(userCompany).required(),
-    prodtype_code: Joi.string().required(),
-    prodtype_desc: Joi.string().required(),
+    prodtype_code: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
+    prodtype_desc: Joi.string().allow("", null),
+    prodtype_name: Joi.string().allow("", null),
   });
   const schema = Joi.array().items(baseSchema);
   return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
@@ -123,7 +124,7 @@ export const productSchema = (data: any) => {
   const schema = Joi.object({
     prod_code: Joi.string().optional().allow(null, ''), // Make optional for create
     company_code: Joi.string().required(),
-    prin_code: Joi.string().required(),
+    prin_code: Joi.string().allow("", null).optional(),
     prod_name: Joi.string().required(),
 
     // Required Number Fields
@@ -366,7 +367,8 @@ export const portSchema = (data: IPort) => {
 // export const manufactureSchema = (data: IManufacture) => {
 //   const schema = Joi.object().keys({
 //     company_code: Joi.string().required(),
-//     manu_code: Joi.string().required(),
+//     manu_code: Joi.string().allow("", null),
+//     manufacture_code: Joi.string().allow("", null),
 //     manu_name: Joi.string().required(),
 //     prin_code: Joi.string().allow("", null),
 //   });
@@ -376,7 +378,8 @@ export const manufactureSchema = (data: IManufacture) => {
   const schema = Joi.object({
     company_code: Joi.string().required(),
 
-    manu_code: Joi.string().required(),
+    manu_code: Joi.string().allow("", null),
+    manufacture_code: Joi.string().allow("", null),
     manu_name: Joi.string().required(),
     prin_code: Joi.string().allow("", null),
 
@@ -425,7 +428,7 @@ export const groupSchema = (data: IGroup) => {
 export const brandSchema = (data: IBrand) => {
   const schema = Joi.object().keys({
     brand_code: Joi.string().allow("", null),
-    prin_code: Joi.string().required(),
+    prin_code: Joi.string().allow("", null).optional(),
     group_code: Joi.string().required(),
     brand_name: Joi.string().allow("", null),
     pref_site: Joi.string().allow(null, ""),
@@ -657,21 +660,52 @@ export const airlineSchema = (data: IAirLine) => {
   return schema.validate(data);
 };
 
-export const partnerSchema = (data: IPartner) => {
+export const partnerSchema = (data: any) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    broker_code: Joi.string().required(),
+    broker_code: Joi.string().allow(null, "").optional(),
     broker_name: Joi.string().required(),
+    partner_type: Joi.string().allow("", null),
+    broker_stat: Joi.string().allow("", null),
+    country_code: Joi.string().allow("", null),
+    broker_city: Joi.string().allow("", null),
+    territory_code: Joi.string().allow("", null),
+    price_check: Joi.string().allow("", null),
+    curr_code: Joi.string().allow("", null),
+    broker_acref: Joi.string().allow("", null),
+    payment_terms: Joi.alternatives().try(Joi.number(), Joi.string().allow("", null)),
+    broker_credit: Joi.alternatives().try(Joi.number(), Joi.string().allow("", null)),
+    trn_no: Joi.string().allow("", null),
+    tax_registrd: Joi.string().allow("", null),
+    tax_country_code: Joi.string().allow("", null),
+    prin_infze: Joi.string().allow("", null),
     broker_addr1: Joi.string().allow("", null),
     broker_addr2: Joi.string().allow("", null),
     broker_addr3: Joi.string().allow("", null),
-    broker_city: Joi.string().allow("", null),
+    broker_addr4: Joi.string().allow("", null),
     broker_contact1: Joi.string().allow("", null),
     broker_telno1: Joi.string().allow("", null),
+    broker_faxno1: Joi.string().allow("", null),
     broker_email1: Joi.string().allow("", null),
-    curr_code : Joi.string().allow("", null),
-    //broker_stat: Joi.string().allow("",null),
-  });
+    broker_contact2: Joi.string().allow("", null),
+    broker_telno2: Joi.string().allow("", null),
+    broker_faxno2: Joi.string().allow("", null),
+    broker_email2: Joi.string().allow("", null),
+    broker_contact3: Joi.string().allow("", null),
+    broker_telno3: Joi.string().allow("", null),
+    broker_faxno3: Joi.string().allow("", null),
+    broker_email3: Joi.string().allow("", null),
+    broker_imp_code: Joi.string().allow("", null),
+    broker_lic_no: Joi.string().allow("", null),
+    broker_lic_type: Joi.string().allow("", null),
+    importer_code: Joi.string().allow("", null),
+    broker_ref1: Joi.string().allow("", null),
+    broker_ref2: Joi.string().allow("", null),
+    broker_ref3: Joi.string().allow("", null),
+    service_date: Joi.alternatives().try(Joi.date(), Joi.string().allow("", null)),
+    user_id: Joi.string().allow("", null),
+    date_time: Joi.alternatives().try(Joi.date(), Joi.string().allow("", null)),
+  }).unknown(true);
   return schema.validate(data);
 };
 
@@ -696,7 +730,7 @@ export const currencySchema = (data: ICurrency) => {
   const schema = Joi.object().keys({
     curr_code: Joi.string().required(),
     curr_name: Joi.string().required(),
-    ex_rate: Joi.string().allow("", null),
+    ex_rate: Joi.alternatives().try(Joi.string(), Joi.number()).allow("", null),
     division: Joi.string().allow(null, ""),
     subdivision: Joi.number().allow(null, ""),
     company_code: Joi.string().required(),
@@ -825,7 +859,8 @@ export const activitysubgroupSchema = (data: IActivitysubgroup) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
     activity_subgroup_code: Joi.string().required(),
-    act_subgroup_name: Joi.string().required(),
+    act_subgroup_name: Joi.string().allow("", null),
+    activity_subgroup_desc: Joi.string().allow("", null),
     //mandatory_flag:Joi.string().allow(null,""),
     act_group_code: Joi.string().required(),
     //validate_flag: Joi.string().allow(null,""),
@@ -1137,7 +1172,8 @@ export const LocationtypeSchema = (data: ILocationType) => {
     // user_id: Joi.string().required(),
     user_dt: Joi.date().allow("", null),
     company_code: Joi.string().required(),
-    loc_name: Joi.string().required(),
+    loc_name: Joi.string().allow("", null),
+    loc_desc: Joi.string().allow("", null),
   });
   return schema.validate(data);
 };
@@ -1147,7 +1183,7 @@ export const customerSchemaWms = (data: ICustomer) => {
   cust_code: Joi.string().allow(""),
   company_code: Joi.string().required(),
   cust_name: Joi.string().required(),
-  prin_code: Joi.string().required(),
+  prin_code: Joi.string().allow("", null).optional(),
   curr_code: Joi.string().allow("", null),
   country_code: Joi.string().allow("", null),
   cust_addr1: Joi.string().allow("", null),

@@ -83,7 +83,7 @@ export const insUpdHrSalaryAdvDed = async (
       COMPANY_CODE: header.company_code ?? null,
 
       // HARD CODE
-      DOC_TYPE: "SA",
+      DOC_TYPE: header.doc_type ?? "ADV",
 
       DOC_NO: toNumber(header.doc_no),
       DOC_DATE: toDate(header.doc_date),
@@ -185,7 +185,7 @@ export const insUpdHrSalaryAdvDed = async (
       COMPANY_CODE: d.company_code ?? header.company_code ?? null,
 
       // HARD CODE
-      DOC_TYPE: "ADV",
+      DOC_TYPE: d.doc_type ?? "ADV",
 
       DOC_NO: toNumber(d.doc_no),
 
@@ -300,8 +300,12 @@ export const insUpdHrSalaryAdvDed = async (
      * CREATE ORACLE OBJECTS
      * ============================================================
      */
+    console.log('headerRow:',headerRow);
+    console.log('detailRows:',detailRows);
     const headerObject = new HeaderObjClass(headerRow);
+        console.log('headerObject:',headerObject);
     const headerCollection = new HeaderTabClass([headerObject]);
+        console.log('headerCollection:',headerCollection);
 
     const detailObjects = detailRows.map(
       (row: any) => new DetailObjClass(row)

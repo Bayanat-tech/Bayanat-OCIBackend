@@ -2,16 +2,18 @@
  * Dynamic HR Reports Controller
  * Route:  GET|POST  /hr-reports/:type/:report
  *   type   = html | excel
- *   report = joiner | register | leavers | tenure | attendance | accrual | payunit
+ *   report = joiner | register | leavers | tenure | attendance | accrual | payunit | passport | airticket | listing | airfare
  *
  * Uses PROC_BUILD_DYNAMIC_SQL_HR_REPORT + report_common (header/footer/CSS).
  * Config-driven so adding another report is mostly a new entry in REPORT_CONFIG.
  *
  * Grouping: driven by the `group_by` value sent from the UI
- *   (DIV, DEPT, SECT, DESG, LABOUR_DESG, SEP_REASON, REASON_SUB, GRADE_DESG, EMP).
+ *   (DIV, DEPT, SECT, DESG, LABOUR_DESG, SEP_REASON, REASON_SUB, GRADE_DESG, EMP, GRADE, CATEGORY).
  *   Each group renders: header (code - name) -> rows -> subtotal; grand total at the end.
+ *   Groups are sorted with "unassigned" (blank) groups last, numeric-aware.
  *
  * `attendance` uses a custom layout (Division/Dept/Section -> Employee -> period lines -> total).
+ * `listing` builds its columns per request (the column it is grouped by is hidden).
  */
 
 import { Response } from "express";
@@ -40,7 +42,11 @@ type ReportKey =
   | "tenure"
   | "attendance"
   | "accrual"
-  | "payunit";
+  | "payunit"
+  | "passport"
+  | "airticket"
+  | "listing"
+  | "airfare";
 
 interface HrBinds {
   parameter: string;
@@ -92,6 +98,8 @@ interface ReportConfig {
   title: string;
   orientation: "portrait" | "landscape";
   columns: ColumnDef[];
+  /** build columns per request (e.g. hide the column the report is grouped by) */
+  columnsFor?: (req: RequestWithUser) => ColumnDef[];
   /** custom layout renderer (HTML + Excel) instead of the generic grouped table */
   custom?: "attendance";
   /** group sub-total label, receives the group header text (default: "Total No. of Employees in …") */
@@ -189,6 +197,20 @@ function pick(req: RequestWithUser, ...keys: string[]): string {
   return "";
 }
 
+/** company_code sent by the frontend (useAuth) – always feeds code1 */
+function companyOf(req: RequestWithUser): string {
+  return (
+    pick(req, "company_code", "as_companycode", "as_company_code") ||
+    text(req.user?.company_code) ||
+    "All"
+  );
+}
+
+/** loginid = user_id sent by the frontend (useAuth) */
+function loginOf(req: RequestWithUser): string {
+  return pick(req, "loginid", "user_id") || text(req.user?.loginid) || "ADMIN";
+}
+
 /**
  * Returns the date as a 'YYYY-MM-DD' string (or null).
  * Accepts 'YYYY-MM-DD[...]' (ISO, incl. timestamps) and 'DD/MM/YYYY' or 'DD-MM-YYYY'.
@@ -256,12 +278,46 @@ const GROUP_DEFS: Record<string, GroupDef> = {
       `${codeName("grade_code", "grade_name")(r)} / ${codeName("desg_code", "desg_name")(r)}`,
   },
   EMP:         { label: "Employee",           labelFn: codeName("employee_code", "rpt_name") },
+  // Air ticket request listing
+  STATUS:      { label: "Status",             labelFn: (r) => text(r.ticket_status) || "—" },
+  AGENT:       { label: "Agent",              labelFn: (r) => text(r.travel_agent_code) || "—" },
+};
+
+/** Name-only labels (code only if the name is missing), as in the legacy Employee Listing */
+const nameOnly = (c: string, n: string) => (r: ReportRow) =>
+  text(r[n]) || text(r[c]) || "—";
+
+/** Group definitions for the Employee Listing report (keys match the UI `group_by` values) */
+const LISTING_GROUP_DEFS: Record<string, GroupDef> = {
+  DESG:        { label: "Designation",        labelFn: nameOnly("desg_code", "desg_name") },
+  GRADE:       { label: "Grade",              labelFn: nameOnly("grade_code", "grade_name") },
+  GRADE_DESG: {
+    label: "Grade + Designation",
+    labelFn: (r) =>
+      `${nameOnly("grade_code", "grade_name")(r)} / ${nameOnly("desg_code", "desg_name")(r)}`,
+  },
+  DIV:         { label: "Division",           labelFn: nameOnly("div_code", "div_name") },
+  DEPT:        { label: "Department",         labelFn: nameOnly("dept_code", "dept_name") },
+  SECT:        { label: "Section",            labelFn: nameOnly("section_code", "section_name") },
+  LABOUR_DESG: { label: "Formal Designation", labelFn: nameOnly("labour_desg_code", "labour_desg_name") },
+  CATEGORY:    { label: "Category",           labelFn: nameOnly("category_code", "category_name") },
 };
 
 function resolveGroup(req: RequestWithUser, cfg: ReportConfig): GroupDef | null {
   // no generic grouping for these
-  if (cfg.key === "tenure" || cfg.key === "attendance" || cfg.key === "accrual") return null;
+  if (
+    cfg.key === "tenure" ||
+    cfg.key === "attendance" ||
+    cfg.key === "accrual" ||
+    cfg.key === "passport" ||
+    cfg.key === "airfare"
+  )
+    return null;
   const k = pick(req, "group_by").toUpperCase();
+  // Air ticket: Status wise (default) or Agent wise – same query, different grouping
+  if (cfg.key === "airticket") return k === "AGENT" ? GROUP_DEFS.AGENT : GROUP_DEFS.STATUS;
+  // Employee Listing: name-only labels, Designation by default
+  if (cfg.key === "listing") return LISTING_GROUP_DEFS[k] || LISTING_GROUP_DEFS.DESG;
   if (k && GROUP_DEFS[k]) return GROUP_DEFS[k];
   if (cfg.key === "register") {
     // No group_by sent from the UI: keep Division | Dept | Section path
@@ -271,10 +327,26 @@ function resolveGroup(req: RequestWithUser, cfg: ReportConfig): GroupDef | null 
   return GROUP_DEFS.DIV;
 }
 
-/** Stable sort so each group is contiguous; original SQL order is kept inside a group */
+/** True when a group label is only placeholders ("—", "— / —") i.e. nothing assigned */
+const isEmptyGroupLabel = (k: string): boolean => k.replace(/[—\s/]/g, "") === "";
+
+/**
+ * Stable sort so each group is contiguous.
+ *  - unassigned ("—") groups go LAST (instead of an empty group at the top)
+ *  - numeric-aware, case-insensitive comparison
+ *  - original SQL order is kept inside a group
+ */
 function applyGrouping(rows: ReportRow[], g: GroupDef | null): ReportRow[] {
   if (!g) return rows;
-  return [...rows].sort((a, b) => g.labelFn(a).localeCompare(g.labelFn(b)));
+  const keyed = rows.map((r, i) => ({ r, i, k: g.labelFn(r) }));
+  keyed.sort((a, b) => {
+    const ae = isEmptyGroupLabel(a.k);
+    const be = isEmptyGroupLabel(b.k);
+    if (ae !== be) return ae ? 1 : -1;
+    const c = a.k.localeCompare(b.k, undefined, { numeric: true, sensitivity: "base" });
+    return c !== 0 ? c : a.i - b.i;
+  });
+  return keyed.map((x) => x.r);
 }
 
 function groupHeaderText(g: GroupDef, row: ReportRow): string {
@@ -394,7 +466,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_JOINER_LIST");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -408,7 +480,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -449,7 +520,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_REGISTER");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -463,7 +534,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -499,7 +569,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_LEAVERS");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -512,7 +582,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "From", value: pick(req, "sep_from", "adt_join_from", "date_from") },
@@ -543,7 +612,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_TENURE");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -555,7 +624,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Employee ID", value: pick(req, "employee_id", "as_employee_id") || "All" },
@@ -584,7 +652,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_ATTENDANCE_REGISTER");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -597,7 +665,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -631,7 +698,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_ACCRUAL_BALANCE");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -641,7 +708,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -676,7 +742,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_PAYUNIT_LIST");
-      b.code1 = pick(req, "company_code", "as_companycode") || "All";
+      b.code1 = companyOf(req);
       b.code2 = pick(req, "div_code", "as_divcode") || "All";
       b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
       b.code4 = pick(req, "section_code", "as_sectcode") || "All";
@@ -690,7 +756,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     },
     buildFilters(req) {
       return [
-        { label: "Company", value: pick(req, "company_code", "as_companycode") || "All" },
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
@@ -706,13 +771,255 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
       return `(By ${g.label})`;
     },
   },
+
+  // 8. Passport Expiry Listing
+  passport: {
+    key: "passport",
+    procedureParam: "Hr_Report_PASSPORT_EXPIRY_LISTING",
+    title: "Passport Expiry List",
+    orientation: "landscape",
+    columns: [
+      { key: "_sno", header: "SNo.", align: "center", width: 4, format: "sno" },
+      { key: "employee_code", header: "Employee Code", width: 8 },
+      { key: "rpt_name", header: "Employee Name", width: 14 },
+      { key: "div_name", header: "Division", width: 9 },
+      { key: "dept_name", header: "Department", width: 9 },
+      { key: "section_name", header: "Section", width: 8 },
+      { key: "desg_name", header: "Designation", width: 9 },
+      { key: "ppt_no", header: "Passport No.", width: 8 },
+      { key: "ppt_country", header: "Country", width: 7 },
+      { key: "ppt_valid_from", header: "Valid From", width: 7, format: "date", align: "center" },
+      { key: "ppt_valid_to", header: "Valid To", width: 7, format: "date", align: "center" },
+      { key: "passport_with", header: "Ppt With", width: 6, align: "center" },
+      { key: "valid_days", header: "Valid Days", width: 6, format: "number", align: "right" },
+    ],
+    buildBinds(req, loginid) {
+      const b = emptyBinds(loginid, "Hr_Report_PASSPORT_EXPIRY_LISTING");
+      b.code1 = companyOf(req);
+      b.code2 = pick(req, "div_code", "as_divcode") || "All";
+      b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
+      b.code4 = pick(req, "section_code", "as_sectcode") || "All";
+      b.code5 = pick(req, "grade_code", "as_gradecode") || "All";
+      b.code6 = pick(req, "desg_code", "as_desgcode") || "All";
+      b.code7 = pick(req, "employee_code", "as_empcode") || "All";
+      b.code8 = pick(req, "emp_status", "as_emp_status") || "All";
+      b.date1 = pickDate(req, "pp_expiry_from", "adt_pp_expiry_from", "date_from");
+      b.date2 = pickDate(req, "pp_expiry_to", "adt_pp_expiry_to", "date_to");
+      return b;
+    },
+    buildFilters(req) {
+      return [
+        { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
+        { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
+        { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
+        { label: "Grade", value: pick(req, "grade_code", "as_gradecode") || "All" },
+        { label: "Designation", value: pick(req, "desg_code", "as_desgcode") || "All" },
+        { label: "Employee", value: pick(req, "employee_code", "as_empcode") || "All" },
+        { label: "From", value: pick(req, "pp_expiry_from", "adt_pp_expiry_from", "date_from") },
+        { label: "To", value: pick(req, "pp_expiry_to", "adt_pp_expiry_to", "date_to") },
+        { label: "Status", value: pick(req, "emp_status", "as_emp_status") || "All" },
+      ];
+    },
+    subtitle(req) {
+      const from = pick(req, "pp_expiry_from", "adt_pp_expiry_from", "date_from");
+      const to = pick(req, "pp_expiry_to", "adt_pp_expiry_to", "date_to");
+      return from || to ? `For the Period of ${from || "…"} – ${to || "…"}` : "";
+    },
+  },
+
+  // 9. Air Ticket Request Listing (Status wise / Agent wise – same query, grouped differently)
+  airticket: {
+    key: "airticket",
+    procedureParam: "Hr_Report_AIRTICKET_REQUEST_LIST",
+    title: "Air Ticket Request Listing",
+    orientation: "landscape",
+    showCount: false,
+    totalLabel: (g) => `Total for ${g}`,
+    columns: [
+      { key: "doc_no", header: "Doc No", width: 6, align: "center" },
+      { key: "doc_date", header: "Doc Date", width: 8, format: "date", align: "center" },
+      { key: "employee_code", header: "Employee Code", width: 8 },
+      { key: "rpt_name", header: "Employee Name", width: 14 },
+      { key: "fare_description", header: "Fare Description", width: 15 },
+      { key: "oneortwo_way", header: "One/Two Way", width: 6, align: "center" },
+      { key: "travell_class", header: "Travel Class", width: 7, align: "center" },
+      { key: "outbound_date", header: "Departure Date", width: 8, format: "date", align: "center" },
+      { key: "inbound_date", header: "Return Date", width: 8, format: "date", align: "center" },
+      { key: "noof_adult", header: "No. Adult", width: 4, format: "number", align: "right" },
+      { key: "noof_child", header: "No. Child", width: 4, format: "number", align: "right" },
+      { key: "noof_infent", header: "No. Infant", width: 4, format: "number", align: "right" },
+      { key: "total_amount", header: "Total Amount", width: 8, format: "amount", align: "right" },
+    ],
+    buildBinds(req, loginid) {
+      const b = emptyBinds(loginid, "Hr_Report_AIRTICKET_REQUEST_LIST");
+      b.code1 = companyOf(req);
+      b.code2 = pick(req, "div_code", "as_div_code") || "All";
+      b.code3 = pick(req, "dept_code", "as_dept_code") || "All";
+      b.code4 = pick(req, "section_code", "as_section_code") || "All";
+      b.code5 = pick(req, "employee_code", "as_emplyoee_code") || "All";
+      b.date1 = pickDate(req, "req_from", "adt_from", "date_from");
+      b.date2 = pickDate(req, "req_to", "adt_to", "date_to");
+      return b;
+    },
+    buildFilters(req) {
+      return [
+        { label: "Division", value: pick(req, "div_code", "as_div_code") || "All" },
+        { label: "Department", value: pick(req, "dept_code", "as_dept_code") || "All" },
+        { label: "Section", value: pick(req, "section_code", "as_section_code") || "All" },
+        { label: "Employee", value: pick(req, "employee_code", "as_emplyoee_code") || "All" },
+        { label: "From", value: pick(req, "req_from", "adt_from", "date_from") },
+        { label: "To", value: pick(req, "req_to", "adt_to", "date_to") },
+      ];
+    },
+    subtitle(req) {
+      const agent = pick(req, "group_by").toUpperCase() === "AGENT";
+      const from = pick(req, "req_from", "adt_from", "date_from");
+      const to = pick(req, "req_to", "adt_to", "date_to");
+      const period = from || to ? ` for the period ${from || "…"} – ${to || "…"}` : "";
+      return `(${agent ? "Agent" : "Status"} wise)${period}`;
+    },
+  },
+
+  // 10. Employee Listing (grouped by Designation / Grade / Division / … – name-only labels)
+  listing: {
+    key: "listing",
+    procedureParam: "Hr_Report_EMPLOYEE_LISTING",
+    title: "Employee Listing",
+    orientation: "landscape",
+    showCount: true,
+    // group text arrives as "Designation : Accountant" -> "Total No. of Accountant : 1"
+    totalLabel: (g) => `Total No. of ${g.replace(/^[^:]*:\s*/, "")}`,
+    columns: [], // replaced per request by columnsFor
+    columnsFor(req) {
+      const k = pick(req, "group_by").toUpperCase() || "DESG";
+      // the column the report is grouped by is hidden (it is already in the group header)
+      const hide: Record<string, string[]> = {
+        DIV: ["div_name"],
+        DEPT: ["dept_name"],
+        SECT: ["section_name"],
+        GRADE: ["grade_name"],
+        DESG: ["desg_name"],
+        GRADE_DESG: ["grade_name", "desg_name"],
+      };
+      const all: ColumnDef[] = [
+        { key: "employee_code", header: "Employee Code", width: 12 },
+        { key: "rpt_name", header: "Employee Name", width: 24 },
+        { key: "join_date", header: "Join Date", width: 9, format: "date", align: "center" },
+        { key: "div_name", header: "Division", width: 14 },
+        { key: "dept_name", header: "Department", width: 14 },
+        { key: "section_name", header: "Section", width: 11 },
+        { key: "grade_name", header: "Grade", width: 9 },
+        { key: "desg_name", header: "Designation", width: 14 },
+        { key: "nationality", header: "Nationality", width: 8, align: "center" },
+      ];
+      const cols = all.filter((c) => !(hide[k] || []).includes(c.key));
+      // re-normalise widths to 100% so the table fills the page after hiding a column
+      const sum = cols.reduce((s, c) => s + (c.width || 0), 0) || 1;
+      return cols.map((c) => ({ ...c, width: Math.round(((c.width || 0) / sum) * 1000) / 10 }));
+    },
+    buildBinds(req, loginid) {
+      const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_LISTING");
+      b.code1 = companyOf(req);
+      b.code2 = pick(req, "div_code", "as_divcode") || "All";
+      b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
+      b.code4 = pick(req, "section_code", "as_sectcode") || "All";
+      b.code5 = pick(req, "grade_code", "as_gradecode") || "All";
+      b.code6 = pick(req, "desg_code", "as_desgcode") || "All";
+      b.code7 = pick(req, "labour_desg_code", "as_labordesgcode") || "All";
+      b.code8 = pick(req, "emp_status", "as_empstatus") || "All";
+      b.code9 = pick(req, "employee_code", "as_empcode") || "All";
+      b.code10 = pick(req, "group_by").toUpperCase() || "DESG"; // category columns only when 'CATEGORY'
+      b.code11 = pick(req, "category_code") || "All";
+      b.date1 = pickDate(req, "join_from", "adt_join_from", "date_from");
+      b.date2 = pickDate(req, "join_to", "adt_join_to", "date_to");
+      return b;
+    },
+    buildFilters(req) {
+      return [
+        { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
+        { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
+        { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
+        { label: "Grade", value: pick(req, "grade_code", "as_gradecode") || "All" },
+        { label: "Designation", value: pick(req, "desg_code", "as_desgcode") || "All" },
+        { label: "Employee", value: pick(req, "employee_code", "as_empcode") || "All" },
+        { label: "From", value: pick(req, "join_from", "adt_join_from", "date_from") },
+        { label: "To", value: pick(req, "join_to", "adt_join_to", "date_to") },
+        { label: "Status", value: pick(req, "emp_status", "as_empstatus") || "All" },
+      ];
+    },
+    subtitle(req) {
+      const k = pick(req, "group_by").toUpperCase();
+      return `(By ${(LISTING_GROUP_DEFS[k] || LISTING_GROUP_DEFS.DESG).label})`;
+    },
+  },
+
+  // 11. Employee Airfare Report (Opening / Accrued / Availed / Closing – units & amounts)
+  airfare: {
+    key: "airfare",
+    procedureParam: "Hr_Report_AIRFARE_REPORT",
+    title: "Employee Airfare Report",
+    orientation: "landscape",
+    showCount: false,
+    columns: [
+      { key: "_sno", header: "SNo.", align: "center", width: 5, format: "sno" },
+      { key: "employee_code", header: "Employee Code", width: 12 },
+      { key: "rpt_name", header: "Employee Name", width: 24 },
+      { key: "accrual_type", header: "Type", width: 6, align: "center" },
+      { key: "opening_bal_units", header: "Opening Unit", width: 9, format: "amount", align: "right" },
+      { key: "opening_bal_amt", header: "Opening Amnt", width: 9, format: "amount", align: "right" },
+      { key: "air_acr_unit", header: "Accrued Unit", width: 9, format: "amount", align: "right" },
+      { key: "air_acr_amnt", header: "Accrued Amnt", width: 9, format: "amount", align: "right" },
+      { key: "air_avl_unit", header: "Availed Unit", width: 9, format: "amount", align: "right" },
+      { key: "air_avl_amnt", header: "Availed Amnt", width: 9, format: "amount", align: "right" },
+      { key: "balance_unit", header: "Closing Unit", width: 9, format: "amount", align: "right" },
+      { key: "balance_amnt", header: "Closing Amnt", width: 9, format: "amount", align: "right" },
+    ],
+    buildBinds(req, loginid) {
+      const b = emptyBinds(loginid, "Hr_Report_AIRFARE_REPORT");
+      b.code1 = companyOf(req);
+      b.code2 = pick(req, "div_code", "as_divcode") || "All";
+      b.code3 = pick(req, "dept_code", "as_deptcode") || "All";
+      b.code4 = pick(req, "section_code", "as_sectcode") || "All";
+      b.code5 = pick(req, "employee_code", "as_empid") || "All";
+      b.code7 = pick(req, "history") || "N";
+      const m = parseInt(pick(req, "pay_month"), 10);
+      b.number1 = Number.isFinite(m) && m >= 1 && m <= 12 ? m : null;
+      const y = parseInt(pick(req, "pay_year"), 10);
+      b.number2 = Number.isFinite(y) && y > 1900 ? y : null;
+      return b;
+    },
+    buildFilters(req) {
+      return [
+        { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
+        { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
+        { label: "Section", value: pick(req, "section_code", "as_sectcode") || "All" },
+        { label: "Employee", value: pick(req, "employee_code", "as_empid") || "All" },
+        { label: "Pay Month", value: pick(req, "pay_month") || "All" },
+        { label: "Pay Year", value: pick(req, "pay_year") || "" },
+        { label: "History", value: pick(req, "history") || "N" },
+      ];
+    },
+    subtitle(req) {
+      const MONTH_NAMES = ["", "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+      const m = parseInt(pick(req, "pay_month"), 10);
+      const y = pick(req, "pay_year");
+      let period = "";
+      if (Number.isFinite(m) && m >= 1 && m <= 12) period = MONTH_NAMES[m];
+      if (y) period = period ? `${period} ${y}` : `Year ${y}`;
+      if (!period) period = pick(req, "history") === "Y" ? "All periods (history)" : "—";
+      return `for the month ${period}`;
+    },
+  },
 };
 
 // ─── Data loader ──────────────────────────────────────────────────────────
 
 async function loadReportData(req: RequestWithUser, cfg: ReportConfig): Promise<ReportRow[]> {
-  const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
+  const loginid = loginOf(req);
   const binds = cfg.buildBinds(req, loginid);
+  binds.code1 = companyOf(req); // company_code is ALWAYS code1, for every report
+  binds.loginid = loginid;
   console.log(`Loading report data for ${cfg.key} (loginid=${loginid}) with binds:`, binds);
   const conn = await getConn(req);
   try {
@@ -1187,9 +1494,8 @@ function buildExcelBuffer(
       const dataRow: XlRow = cfg.columns.map((col) => {
         if (col.format === "sno") return cell(sno, "dataCenter");
         const raw = row[col.key];
-        if (col.format === "amount" || col.format === "number") {
-          return cell(num(raw), "dataNum");
-        }
+        if (col.format === "amount") return cell(num(raw), "dataNum");
+        if (col.format === "number") return cell(num(raw), "dataInt"); // whole numbers (days, durations)
         if (col.format === "date") return cell(dateText(raw), "dataCenter");
         if (col.key === "employee") {
           return cell(`${text(row.employee_code)} ${text(row.rpt_name)}`, "data");
@@ -1300,6 +1606,12 @@ function buildExcelBuffer(
       numFmt: "#,##0.00",
       border: { bottom: { color: { rgb: "FFE2E8F0" } } },
     },
+    dataInt: {
+      font: { sz: 10 },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "#,##0",
+      border: { bottom: { color: { rgb: "FFE2E8F0" } } },
+    },
     footer: {
       font: { italic: true, sz: 8, color: { rgb: "FF64748B" } },
       alignment: { horizontal: "right" },
@@ -1384,10 +1696,28 @@ function buildExcelBuffer(
 
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
+  // ── Auto-fit column widths ──
+  // `cfg.columns[].width` is a % used by the HTML table, so it is NOT used for Excel.
+  // Excel widths come from the longest header / cell value in each column
+  // (merged title / group / total rows are skipped so they do not stretch column A).
+  const FIT_STYLES = new Set(["data", "dataCenter", "dataNum", "dataInt"]);
+  const fitLen = new Array<number>(COL).fill(0);
+  cfg.columns.forEach((c, i) => {
+    fitLen[i] = Math.min(text(c.header).length, 18); // headers wrap, so cap their weight
+  });
+  sheetRows.forEach((row) => {
+    row.forEach((c, ci) => {
+      if (!c || ci >= COL || !FIT_STYLES.has(c.styleKey)) return;
+      const len = typeof c.v === "number" ? amtFmt(c.v).length : text(c.v).length;
+      if (len > fitLen[ci]) fitLen[ci] = len;
+    });
+  });
+  const colWidth = (i: number): number => Math.min(Math.max(fitLen[i] + 3, 10), 50);
+
   const colXml = cfg.columns
     .map(
-      (c, i) =>
-        `<col min="${i + 1}" max="${i + 1}" width="${c.width || 14}" customWidth="1"/>`
+      (_c, i) =>
+        `<col min="${i + 1}" max="${i + 1}" width="${colWidth(i)}" customWidth="1"/>`
     )
     .join("");
 
@@ -1552,7 +1882,7 @@ function buildExcelBuffer(
 /**
  * GET|POST /hr-reports/:type/:report
  * type   = html | excel
- * report = joiner | register | leavers | tenure | attendance | accrual | payunit
+ * report = joiner | register | leavers | tenure | attendance | accrual | payunit | passport | airticket | listing | airfare
  */
 export const getHrReport = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
@@ -1564,8 +1894,8 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
       return;
     }
 
-    const cfg = REPORT_CONFIG[reportKey];
-    if (!cfg) {
+    const baseCfg = REPORT_CONFIG[reportKey];
+    if (!baseCfg) {
       res.status(400).json({
         success: false,
         message: `Unknown report '${reportKey}'. Valid: ${Object.keys(REPORT_CONFIG).join(", ")}`,
@@ -1573,9 +1903,14 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
       return;
     }
 
+    // Per-request columns (e.g. Employee Listing hides the column it is grouped by)
+    const cfg: ReportConfig = baseCfg.columnsFor
+      ? { ...baseCfg, columns: baseCfg.columnsFor(req) }
+      : baseCfg;
+
     const group = resolveGroup(req, cfg);
     const rows = applyGrouping(await loadReportData(req, cfg), group);
-    const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
+    const loginid = loginOf(req);
 
     if (type === "excel") {
       const buffer = buildExcelBuffer(cfg, rows, loginid, group);
@@ -1590,10 +1925,8 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
     }
 
     // HTML
-    const companyCode =
-      pick(req, "company_code", "as_companycode") ||
-      text(req.user?.company_code) ||
-      "BSG";
+    const company = companyOf(req);
+    const companyCode = company === "All" ? "BSG" : company;
 
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
@@ -1652,5 +1985,21 @@ export const getHrAccrualReport = (req: RequestWithUser, res: Response) => {
 };
 export const getHrPayUnitReport = (req: RequestWithUser, res: Response) => {
   req.params.report = "payunit";
+  return getHrReport(req, res);
+};
+export const getHrPassportReport = (req: RequestWithUser, res: Response) => {
+  req.params.report = "passport";
+  return getHrReport(req, res);
+};
+export const getHrAirTicketReport = (req: RequestWithUser, res: Response) => {
+  req.params.report = "airticket";
+  return getHrReport(req, res);
+};
+export const getHrListingReport = (req: RequestWithUser, res: Response) => {
+  req.params.report = "listing";
+  return getHrReport(req, res);
+};
+export const getHrAirfareReport = (req: RequestWithUser, res: Response) => {
+  req.params.report = "airfare";
   return getHrReport(req, res);
 };

@@ -1,3 +1,4 @@
+import { prepareLedgerRows } from "./ledgerReportRows";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
@@ -9,11 +10,25 @@ import {
 } from "../../../common/report_common";
 
 /* ── helpers ─────────────────────────────────────────────────────── */
-const money = (v: any) => {
+
+/** Decimals for a currency code (OMR → 3, INR/USD → 2). Defaults to 3. */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
+
+const makeMoney = (decimals: number) => (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 };
 
@@ -24,9 +39,6 @@ const formatDateStr = (v: any) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
-
-const formatBalance = (value: number) =>
-  value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
 /**
  * Report-specific CSS only.
@@ -234,12 +246,19 @@ export const getLedgerWithDetailsReport = async (
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
-    const rows = ((dataResult.rows as any[]) || []).map((row) =>
+    const rawRows = ((dataResult.rows as any[]) || []).map((row) =>
       Object.keys(row).reduce((acc: any, key) => {
         acc[key.toLowerCase()] = row[key];
         return acc;
       }, {})
     );
+
+    // Currency = CURR_CODE of the first row
+    const rows = prepareLedgerRows(rawRows, false);
+    const reportCurrency = text(rows[0]?.curr_code).trim(); // "" when no rows
+    const money = makeMoney(currencyDecimals(reportCurrency));
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
     // Group by account
     const groups: Record<string, any[]> = {};
@@ -377,7 +396,7 @@ export const getLedgerWithDetailsReport = async (
       <div class="section-strip">
         Date: ${formatDateStr(new Date())}
         &nbsp;|&nbsp; User: ${generatedBy}
-        &nbsp;|&nbsp; Currency: OMR
+        ${reportCurrency ? `&nbsp;|&nbsp; Currency: ${reportCurrency}` : ""}
         ${parameter ? `&nbsp;|&nbsp; Report: ${text(parameter)}` : ""}
       </div>
       <table class="data-table">

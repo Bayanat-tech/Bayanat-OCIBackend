@@ -11,11 +11,32 @@ import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
 import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
 import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
 import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
+import { getEmployeeMasterPrint } from "../controllers/HR/Hr-Reports/employeeMasterReport";
+import { getMobileLeaveBucket, getLeaveWorkflowIdentity } from "../controllers/HR/mobileLeave.controller";
+import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowAction } from "../controllers/HR/leaveWorkflowAction.controller";
+import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
+import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
+import { leaveRequestFlow } from "../controllers/HR/leave_request_flow";
 import {updateConsolidateCancelFlag} from "../controllers/HR/updConsolidateCancelFlag.hr.controller"
 // Initialize the Express router
 const router = express.Router();
 
 console.log("HR Routes Loaded");
+
+const workflowAuth = [passport.authenticate('jwt', { session: false }), tenantContextMiddleware, checkUserAuthorization];
+router.post('/workflow/leaveRequestFlow', ...workflowAuth, leaveRequestFlow); // /api/hr/workflow/leaveRequestFlow
+router.get('/workflow/identity', ...workflowAuth, getLeaveWorkflowIdentity);
+router.get('/workflow/leave/request/:requestNumber', ...workflowAuth, getLeaveWorkflowRequest);
+router.get('/workflow/leave/:requestNumber/targets', ...workflowAuth, getLeaveWorkflowTargets);
+router.post('/workflow/leave/:requestNumber/action', ...workflowAuth, saveLeaveWorkflowAction);
+router.get('/workflow/leave/:bucket', ...workflowAuth, getMobileLeaveBucket);
+
+router.get('/mobile/leave/:bucket',
+  passport.authenticate('jwt', { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getMobileLeaveBucket,
+);
 
 router.put("/consolidate/cancel",
     passport.authenticate("jwt", { session: false }),
@@ -50,6 +71,26 @@ router.use(
   checkUserAuthorization,
   employeeHrRoutes
 );
+
+
+router.get(
+  "/reports/grade_master",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getGradeMasterReportHtml
+);
+
+router.get(
+  "/reports/:master",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getHrMasterReportHtml
+);
+
+
+
 
 // Define a DELETE API endpoint to delete HR master data
 router.delete(
@@ -104,7 +145,13 @@ router.all("/reports/:type/:report",
   getHrReport);
 
 router.post("/leave-entitlement/save", upsertHrEmpLeaveEntitle);
-
+router.post(
+  "/hr-reports/employee-master/print/:type", 
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getEmployeeMasterPrint
+);
 
 // Export the router as the default module
 export default router;
