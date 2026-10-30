@@ -60,32 +60,44 @@ export async function processSupportNotifications(sendMail?: (mail: any) => Prom
         const defaultCc = process.env.SUPPORT_EMAIL_CC || 'prem@bayanattechnology.com';
 
         for (let n = 0; n < 10; n++) {
-            const job = await withSupportDb(async (c) => {
+            const data = await withSupportDb(async (c) => {
                 await c.execute(`UPDATE CUSTOMERS.SUPPORT_EMAIL_OUTBOX SET STATUS='PENDING' WHERE STATUS='PROCESSING' AND AVAILABLE_AT<${NOW}-(10/1440)`);
                 const rows = await query(c, `SELECT EMAIL_ID,RECIPIENTS,SUBJECT,BODY,ATTEMPTS FROM CUSTOMERS.SUPPORT_EMAIL_OUTBOX WHERE STATUS IN('PENDING','RETRY') AND AVAILABLE_AT<=${NOW} AND ATTEMPTS<5 ORDER BY EMAIL_ID FOR UPDATE SKIP LOCKED`);
                 const r = rows[0];
                 if (!r)
-                    return;
+                    return null;
                 await c.execute(`UPDATE CUSTOMERS.SUPPORT_EMAIL_OUTBOX SET STATUS='PROCESSING',ATTEMPTS=ATTEMPTS+1,AVAILABLE_AT=${NOW} WHERE EMAIL_ID=:id`, { id: r.EMAIL_ID });
-                return r;
+
+                let dynamicCcList: string[] = [];
+                try {
+                    const ccRows = await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y' AND UPPER(RECIPIENT_TYPE)='CC'");
+                    dynamicCcList = ccRows.map((x: any) => String(x.EMAIL_ID || '').trim()).filter(Boolean);
+                } catch {
+                    dynamicCcList = [];
+                }
+                return { job: r, dynamicCcList };
             }, true);
-            if (!job)
+            if (!data?.job)
                 break;
+            const { job, dynamicCcList } = data;
             try {
                 const rawBody = String(job.BODY || '');
                 const isHtml = rawBody.includes('<html') || rawBody.includes('<table') || rawBody.includes('<div');
 
-                // Filter out defaultCc from TO so Prem is never duplicated in both TO and CC
+                // Filter out defaultCc and CC recipients from TO
+                const allCcList = Array.from(new Set([defaultCc, ...dynamicCcList].filter(Boolean)));
+                const allCcLower = new Set(allCcList.map(e => e.toLowerCase()));
+
                 const toList = (job.RECIPIENTS || '')
                     .split(',')
                     .map((e: string) => e.trim())
-                    .filter((e: string) => e && e.toLowerCase() !== defaultCc.toLowerCase());
+                    .filter((e: string) => e && !allCcLower.has(e.toLowerCase()));
                 const finalTo = toList.length > 0 ? toList.join(', ') : (job.RECIPIENTS || defaultCc);
 
                 const mailOptions: any = {
                     from: process.env.SUPPORT_MAIL_FROM || username,
                     to: finalTo,
-                    cc: defaultCc,
+                    cc: allCcList.join(', '),
                     subject: job.SUBJECT,
                 };
                 if (isHtml) {

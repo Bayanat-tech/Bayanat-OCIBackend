@@ -17,16 +17,21 @@ const email = (v: any) => {
 };
 
 async function admins(c: oracledb.Connection) {
-    const list = (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID);
-    // Exclude Prem from TO because Prem is permanently in CC
-    const toRecipients = list
-        .map(e => String(e || '').trim())
-        .filter(e => e && e.toLowerCase() !== 'prem@bayanattechnology.com');
+    try {
+        const rows = await query(c, "SELECT EMAIL_ID, NVL(RECIPIENT_TYPE, 'TO') AS RECIPIENT_TYPE FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'");
+        // Only include contacts marked as TO; Prem is kept strictly in CC
+        const toRecipients = rows
+            .filter(r => (r.RECIPIENT_TYPE || 'TO').toUpperCase() === 'TO')
+            .map(r => String(r.EMAIL_ID || '').trim())
+            .filter(e => e && e.toLowerCase() !== 'prem@bayanattechnology.com');
 
-    if (toRecipients.length === 0) {
-        toRecipients.push('gaurang.pai@bayanattechnology.com');
+        if (toRecipients.length === 0) {
+            toRecipients.push('gaurang.pai@bayanattechnology.com');
+        }
+        return toRecipients.join(',');
+    } catch {
+        return 'gaurang.pai@bayanattechnology.com';
     }
-    return toRecipients.join(',');
 }
 
 export async function queueSupportEmail(c: oracledb.Connection, ticketId: number, key: string, to: string, subject: string, body: string) {
@@ -704,7 +709,7 @@ export class SupportChatService {
         return withSupportDb(async (c) => {
             if (await supportRole(c, u) !== 'admin')
                 supportError('Support admin access required', 403);
-            const contacts = await query(c, 'SELECT * FROM CUSTOMERS.SUPPORT_CONTACT ORDER BY DISPLAY_NAME');
+            const contacts = await query(c, "SELECT EMAIL_ID, DISPLAY_NAME, ACTIVE_FLAG, NVL(RECIPIENT_TYPE, 'CC') AS RECIPIENT_TYPE FROM CUSTOMERS.SUPPORT_CONTACT ORDER BY DISPLAY_NAME");
             const queue = await query(c, `SELECT EMAIL_ID,TICKET_ID,RECIPIENTS,SUBJECT,STATUS,ATTEMPTS,LAST_ERROR,${fmt('SENT_AT')} SENT_AT FROM CUSTOMERS.SUPPORT_EMAIL_OUTBOX ORDER BY EMAIL_ID DESC FETCH FIRST 50 ROWS ONLY`);
             return { contacts, queue };
         });
@@ -717,8 +722,14 @@ export class SupportChatService {
             const e = email(input.email_id);
             if (!e)
                 supportError('Email is required');
-            await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_CONTACT d USING(SELECT :e EMAIL_ID FROM dual)s ON(d.EMAIL_ID=s.EMAIL_ID) WHEN MATCHED THEN UPDATE SET DISPLAY_NAME=:name,ACTIVE_FLAG=:active WHEN NOT MATCHED THEN INSERT(EMAIL_ID,DISPLAY_NAME,ACTIVE_FLAG) VALUES(:e,:name,:active)`, { e, name: text(input.display_name, 200), active: input.active_flag === 'N' ? 'N' : 'Y' });
-            return { email_id: e };
+            const rType = (input.recipient_type || 'CC').toUpperCase() === 'TO' ? 'TO' : 'CC';
+            await c.execute(
+                `MERGE INTO CUSTOMERS.SUPPORT_CONTACT d USING(SELECT :e EMAIL_ID FROM dual)s ON(d.EMAIL_ID=s.EMAIL_ID)
+                 WHEN MATCHED THEN UPDATE SET DISPLAY_NAME=:name,ACTIVE_FLAG=:active,RECIPIENT_TYPE=:rType
+                 WHEN NOT MATCHED THEN INSERT(EMAIL_ID,DISPLAY_NAME,ACTIVE_FLAG,RECIPIENT_TYPE) VALUES(:e,:name,:active,:rType)`,
+                { e, name: text(input.display_name, 200), active: input.active_flag === 'N' ? 'N' : 'Y', rType }
+            );
+            return { email_id: e, recipient_type: rType };
         }, true);
     }
 
