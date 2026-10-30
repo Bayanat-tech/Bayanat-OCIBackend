@@ -414,11 +414,14 @@ export class SupportChatService {
                     priority: t.PRIORITY,
                     message: reminderMsg
                 });
+                const adminEmails = await admins(c);
+                const reminderTo = Array.from(new Set([t.DEVELOPER_EMAIL, ...adminEmails.split(',')].map(e => e.trim()).filter(Boolean))).join(',');
+
                 await queueSupportEmail(
                     c,
                     ticketId,
                     `reminder:${ticketId}:${Date.now()}`,
-                    t.DEVELOPER_EMAIL,
+                    reminderTo,
                     `Reminder: Action required on support ticket #${ticketId}`,
                     mailHtml
                 );
@@ -452,22 +455,15 @@ export class SupportChatService {
             const devTenant = text(input.tenant_id, 80) || d.TENANT_ID || 'BTIND_TENANT';
 
             // 1. Root Schema: CUSTOMERS.SEC_LOGINTEST
+            // If developer already exists, only synchronize active status; do NOT re-insert or overwrite their profile data
             try {
                 const userExists = await query(c, `SELECT 1 AS FOUND FROM CUSTOMERS.SEC_LOGINTEST WHERE UPPER(LOGINID)=UPPER(:loginid)`, { loginid });
                 if (userExists.length > 0) {
                     await c.execute(
                         `UPDATE CUSTOMERS.SEC_LOGINTEST
-                         SET USERNAME = NVL(:name, USERNAME),
-                             EMAIL_ID = NVL(:email, EMAIL_ID),
-                             ACTIVE_FLAG = :activeFlag
+                         SET ACTIVE_FLAG = :activeFlag
                          WHERE UPPER(LOGINID) = UPPER(:loginid)`,
-                        { loginid, name: devName, email: devEmail, activeFlag }
-                    );
-                } else {
-                    await c.execute(
-                        `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE, LOGINID, USERNAME, EMAIL_ID, ACTIVE_FLAG, ID)
-                         VALUES (:company, :loginid, :name, :email, :activeFlag, (SELECT NVL(MAX(ID), 0) + 1 FROM CUSTOMERS.SEC_LOGINTEST))`,
-                        { company: devCompany, loginid, name: devName, email: devEmail, activeFlag }
+                        { loginid, activeFlag }
                     );
                 }
             } catch (secErr: any) {
@@ -635,11 +631,14 @@ export class SupportChatService {
                 note: `Assigned to ${devName}. Estimated time: ${minutes} minutes.`
             });
 
+            const adminEmails = await admins(c);
+            const allTo = Array.from(new Set([devEmail, ...adminEmails.split(',')].map(e => e.trim()).filter(Boolean))).join(',');
+
             await queueSupportEmail(
                 c,
                 ticketId,
                 `assigned:${ticketId}:${Date.now()}`,
-                devEmail,
+                allTo,
                 `Support ticket #${ticketId} assigned - ${priority}: ${t.SUBJECT}`,
                 emailHtml
             );
