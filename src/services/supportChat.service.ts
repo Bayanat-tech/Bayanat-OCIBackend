@@ -1,0 +1,167 @@
+import {prepareSupportAccess,cacheSupportMember,nativeSupportDevelopers,setNativeSupportAccess,nativeSupportRole} from './supportSecurity.service';
+import oracledb from 'oracledb';
+import { identity, query, supportError, text, withSupportDb, supportRole, supportEvents } from './supportDb';
+import { ticketAccess } from './supportAccess';
+import { emitSupportTicketChanged, emitSupportPresenceChanged, getConnectedSupportUsers } from './supportRealtime.service';
+import { getSignedUrl } from './ociUpload.service';
+import { SupportAssistantService } from './supportAssistant.service';
+const NOW = 'CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE)';
+const fmt = (col: string) => `TO_CHAR(${col},'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
+const email = (v: any) => { const e = text(v, 400); if (e && !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(e))
+    supportError('Enter a valid email address'); return e; };
+async function admins(c: oracledb.Connection) { return (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID).join(','); }
+export async function queueSupportEmail(c: oracledb.Connection, ticketId: number, key: string, to: string, subject: string, body: string) {
+    if (!to)
+        return;
+    await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_EMAIL_OUTBOX d USING(SELECT :dedupKey DEDUP_KEY FROM dual)s ON(d.DEDUP_KEY=s.DEDUP_KEY) WHEN NOT MATCHED THEN INSERT(TICKET_ID,DEDUP_KEY,RECIPIENTS,SUBJECT,BODY,AVAILABLE_AT,CREATED_AT) VALUES(:ticketId,:dedupKey,:recipients,:mailSubject,:mailBody,${NOW},${NOW})`, { dedupKey: key, ticketId, recipients: to, mailSubject: subject.slice(0, 500), mailBody: { type: oracledb.CLOB, val: body } });
+}
+async function audit(c: oracledb.Connection, ticketId: number, u: any, event: string, note: string) { const id = identity(u); await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_EVENT(TICKET_ID,ACTOR_LOGINID,ACTOR_TENANT_ID,EVENT_TYPE,EVENT_TEXT,CREATED_AT) VALUES(:ticketId,:loginid,:tenant,:event,:note,${NOW})`, { ticketId, loginid: id.loginid, tenant: id.tenantId, event, note: note.slice(0, 2000) }); }
+async function insertMessage(c: oracledb.Connection, ticketId: number, u: any, message: string, role: string, files: any[] = []) {
+    const id = identity(u);
+    const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_MESSAGE(TICKET_ID,SENDER_LOGINID,SENDER_NAME,SENDER_ROLE,MESSAGE_TEXT,HAS_ATTACHMENTS,SENDER_TENANT_ID,SENDER_COMPANY_CODE,CREATED_AT) VALUES(:ticketId,:loginid,:name,:role,:message,:files,:tenant,:company,${NOW}) RETURNING MESSAGE_ID INTO :id`, { ticketId, loginid: id.loginid, name: text(u.username || id.loginid, 400), role: role.toUpperCase(), message: { type: oracledb.CLOB, val: message }, files: files.length ? 'Y' : 'N', tenant: id.tenantId, company: id.companyCode, id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } });
+    const mid = Number((r.outBinds as any).id[0]);
+    for (const f of files)
+        await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_ATTACHMENT(TICKET_ID,MESSAGE_ID,FILE_NAME,FILE_TYPE,FILE_SIZE,DATA_URL,CREATED_AT) VALUES(:ticketId,:mid,:name,:fileType,:fileSize,:fileData,${NOW})`, { ticketId, mid, name: f.name, fileType: f.type, fileSize: f.size, fileData: { type: oracledb.CLOB, val: f.data } });
+    await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET LAST_MESSAGE=:message,LAST_MESSAGE_AT=${NOW},UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { ticketId, message: { type: oracledb.CLOB, val: message || '[Attachment]' } });
+    return mid;
+}
+function attachments(input: any) {
+    if (input === undefined)
+        return [];
+    if (!Array.isArray(input) || input.length > 5)
+        supportError('Attach up to five files');
+    let total = 0;
+    return input.map((f: any) => { const data = text(f?.data_url, 7500000); const m = /^data:(image\/(?:png|jpeg|webp)|application\/pdf|text\/plain);base64,([A-Za-z0-9+/]+={0,2})$/.exec(data); if (!m || m[2].length % 4 !== 0)
+        supportError('Use PNG, JPEG, WebP, PDF or text attachments'); const buf = Buffer.from(m[2], 'base64'); if (!buf.length || buf.length > 5 * 1024 * 1024)
+        supportError('Each attachment must be between 1 byte and 5 MB'); total += buf.length; if (total > 15 * 1024 * 1024)
+        supportError('Attachments must total 15 MB or less'); return { name: text(f.file_name || 'Attachment', 250).replace(/[\\/\r\n"<>]/g, '_'), type: m[1], size: buf.length, data }; });
+}
+async function changed(ticketId: number, u: any) { supportEvents.emit('changed'); await emitSupportTicketChanged({ ticketId, actorLoginid: identity(u).loginid }); }
+export class SupportChatService {
+    static async context(u:any){return withSupportDb(async c=>{const id=identity(u);await prepareSupportAccess(c,id);const role=await supportRole(c,u);if(role!=='user')await cacheSupportMember(c,id,role==='admin'?'ADMIN':'DEVELOPER');return{role,loginid:id.loginid,tenantId:id.tenantId,company_code:id.companyCode};},true);}
+    static async heartbeat(u: any) { const id = identity(u); await withSupportDb(async (c) => { await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_PRESENCE d USING(SELECT :loginid LOGINID FROM dual)s ON(UPPER(d.LOGINID)=s.LOGINID) WHEN MATCHED THEN UPDATE SET USERNAME=:name,COMPANY_CODE=:company,TENANT_ID=:tenant,LAST_SEEN_AT=SYSDATE WHEN NOT MATCHED THEN INSERT(LOGINID,USERNAME,COMPANY_CODE,TENANT_ID,LAST_SEEN_AT) VALUES(:loginid,:name,:company,:tenant,SYSDATE)`, { loginid: id.loginid, name: text(u.username || id.loginid, 400), company: id.companyCode, tenant: id.tenantId }); }, true); emitSupportPresenceChanged(); return { online: true }; }
+    static async getActiveUsers(u: any) { return withSupportDb(async (c) => { if (await supportRole(c, u) !== 'admin')
+        return []; const rows = await query(c, `SELECT LOGINID,USERNAME,COMPANY_CODE,TENANT_ID,CASE WHEN LAST_SEEN_AT>=SYSDATE-(1/1440) THEN 'Y' ELSE 'N' END IS_ONLINE FROM CUSTOMERS.SUPPORT_PRESENCE ORDER BY LAST_SEEN_AT DESC FETCH FIRST 200 ROWS ONLY`); const keys = new Map(rows.map(r => [`${r.TENANT_ID}:${r.COMPANY_CODE}:${r.LOGINID}`, r])); for (const r of getConnectedSupportUsers())
+        keys.set(`${r.TENANT_ID}:${r.COMPANY_CODE}:${r.LOGINID}`, r); return [...keys.values()]; }); }
+    static async getTickets(u: any, requestedRole = 'user') {
+        return withSupportDb(async (c) => {
+            const id = identity(u), role = await supportRole(c, u);
+            const all = role === 'admin' && requestedRole === 'admin';
+            const binds: any = { ...id };
+            let where = `((UPPER(t.REQUESTER_LOGINID)=:loginid AND t.TENANT_ID=:tenantId AND t.COMPANY_CODE=:companyCode)${role === 'developer' ? " OR UPPER(t.DEVELOPER_LOGINID)=:loginid" : ''})`;
+            if (all) {
+                where = '1=1';
+            }
+            return query(c, `SELECT t.TICKET_ID,t.COMPANY_CODE,t.TENANT_ID,t.REQUESTER_LOGINID,t.REQUESTER_NAME,t.ASSIGNED_TO,t.SUBJECT,t.MODULE_NAME,t.PAGE_URL,t.STATUS,t.PRIORITY,t.DEVELOPER_LOGINID,t.DEVELOPER_NAME,t.DEV_STATUS,t.ASSIGNED_BY,t.SLA_MINUTES,t.RESOLUTION,
+      ${fmt('t.DUE_AT')} DUE_AT,${fmt('t.CREATED_AT')} CREATED_AT,${fmt('t.LAST_MESSAGE_AT')} LAST_MESSAGE_AT,
+      DBMS_LOB.SUBSTR(t.LAST_MESSAGE,1000,1) LAST_MESSAGE,
+      (SELECT COUNT(*) FROM CUSTOMERS.SUPPORT_MESSAGE m WHERE m.TICKET_ID=t.TICKET_ID AND NVL(m.IS_DELETED,'N')<>'Y' AND NOT(UPPER(m.SENDER_LOGINID)=:loginid AND NVL(m.SENDER_TENANT_ID,:tenantId)=:tenantId AND NVL(m.SENDER_COMPANY_CODE,:companyCode)=:companyCode) AND m.MESSAGE_ID>NVL((SELECT LAST_MESSAGE_ID FROM CUSTOMERS.SUPPORT_READ_RECEIPT r WHERE r.TICKET_ID=t.TICKET_ID AND r.LOGINID=:loginid AND r.TENANT_ID=:tenantId AND r.COMPANY_CODE=:companyCode),0)) UNREAD_COUNT
+      FROM CUSTOMERS.SUPPORT_TICKET t WHERE ${where} ORDER BY t.LAST_MESSAGE_AT DESC,t.TICKET_ID DESC FETCH FIRST 500 ROWS ONLY`, binds);
+        });
+    }
+    static async getDeveloperTickets(u: any) { return this.getTickets(u, 'developer'); }
+    static async getMessages(ticketId: number, u: any, _role = 'user') {
+        return withSupportDb(async (c) => {
+            await ticketAccess(c, ticketId, u);
+            const rows = await query(c, `SELECT MESSAGE_ID,TICKET_ID,SENDER_LOGINID,SENDER_NAME,SENDER_ROLE,SENDER_TENANT_ID,SENDER_COMPANY_CODE,MESSAGE_TEXT,IS_DELETED,${fmt('CREATED_AT')} CREATED_AT FROM CUSTOMERS.SUPPORT_MESSAGE WHERE TICKET_ID=:ticketId ORDER BY MESSAGE_ID`, { ticketId });
+            const files = await query(c, `SELECT a.ATTACHMENT_ID,a.MESSAGE_ID,a.FILE_NAME,a.FILE_TYPE,a.FILE_SIZE FROM CUSTOMERS.SUPPORT_ATTACHMENT a JOIN CUSTOMERS.SUPPORT_MESSAGE m ON m.MESSAGE_ID=a.MESSAGE_ID AND m.TICKET_ID=a.TICKET_ID WHERE a.TICKET_ID=:ticketId AND NVL(m.IS_DELETED,'N')<>'Y'`, { ticketId });
+            return rows.map(r => ({ ...r, attachments: files.filter(f => f.MESSAGE_ID === r.MESSAGE_ID) }));
+        });
+    }
+    static async attachment(ticketId:number,attachmentId:number,u:any) {
+        if(!Number.isSafeInteger(attachmentId)||attachmentId<=0)supportError('Invalid attachment number');
+        const a=await withSupportDb(async c=>{
+            await ticketAccess(c,ticketId,u);
+            const [row]=await query(c,`SELECT a.FILE_NAME,a.FILE_TYPE,a.DATA_URL,a.OBJECT_KEY FROM CUSTOMERS.SUPPORT_ATTACHMENT a JOIN CUSTOMERS.SUPPORT_MESSAGE m ON m.MESSAGE_ID=a.MESSAGE_ID AND m.TICKET_ID=a.TICKET_ID WHERE a.TICKET_ID=:ticketId AND a.ATTACHMENT_ID=:attachmentId AND NVL(m.IS_DELETED,'N')<>'Y'`,{ticketId,attachmentId});
+            if(!row)supportError('Attachment not found',404);return row;
+        });
+        if(a.DATA_URL){const m=/^data:([^;]+);base64,(.*)$/s.exec(a.DATA_URL);if(!m)supportError('Attachment data is unavailable',404);return{name:a.FILE_NAME,type:m[1],buffer:Buffer.from(m[2],'base64')};}
+        if(a.OBJECT_KEY){
+            try {
+                const response=await fetch(await getSignedUrl(a.OBJECT_KEY,300),{signal:AbortSignal.timeout(20000)});
+                if(!response.ok)supportError('Object storage could not return this attachment',502);
+                const chunks:Buffer[]=[];let size=0;
+                for await(const chunk of response.body as any){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>15*1024*1024)supportError('Legacy attachment exceeds the download limit',413);chunks.push(bytes);}
+                return{name:a.FILE_NAME,type:a.FILE_TYPE||'application/octet-stream',buffer:Buffer.concat(chunks)};
+            } catch(e:any){if(e.status)throw e;supportError('The older attachment store cannot be reached. Please retry or ask support to restore access.',502);}
+        }
+        supportError('Attachment data is unavailable',404);
+    }
+    static async createTicket(input: any, u: any) {
+        const id = identity(u), message = text(input.message, 8000), subject = text(input.subject, 300), files = attachments(input.attachments);
+        if (!subject || !message)
+            supportError('Issue subject and comments are required');
+        const result = await withSupportDb(async (c) => { const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_TICKET(COMPANY_CODE,TENANT_ID,REQUESTER_LOGINID,REQUESTER_NAME,SUBJECT,MODULE_NAME,PAGE_URL,STATUS,PRIORITY,WORKFLOW_VERSION,CREATED_AT,UPDATED_AT) VALUES(:company,:tenant,:loginid,:name,:subject,:module,:page,'OPEN','NORMAL',1,${NOW},${NOW}) RETURNING TICKET_ID INTO :id`, { company: id.companyCode, tenant: id.tenantId, loginid: id.loginid, name: text(u.username || id.loginid, 400), subject, module: text(input.module, 100), page: text(input.page_url, 500), id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } }); const ticketId = Number((r.outBinds as any).id[0]); const messageId = await insertMessage(c, ticketId, u, message, 'USER', files); await audit(c, ticketId, u, 'CREATED', subject); await queueSupportEmail(c, ticketId, `created:${ticketId}`, await admins(c), `New support ticket #${ticketId}: ${subject}`, `Raised by ${id.loginid}\nCompany: ${id.companyCode}\nTenant: ${id.tenantId}\nModule: ${text(input.module, 100)}\nPage: ${text(input.page_url, 500)}\n\n${message}\n\nOpen Support to review attachments and assign a developer.`); return { ticketId, messageId }; }, true);
+        await changed(result.ticketId, u);
+        return result;
+    }
+    static async addMessage(ticketId: number, input: any, u: any, _role = 'user') { const message = text(input.message, 8000), files = attachments(input.attachments); if (!message && !files.length)
+        supportError('Enter a reply or attach a file'); const r = await withSupportDb(async (c) => { const a = await ticketAccess(c, ticketId, u, true); if (a.ticket.STATUS === 'CLOSED')
+        supportError('Reopen this ticket with a reason before replying', 409); const messageId = await insertMessage(c, ticketId, u, message, a.role, files); await audit(c, ticketId, u, 'REPLIED', 'Reply added'); return { ticketId, messageId }; }, true); await changed(ticketId, u); return r; }
+    static async updateTicket(ticketId: number, input: any, u: any, _role = 'user') {
+        const status = text(input.status, 20).toUpperCase(), note = text(input.resolution || input.reason, 2000);
+        await withSupportDb(async (c) => {
+            const { ticket: t, role, owns } = await ticketAccess(c, ticketId, u, true);
+            let event = '';
+            if (status === 'RESOLVED') {
+                if (role !== 'developer' || String(t.DEVELOPER_LOGINID).toUpperCase() !== identity(u).loginid)
+                    supportError('Only the assigned developer can submit a resolution', 403);
+                if (!['ASSIGNED', 'IN_PROGRESS', 'WAITING_INFO', 'OPEN'].includes(t.STATUS))
+                    supportError('Ticket is not in progress', 409);
+                if (!note)
+                    supportError('Explain the resolution before submitting');
+                event = 'RESOLVED';
+            }
+            else if (status === 'CLOSED') {
+                if (role !== 'admin')
+                    supportError('Only a support admin can close tickets', 403);
+                if (t.STATUS !== 'RESOLVED')
+                    supportError('Review the developer resolution before closing', 409);
+                event = 'CLOSED';
+            }
+            else if (status === 'REOPENED') {
+                if (!(owns || role === 'admin'))
+                    supportError('Only the requester or support admin can reopen', 403);
+                if (!['CLOSED', 'RESOLVED'].includes(t.STATUS))
+                    supportError('Only resolved or closed tickets can be reopened', 409);
+                if (!note)
+                    supportError('Explain why the issue is not resolved');
+                event = 'REOPENED';
+            }
+            else
+                supportError('Use assignment or developer progress actions for this status');
+            await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:status,RESOLUTION=CASE WHEN :status='RESOLVED' THEN :note ELSE RESOLUTION END,DEV_STATUS=CASE WHEN :status='RESOLVED' THEN 'DONE' WHEN :status='REOPENED' THEN 'ASSIGNED' ELSE DEV_STATUS END,RESOLVED_AT=CASE WHEN :status='RESOLVED' THEN ${NOW} ELSE RESOLVED_AT END,CLOSED_AT=CASE WHEN :status='CLOSED' THEN ${NOW} ELSE NULL END,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { status, note: note || null, ticketId });
+            await insertMessage(c, ticketId, u, `${event === 'RESOLVED' ? 'Resolution submitted for admin review' : event === 'CLOSED' ? 'Closed by support' : 'Reopened'}${note ? `: ${note}` : ''}`, 'SYSTEM');
+            await audit(c, ticketId, u, event, note || event);
+            await queueSupportEmail(c, ticketId, `${event}:${ticketId}:${Date.now()}`, await admins(c), `Support #${ticketId} ${event.toLowerCase()}`, `${t.SUBJECT}\nBy: ${identity(u).loginid}\n${note}\nReview this ticket in Support.`);
+        }, true);
+        await changed(ticketId, u);
+        return { ticketId, status };
+    }
+    static async getDevelopers(u:any){return withSupportDb(async c=>{if(await supportRole(c,u)!=='admin')supportError('Support admin access required',403);return nativeSupportDevelopers(c);});}
+    static async upsertDeveloper(input: any, u: any) { return withSupportDb(async (c) => { if (await supportRole(c, u) !== 'admin')
+        supportError('Support admin access required', 403); const loginid = text(input.loginid, 100).toUpperCase(); const rows = await query(c, `SELECT s.LOGINID,s.USERNAME,s.EMAIL_ID,s.COMPANY_CODE,m.TENANT_ID FROM CUSTOMERS.SEC_LOGINTEST s JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(m.LOGINID)=UPPER(s.LOGINID) AND m.IS_DEFAULT='Y' WHERE UPPER(s.LOGINID)=:loginid AND NVL(s.ACTIVE_FLAG,'1') IN('1','Y','A')`, { loginid }); if (rows.length !== 1)
+        supportError('Select an active existing customer account with one default tenant'); const d = rows[0]; if (!email(d.EMAIL_ID))
+        supportError('Developer account needs an email address in the user master'); const [existing] = await query(c, 'SELECT SUPPORT_ROLE FROM CUSTOMERS.SUPPORT_MEMBER WHERE LOGINID=:loginid AND TENANT_ID=:tenant AND COMPANY_CODE=:company', { loginid, tenant: d.TENANT_ID, company: d.COMPANY_CODE }); if (existing?.SUPPORT_ROLE === 'ADMIN')
+        supportError('This account is already a support admin'); await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_MEMBER x USING(SELECT :loginid LOGINID,:tenant TENANT_ID,:company COMPANY_CODE FROM dual)s ON(x.LOGINID=s.LOGINID AND x.TENANT_ID=s.TENANT_ID AND x.COMPANY_CODE=s.COMPANY_CODE) WHEN MATCHED THEN UPDATE SET ACTIVE_FLAG=:active WHEN NOT MATCHED THEN INSERT(LOGINID,TENANT_ID,COMPANY_CODE,SUPPORT_ROLE,ACTIVE_FLAG,CREATED_BY) VALUES(:loginid,:tenant,:company,'DEVELOPER',:active,:actor)`, { loginid, tenant: d.TENANT_ID, company: d.COMPANY_CODE, active: input.active_flag === 'N' ? 'N' : 'Y', actor: identity(u).loginid }); await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_DEVELOPER x USING(SELECT :loginid LOGINID FROM dual)s ON(UPPER(x.LOGINID)=s.LOGINID) WHEN MATCHED THEN UPDATE SET USERNAME=:name,EMAIL_ID=:email,COMPANY_CODE=:company,SKILL_TAGS=:skills,ACTIVE_FLAG=:active WHEN NOT MATCHED THEN INSERT(LOGINID,USERNAME,EMAIL_ID,COMPANY_CODE,SKILL_TAGS,ACTIVE_FLAG) VALUES(:loginid,:name,:email,:company,:skills,:active)`, { loginid, name: d.USERNAME, email: d.EMAIL_ID, company: d.COMPANY_CODE, skills: text(input.skill_tags, 500), active: input.active_flag === 'N' ? 'N' : 'Y' }); await setNativeSupportAccess(c,{loginid,tenantId:d.TENANT_ID,companyCode:d.COMPANY_CODE},'DEVELOPER',input.active_flag!=='N',identity(u).loginid);await c.execute("UPDATE CUSTOMERS.SUPPORT_MEMBER SET SECURITY_SYNCED='Y' WHERE LOGINID=:loginid AND TENANT_ID=:tenant AND COMPANY_CODE=:company",{loginid,tenant:d.TENANT_ID,company:d.COMPANY_CODE});return { loginid }; }, true); }
+    static async assignDeveloper(ticketId: number, input: any, u: any) { const developer = text(input.developer_loginid, 100).toUpperCase(), priority = text(input.priority, 20).toUpperCase(), minutes = Number(input.sla_minutes); if (!['LOW', 'NORMAL', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(priority))
+        supportError('Select a valid priority'); if (!Number.isInteger(minutes) || minutes < 1 || minutes > 43200)
+        supportError('Estimated time must be 1 to 43200 minutes'); await withSupportDb(async (c) => { const { ticket: t, role } = await ticketAccess(c, ticketId, u, true); if (role !== 'admin')
+        supportError('Support admin access required', 403); if (['CLOSED', 'RESOLVED'].includes(t.STATUS))
+        supportError('Reopen this ticket before assigning it', 409); const d=(await nativeSupportDevelopers(c)).find(x=>x.LOGINID===developer); if (!d)
+        supportError('Select an active support developer'); if(!email(d.EMAIL_ID))supportError('The developer account needs a valid email in the user master'); await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET DEVELOPER_LOGINID=:developer,DEVELOPER_NAME=:name,DEVELOPER_EMAIL=:email,ASSIGNED_TO=:developer,ASSIGNED_BY=:actor,ASSIGNED_AT=${NOW},STATUS='ASSIGNED',DEV_STATUS='ASSIGNED',PRIORITY=:priority,SLA_MINUTES=:minutes,DUE_AT=${NOW}+(:minutes/1440),OVERDUE_NOTIFIED_AT=NULL,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { developer, name: d.USERNAME, email: d.EMAIL_ID, actor: identity(u).loginid, priority, minutes, ticketId }); const note = `Assigned to ${d.USERNAME || developer}. Priority: ${priority}. Estimated time: ${minutes} minutes.${input.note ? ' ' + text(input.note, 1000) : ''}`; await insertMessage(c, ticketId, u, note, 'SYSTEM'); await audit(c, ticketId, u, 'ASSIGNED', note); await queueSupportEmail(c, ticketId, `assigned:${ticketId}:${Date.now()}`, email(d.EMAIL_ID), `Support ticket #${ticketId} assigned - ${priority}`, `${t.SUBJECT}\nCompany: ${t.COMPANY_CODE}\nTenant: ${t.TENANT_ID}\n${note}\nOpen the Support module to review the issue and reply. Submit a resolution for admin review when complete.`); }, true); await changed(ticketId, u); return { ticketId, emailQueued: true }; }
+    static async updateDeveloperStatus(ticketId: number, input: any, u: any) { const status = text(input.dev_status, 30); if (!['IN_PROGRESS', 'WAITING_INFO'].includes(status))
+        supportError('Select In progress or Waiting for information'); await withSupportDb(async (c) => { const a = await ticketAccess(c, ticketId, u, true); if (a.role !== 'developer' || a.ticket.DEVELOPER_LOGINID !== identity(u).loginid)
+        supportError('Only the assigned developer may update progress', 403); if (['CLOSED', 'RESOLVED'].includes(a.ticket.STATUS))
+        supportError('Reopen the ticket before updating progress', 409); await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:status,DEV_STATUS=:status,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { status, ticketId }); await audit(c, ticketId, u, status, status); }, true); await changed(ticketId, u); return { ticketId, status }; }
+    static async markRead(ticketId: number, u: any, input: any = {}) { return withSupportDb(async (c) => { await ticketAccess(c, ticketId, u); const id = identity(u); const [max] = await query(c, 'SELECT NVL(MAX(MESSAGE_ID),0) MID FROM CUSTOMERS.SUPPORT_MESSAGE WHERE TICKET_ID=:ticketId', { ticketId }); const requested = Number(input.last_message_id); const mid = Number.isSafeInteger(requested) && requested >= 0 ? Math.min(requested, max.MID) : max.MID; await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_READ_RECEIPT d USING(SELECT :ticketId TICKET_ID,:loginid LOGINID,:tenantId TENANT_ID,:companyCode COMPANY_CODE FROM dual)s ON(d.TICKET_ID=s.TICKET_ID AND d.LOGINID=s.LOGINID AND d.TENANT_ID=s.TENANT_ID AND d.COMPANY_CODE=s.COMPANY_CODE) WHEN MATCHED THEN UPDATE SET LAST_MESSAGE_ID=GREATEST(d.LAST_MESSAGE_ID,:mid) WHEN NOT MATCHED THEN INSERT(TICKET_ID,LOGINID,TENANT_ID,COMPANY_CODE,LAST_MESSAGE_ID) VALUES(:ticketId,:loginid,:tenantId,:companyCode,:mid)`, { ticketId, ...id, mid }); return { ticketId }; }, true); }
+    static async deleteMessage(ticketId: number, messageId: number, u: any) { await withSupportDb(async (c) => { await ticketAccess(c, ticketId, u, true); const id = identity(u); const [m] = await query(c, 'SELECT * FROM CUSTOMERS.SUPPORT_MESSAGE WHERE TICKET_ID=:ticketId AND MESSAGE_ID=:messageId', { ticketId, messageId }); if (!m)
+        supportError('Message not found', 404); if (m.SENDER_ROLE === 'SYSTEM' || m.SENDER_LOGINID.toUpperCase() !== id.loginid || m.SENDER_TENANT_ID !== id.tenantId || m.SENDER_COMPANY_CODE !== id.companyCode)
+        supportError('You may delete only your own messages', 403); await c.execute(`UPDATE CUSTOMERS.SUPPORT_MESSAGE SET MESSAGE_TEXT='This message was deleted',IS_DELETED='Y',DELETED_BY=:loginid,DELETED_AT=${NOW},HAS_ATTACHMENTS='N' WHERE MESSAGE_ID=:messageId`, { loginid: id.loginid, messageId }); await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET LAST_MESSAGE=(SELECT DBMS_LOB.SUBSTR(MESSAGE_TEXT,1000,1) FROM CUSTOMERS.SUPPORT_MESSAGE WHERE TICKET_ID=:ticketId ORDER BY MESSAGE_ID DESC FETCH FIRST 1 ROW ONLY) WHERE TICKET_ID=:ticketId`, { ticketId }); await audit(c, ticketId, u, 'MESSAGE_DELETED', `Message ${messageId}`); }, true); await changed(ticketId, u); return { ticketId, messageId, deleted: true }; }
+    static async events(ticketId: number, u: any) { return withSupportDb(async (c) => { await ticketAccess(c, ticketId, u); return query(c, `SELECT EVENT_ID,ACTOR_LOGINID,EVENT_TYPE,EVENT_TEXT,${fmt('CREATED_AT')} CREATED_AT FROM CUSTOMERS.SUPPORT_EVENT WHERE TICKET_ID=:ticketId ORDER BY EVENT_ID`, { ticketId }); }); }
+    static async settings(u: any) { return withSupportDb(async (c) => { if (await supportRole(c, u) !== 'admin')
+        supportError('Support admin access required', 403); const contacts = await query(c, 'SELECT * FROM CUSTOMERS.SUPPORT_CONTACT ORDER BY DISPLAY_NAME'); const queue = await query(c, `SELECT EMAIL_ID,TICKET_ID,RECIPIENTS,SUBJECT,STATUS,ATTEMPTS,LAST_ERROR,${fmt('SENT_AT')} SENT_AT FROM CUSTOMERS.SUPPORT_EMAIL_OUTBOX ORDER BY EMAIL_ID DESC FETCH FIRST 50 ROWS ONLY`); return { contacts, queue }; }); }
+    static async saveContact(input: any, u: any) { return withSupportDb(async (c) => { if (await supportRole(c, u) !== 'admin')
+        supportError('Support admin access required', 403); const e = email(input.email_id); if (!e)
+        supportError('Email is required'); await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_CONTACT d USING(SELECT :e EMAIL_ID FROM dual)s ON(d.EMAIL_ID=s.EMAIL_ID) WHEN MATCHED THEN UPDATE SET DISPLAY_NAME=:name,ACTIVE_FLAG=:active WHEN NOT MATCHED THEN INSERT(EMAIL_ID,DISPLAY_NAME,ACTIVE_FLAG) VALUES(:e,:name,:active)`, { e, name: text(input.display_name, 200), active: input.active_flag === 'N' ? 'N' : 'Y' }); return { email_id: e }; }, true); }
+}

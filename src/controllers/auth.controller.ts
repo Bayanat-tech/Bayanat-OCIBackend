@@ -1,3 +1,5 @@
+import {withSupportDb,identity} from '../services/supportDb';
+import {prepareSupportAccess,nativeSupportMenu} from '../services/supportSecurity.service';
 import { Request, Response, RequestHandler } from "express";
 import constants from "../helpers/constants";
 import {
@@ -367,6 +369,9 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     let formattedPermissions = {};
     let permissionBasedMenuTree = {};
 
+    const supportIdentity={...requestUser,loginid,tenantId,company_code:user.COMPANY_CODE};
+    try { await withSupportDb(c=>prepareSupportAccess(c,identity(supportIdentity)),true); }
+    catch(e){ console.warn('Support security setup unavailable; normal tenant menus remain available'); }
     // CRITICAL: Get user permissions from tenant
     try {
       console.log(`[me] 🔍 STEP 1: Fetching user permissions...`);
@@ -488,6 +493,14 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       allPermissions = [];
       permissionBasedMenuTree = {};
     }
+
+    // Support is a shared application: its screen catalogue and staff grants
+    // live in the configured security tenant, while ticket data stays central.
+    try {
+      const supportRows=await withSupportDb(c=>nativeSupportMenu(c,identity(supportIdentity)));
+      const tenantApps=Array.isArray(permissionBasedMenuTree)?permissionBasedMenuTree:[];
+      permissionBasedMenuTree=[...tenantApps.filter((app:any)=>!['support','bt support','bt-support'].includes(String(app.title||'').toLowerCase())),...buildTree(supportRows,{})];
+    } catch(e) { console.warn('Support menu could not load from the security catalogue'); }
 
     // Build structured permissions for frontend
     const permissionsStructured: StructuredResult = {};

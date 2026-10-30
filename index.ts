@@ -1,7 +1,10 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
 import http from "http";
-import { Server as SocketIOServer } from "socket.io";
+import { initSupportRealtime } from "./src/services/supportRealtime.service";
+import supportRoutes from "./src/routes/support.routes";
+import { ensureSupportSchema } from "./src/services/supportDb";
+import { startSupportNotificationScheduler } from "./src/services/supportNotifications.service";
 import { initializeAllConnections, TypeORMService } from "./src/database/connection";
 import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
@@ -9,20 +12,6 @@ import passport from "passport";
 
 const app = express();
 const httpServer = http.createServer(app);
-const io = new SocketIOServer(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log(`Socket.IO client connected: ${socket.id}`);
-
-  socket.on("disconnect", (reason) => {
-    console.log(`Socket.IO client disconnected: ${socket.id}, reason: ${reason}`);
-  });
-});
 
 console.log("index.ts loaded");
 
@@ -102,6 +91,7 @@ app.use("/api/alms/", almsRoutes);
 app.use("/api/wms", wmsRoutes);
 
 app.use("/api/user", editLangrouter);
+app.use("/api/support", supportRoutes);
 
 app.use("/api/mms", mmsRoutes); 
 
@@ -189,6 +179,9 @@ async function startServer() {
       console.error("Failed to start schedulers:", schedErr);
       // Non-fatal: continue running server even if schedulers fail
     }
+    await ensureSupportSchema();
+    initSupportRealtime(httpServer);
+    startSupportNotificationScheduler();
     console.log(`Listening on port ${PORT}...`);
     httpServer.listen(Number(PORT), process.env.HOST || '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
