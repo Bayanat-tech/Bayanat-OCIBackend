@@ -541,6 +541,50 @@ export class SupportChatService {
                 for (const sch of schemaList) {
                     if (!/^[A-Z0-9_]+$/.test(sch)) continue;
                     try {
+                        // 5a. Ensure developer exists in tenant schema SEC_LOGIN
+                        // If already available, do NOT insert; if missing, copy full record from root SEC_LOGINTEST
+                        try {
+                            const [tenantUser] = await query(c,
+                                `SELECT 1 FROM ${sch}.SEC_LOGIN WHERE UPPER(LOGINID) = UPPER(:loginid) OR UPPER(USER_CODE) = UPPER(:loginid) OR UPPER(USER_ID) = UPPER(:loginid)`,
+                                { loginid }
+                            );
+
+                            if (tenantUser) {
+                                // Already available - do not insert, only synchronize active status
+                                await c.execute(
+                                    `UPDATE ${sch}.SEC_LOGIN SET ACTIVE_FLAG = :flag WHERE UPPER(LOGINID) = UPPER(:loginid) OR UPPER(USER_CODE) = UPPER(:loginid) OR UPPER(USER_ID) = UPPER(:loginid)`,
+                                    { flag: activeFlag, loginid }
+                                );
+                            } else {
+                                // Missing in tenant schema - copy full user information from root CUSTOMERS.SEC_LOGINTEST
+                                const [rootInfo] = await query(c,
+                                    `SELECT * FROM CUSTOMERS.SEC_LOGINTEST WHERE UPPER(LOGINID) = UPPER(:loginid)`,
+                                    { loginid }
+                                );
+                                const comp = rootInfo?.COMPANY_CODE || devCompany || 'BSG';
+                                const uname = rootInfo?.USERNAME || devName;
+                                const uemail = rootInfo?.EMAIL_ID || devEmail;
+                                const upass = rootInfo?.USERPASS || rootInfo?.PASSWORD || 'welcome123';
+                                const secPass = rootInfo?.SEC_PASSWD || upass;
+
+                                await c.execute(
+                                    `INSERT INTO ${sch}.SEC_LOGIN (
+                                        COMPANY_CODE, LOGINID, USERID, LOGINID1, USERNAME, EMAIL_ID,
+                                        USERPASS, SEC_PASSWD, PASSWORD, ACTIVE_FLAG, CREATED_BY, CREATED_AT,
+                                        APPLICATION, USER_CODE, USER_ID, LANG_PREF
+                                    ) VALUES (
+                                        :comp, UPPER(:loginid), UPPER(:loginid), UPPER(:loginid), :uname, :uemail,
+                                        :upass, :secPass, :upass, :flag, 'SYSTEM_SETUP', SYSTIMESTAMP,
+                                        'Support', UPPER(:loginid), UPPER(:loginid), 'en'
+                                    )`,
+                                    { comp, loginid, uname, uemail, upass, secPass, flag: activeFlag }
+                                );
+                            }
+                        } catch (secLoginErr: any) {
+                            console.warn(`[Support] Schema ${sch}.SEC_LOGIN sync notice:`, secLoginErr?.message || secLoginErr);
+                        }
+
+                        // 5b. Ensure module entry and role function access in tenant schema
                         const [modRow] = await query(c, `SELECT SERIAL_NO FROM ${sch}.SEC_MODULE_DATA WHERE URL_PATH='support/assigned'`);
                         let modSerial = modRow?.SERIAL_NO;
                         if (!modSerial) {
