@@ -5,25 +5,13 @@ import { EventEmitter } from 'events';
 export const supportEvents = new EventEmitter();
 export const SUPPORT_SCHEMA = 'CUSTOMERS';
 
-const INITIAL_DEVELOPERS = [
-    { loginid: 'BI26030826', name: 'USHA RAVASAHEB HIPPARKAR', email: 'usha.hipparkar@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26030827', name: 'RAHUL RAJENDRA GOLE', email: 'rahulgole1296@gmail.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040737', name: 'ARUN WILFRED COLACO', email: 'arun.colaco@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040738', name: 'SANDEEP P DANDEKAR', email: 'Sandeep.dandekar@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040739', name: 'GAURANG NINAD PAI', email: 'gaurang.pai@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040740', name: 'SAGAR JAYANT BUCHKULE', email: 'Saagar.b@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040745', name: 'HRITIK SHETTIGAR', email: 'Hritik.s@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040770', name: 'SRISHTI MAHENDRASINGH NAYAL', email: 'Srishti.nayal@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040771', name: 'ROHAN RAMBHARAT YADAV', email: 'Rohan.Yadav@bayanattechnology.com', company: 'BSG', active: 'Y' },
-    { loginid: 'BI26040825', name: 'RASHMITA PRAKASH MHATRE', email: 'Rashmita.m@bayanattechnology.com', company: 'BSG', active: 'Y' },
-];
-
 let initializing: Promise<void> | undefined;
 export async function ensureSupportSchema() {
     if (!initializing)
         initializing = install().catch(e => { initializing = undefined; throw e; });
     return initializing;
 }
+
 async function install() {
     const c = await oracleDb.getConnection();
     try {
@@ -101,39 +89,15 @@ async function install() {
     ) s ON(d.LOGINID=s.LOGINID AND d.TENANT_ID=s.TENANT_ID AND d.COMPANY_CODE=s.COMPANY_CODE)
     WHEN NOT MATCHED THEN INSERT(LOGINID,TENANT_ID,COMPANY_CODE,SUPPORT_ROLE,ACTIVE_FLAG,CREATED_BY) VALUES(s.LOGINID,s.TENANT_ID,s.COMPANY_CODE,'ADMIN','Y','SUPPORT_SETUP')`);
 
-        // Seed / sync the registered Bayanat development team
-        for (const dev of INITIAL_DEVELOPERS) {
-            try {
-                await c.execute(
-                    `MERGE INTO CUSTOMERS.SUPPORT_DEVELOPER d
-                     USING (SELECT :loginid LOGINID FROM dual) s
-                     ON (UPPER(d.LOGINID) = UPPER(s.LOGINID))
-                     WHEN MATCHED THEN UPDATE SET USERNAME = :name, EMAIL_ID = :email, COMPANY_CODE = :company, ACTIVE_FLAG = :active
-                     WHEN NOT MATCHED THEN INSERT (LOGINID, USERNAME, EMAIL_ID, COMPANY_CODE, ACTIVE_FLAG, CREATED_BY)
-                     VALUES (:loginid, :name, :email, :company, :active, 'SUPPORT_SETUP')`,
-                    { loginid: dev.loginid, name: dev.name, email: dev.email, company: dev.company, active: dev.active }
-                );
-                await c.execute(
-                    `MERGE INTO CUSTOMERS.SUPPORT_MEMBER d
-                     USING (SELECT :loginid LOGINID, 'BTIND_TENANT' TENANT_ID, :company COMPANY_CODE FROM dual) s
-                     ON (UPPER(d.LOGINID) = UPPER(s.LOGINID) AND d.COMPANY_CODE = s.COMPANY_CODE)
-                     WHEN MATCHED THEN UPDATE SET SUPPORT_ROLE = 'DEVELOPER', ACTIVE_FLAG = :active
-                     WHEN NOT MATCHED THEN INSERT (LOGINID, TENANT_ID, COMPANY_CODE, SUPPORT_ROLE, ACTIVE_FLAG, CREATED_BY)
-                     VALUES (:loginid, s.TENANT_ID, :company, 'DEVELOPER', :active, 'SUPPORT_SETUP')`,
-                    { loginid: dev.loginid, company: dev.company, active: dev.active }
-                );
-            } catch {
-                // ignore per-developer merge issues
-            }
-        }
-
+        // Dynamically sync all developers from CUSTOMERS.SUPPORT_DEVELOPER into SUPPORT_MEMBER
         await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_MEMBER d USING (
-      SELECT DISTINCT UPPER(s.LOGINID) LOGINID,m.TENANT_ID,s.COMPANY_CODE FROM CUSTOMERS.SUPPORT_DEVELOPER p
-      JOIN CUSTOMERS.SEC_LOGINTEST s ON UPPER(s.LOGINID)=UPPER(p.LOGINID)
-      JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(m.LOGINID)=UPPER(s.LOGINID) AND m.IS_DEFAULT='Y'
-      WHERE NVL(p.ACTIVE_FLAG,'Y')='Y'
+      SELECT DISTINCT UPPER(p.LOGINID) LOGINID, NVL(m.TENANT_ID, 'BTIND_TENANT') TENANT_ID, NVL(p.COMPANY_CODE, 'BSG') COMPANY_CODE, NVL(p.ACTIVE_FLAG, 'Y') ACTIVE_FLAG
+      FROM CUSTOMERS.SUPPORT_DEVELOPER p
+      LEFT JOIN CUSTOMERS.SEC_LOGINTEST s ON UPPER(s.LOGINID)=UPPER(p.LOGINID)
+      LEFT JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(m.LOGINID)=UPPER(p.LOGINID) AND m.IS_DEFAULT='Y'
     ) s ON(d.LOGINID=s.LOGINID AND d.TENANT_ID=s.TENANT_ID AND d.COMPANY_CODE=s.COMPANY_CODE)
-    WHEN NOT MATCHED THEN INSERT(LOGINID,TENANT_ID,COMPANY_CODE,SUPPORT_ROLE,ACTIVE_FLAG,CREATED_BY) VALUES(s.LOGINID,s.TENANT_ID,s.COMPANY_CODE,'DEVELOPER','Y','SUPPORT_SETUP')`);
+    WHEN MATCHED THEN UPDATE SET ACTIVE_FLAG=s.ACTIVE_FLAG
+    WHEN NOT MATCHED THEN INSERT(LOGINID,TENANT_ID,COMPANY_CODE,SUPPORT_ROLE,ACTIVE_FLAG,CREATED_BY) VALUES(s.LOGINID,s.TENANT_ID,s.COMPANY_CODE,'DEVELOPER',s.ACTIVE_FLAG,'SUPPORT_SETUP')`);
         
         const members=await query(c,"SELECT LOGINID,TENANT_ID,COMPANY_CODE FROM CUSTOMERS.SUPPORT_MEMBER WHERE ACTIVE_FLAG='Y' AND NVL(SECURITY_SYNCED,'N')='N'");
         for(const m of members) await prepareSupportAccess(c,{loginid:m.LOGINID,tenantId:m.TENANT_ID,companyCode:m.COMPANY_CODE});
@@ -143,6 +107,7 @@ async function install() {
         await c.close();
     }
 }
+
 export function supportError(message: string, status = 400): never { throw Object.assign(new Error(message), { status }); }
 export function text(v: unknown, max = 4000) { const s = String(v ?? '').trim(); if (s.length > max)
     supportError(`Text exceeds ${max} characters`); return s; }

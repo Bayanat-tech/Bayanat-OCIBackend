@@ -357,11 +357,12 @@ export class SupportChatService {
                 supportError('Support admin access required', 403);
             const loginid = text(input.loginid, 100).toUpperCase();
             const activeFlag = input.active_flag === 'N' ? 'N' : 'Y';
+            const secActive = activeFlag === 'Y' ? '1' : '0';
             const inputName = text(input.username || input.name, 400);
             const inputEmail = text(input.email_id || input.email, 400);
             const skills = text(input.skill_tags || input.skills, 500);
 
-            // 1. Try to find user in SEC_LOGINTEST
+            // Fetch user info if already in user master
             const rows = await query(c, `SELECT s.LOGINID, s.USERNAME, s.EMAIL_ID, s.COMPANY_CODE, m.TENANT_ID 
                 FROM CUSTOMERS.SEC_LOGINTEST s 
                 LEFT JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(m.LOGINID)=UPPER(s.LOGINID) AND m.IS_DEFAULT='Y' 
@@ -370,9 +371,35 @@ export class SupportChatService {
             const d = rows[0] || {};
             const devName = inputName || d.USERNAME || loginid;
             const devEmail = inputEmail || d.EMAIL_ID || `${loginid.toLowerCase()}@bayanattechnology.com`;
-            const devCompany = d.COMPANY_CODE || 'BSG';
-            const devTenant = d.TENANT_ID || 'BTIND_TENANT';
+            const devCompany = text(input.company_code, 20) || d.COMPANY_CODE || 'BSG';
+            const devTenant = text(input.tenant_id, 80) || d.TENANT_ID || 'BTIND_TENANT';
 
+            // 1. Root Schema: CUSTOMERS.SEC_LOGINTEST
+            await c.execute(
+                `MERGE INTO CUSTOMERS.SEC_LOGINTEST s
+                 USING (SELECT :loginid LOGINID FROM dual) src
+                 ON (UPPER(s.LOGINID) = src.LOGINID)
+                 WHEN MATCHED THEN UPDATE SET USERNAME=NVL(:name, s.USERNAME), EMAIL_ID=NVL(:email, s.EMAIL_ID), ACTIVE_FLAG=:secActive
+                 WHEN NOT MATCHED THEN INSERT (LOGINID, USERNAME, EMAIL_ID, COMPANY_CODE, ACTIVE_FLAG, USER_ROLE)
+                 VALUES (:loginid, :name, :email, :company, :secActive, 'DEVELOPER')`,
+                { loginid, name: devName, email: devEmail, secActive, company: devCompany }
+            );
+
+            // 2. Root Schema: CUSTOMERS.USER_TENANT_MAPPING
+            try {
+                await c.execute(
+                    `MERGE INTO CUSTOMERS.USER_TENANT_MAPPING m
+                     USING (SELECT :loginid LOGINID, :tenant TENANT_ID FROM dual) src
+                     ON (UPPER(m.LOGINID) = src.LOGINID AND m.TENANT_ID = src.TENANT_ID)
+                     WHEN NOT MATCHED THEN INSERT (LOGINID, TENANT_ID, IS_DEFAULT)
+                     VALUES (src.LOGINID, src.TENANT_ID, 'Y')`,
+                    { loginid, tenant: devTenant }
+                );
+            } catch {
+                // ignore
+            }
+
+            // 3. Root Schema: CUSTOMERS.SUPPORT_DEVELOPER
             await c.execute(
                 `MERGE INTO CUSTOMERS.SUPPORT_DEVELOPER x
                  USING (SELECT :loginid LOGINID FROM dual) s
@@ -383,6 +410,7 @@ export class SupportChatService {
                 { loginid, name: devName, email: devEmail, skills, active: activeFlag, company: devCompany, actor: identity(u).loginid }
             );
 
+            // 4. Root Schema: CUSTOMERS.SUPPORT_MEMBER
             await c.execute(
                 `MERGE INTO CUSTOMERS.SUPPORT_MEMBER x
                  USING (SELECT :loginid LOGINID, :tenant TENANT_ID, :company COMPANY_CODE FROM dual) s
@@ -392,6 +420,46 @@ export class SupportChatService {
                  VALUES (:loginid, :tenant, :company, 'DEVELOPER', :active, :actor)`,
                 { loginid, tenant: devTenant, company: devCompany, active: activeFlag, actor: identity(u).loginid }
             );
+
+            // 5. Tenant Schemas Synchronization (BTIND, WMSDEV, and active tenant schemas)
+            try {
+                const regSchemas = await query(c, "SELECT DISTINCT UPPER(SCHEMA_NAME) AS SCHEMA_NAME FROM CUSTOMERS.TENANT_REGISTRY WHERE IS_ACTIVE='Y' AND SCHEMA_NAME IS NOT NULL");
+                const schemaList = Array.from(new Set(['BTIND', 'WMSDEV', ...regSchemas.map(r => r.SCHEMA_NAME)]));
+
+                for (const sch of schemaList) {
+                    if (!/^[A-Z0-9_]+$/.test(sch)) continue;
+                    try {
+                        const [modRow] = await query(c, `SELECT SERIAL_NO FROM ${sch}.SEC_MODULE_DATA WHERE URL_PATH='support/assigned'`);
+                        let modSerial = modRow?.SERIAL_NO;
+                        if (!modSerial) {
+                            const [maxRow] = await query(c, `SELECT NVL(MAX(SERIAL_NO), 980) + 1 AS MAX_ID FROM ${sch}.SEC_MODULE_DATA`);
+                            modSerial = maxRow?.MAX_ID || 981;
+                            await c.execute(
+                                `INSERT INTO ${sch}.SEC_MODULE_DATA (SERIAL_NO, LEVEL1, LEVEL2, POSITION, RIGHTS, TERMINATOR, URL_PATH, APP_CODE, COMPANY_CODE, CREATE_USER, CREATE_DATE)
+                                 VALUES (:modSerial, 'Developer desk', 'My assignments', 1, 'Y', 'Y', 'support/assigned', 'Support', :company, 'SYSTEM_SETUP', SYSDATE)`,
+                                { modSerial, company: devCompany }
+                            );
+                        }
+
+                        const flag = activeFlag; // 'Y' when active, 'N' when inactive
+                        await c.execute(
+                            `MERGE INTO ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER d
+                             USING (SELECT :loginid LOGINID, :serialNo SERIAL_NO, :company COMPANY_CODE FROM dual) s
+                             ON (UPPER(d.LOGINID) = UPPER(s.LOGINID) AND d.SERIAL_NO_OR_ROLE_ID = s.SERIAL_NO AND d.COMPANY_CODE = s.COMPANY_CODE)
+                             WHEN MATCHED THEN
+                               UPDATE SET SSEARCH=:flag, SSAVE=:flag, SMODIFY=:flag, SNEW=:flag, SDELETE=:flag, SHELP=:flag, SPRINT=:flag, USERID=:actor, USER_DT=SYSDATE
+                             WHEN NOT MATCHED THEN
+                               INSERT (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE, SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP, USERID, CREATE_USER, CREATE_DATE)
+                               VALUES (:company, UPPER(:loginid), :serialNo, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :actor, :actor, SYSDATE)`,
+                            { loginid, serialNo: modSerial, company: devCompany, flag, actor: identity(u).loginid }
+                        );
+                    } catch {
+                        // ignore per-schema table existence errors
+                    }
+                }
+            } catch {
+                // ignore
+            }
 
             return { loginid, active_flag: activeFlag };
         }, true);
@@ -417,7 +485,9 @@ export class SupportChatService {
             const devs = await nativeSupportDevelopers(c);
             const d = devs.find(x => x.LOGINID === developer);
             if (!d)
-                supportError('Select an active support developer');
+                supportError('Select a valid support developer');
+            if (d.ACTIVE_FLAG === 'N')
+                supportError('This developer is disabled and cannot be assigned tickets', 400);
 
             const devEmail = d.EMAIL_ID || `${developer.toLowerCase()}@bayanattechnology.com`;
             const devName = d.USERNAME || developer;
