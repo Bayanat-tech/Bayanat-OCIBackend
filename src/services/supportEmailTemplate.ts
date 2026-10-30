@@ -150,7 +150,6 @@ export function buildSupportEmailHtml(opts: SupportEmailOptions): string {
             <td style="background-color: #f8fafc; padding: 16px 28px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5;">
               This is an automated notification from the <strong>Bayanat Technology Enterprise Support System</strong>.
               <br>
-              CC: <a href="mailto:prem@bayanattechnology.com" style="color: #64748b; text-decoration: underline;">prem@bayanattechnology.com</a>
             </td>
           </tr>
 

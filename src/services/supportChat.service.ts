@@ -365,7 +365,7 @@ export class SupportChatService {
                        d.LOGINID AS REGISTERED_DEV
                 FROM CUSTOMERS.SEC_LOGINTEST s
                 LEFT JOIN CUSTOMERS.SUPPORT_DEVELOPER d ON UPPER(d.LOGINID) = UPPER(s.LOGINID)
-                WHERE (UPPER(s.LOGINID) LIKE 'B%' OR UPPER(s.LOGINID) LIKE 'BI%')
+                WHERE UPPER(s.LOGINID) LIKE 'BI%'
                 ORDER BY s.USERNAME ASC
             `);
             return rows.map(r => ({
@@ -425,7 +425,6 @@ export class SupportChatService {
                 supportError('Support admin access required', 403);
             const loginid = text(input.loginid, 100).toUpperCase();
             const activeFlag = input.active_flag === 'N' ? 'N' : 'Y';
-            const secActive = activeFlag === 'Y' ? '1' : '0';
             const inputName = text(input.username || input.name, 400);
             const inputEmail = text(input.email_id || input.email, 400);
             const skills = text(input.skill_tags || input.skills, 500);
@@ -443,51 +442,90 @@ export class SupportChatService {
             const devTenant = text(input.tenant_id, 80) || d.TENANT_ID || 'BTIND_TENANT';
 
             // 1. Root Schema: CUSTOMERS.SEC_LOGINTEST
-            await c.execute(
-                `MERGE INTO CUSTOMERS.SEC_LOGINTEST s
-                 USING (SELECT :loginid LOGINID FROM dual) src
-                 ON (UPPER(s.LOGINID) = src.LOGINID)
-                 WHEN MATCHED THEN UPDATE SET USERNAME=NVL(:name, s.USERNAME), EMAIL_ID=NVL(:email, s.EMAIL_ID), ACTIVE_FLAG=:secActive
-                 WHEN NOT MATCHED THEN INSERT (LOGINID, USERNAME, EMAIL_ID, COMPANY_CODE, ACTIVE_FLAG, USER_ROLE)
-                 VALUES (:loginid, :name, :email, :company, :secActive, 'DEVELOPER')`,
-                { loginid, name: devName, email: devEmail, secActive, company: devCompany }
-            );
+            try {
+                const userExists = await query(c, `SELECT 1 AS FOUND FROM CUSTOMERS.SEC_LOGINTEST WHERE UPPER(LOGINID)=UPPER(:loginid)`, { loginid });
+                if (userExists.length > 0) {
+                    await c.execute(
+                        `UPDATE CUSTOMERS.SEC_LOGINTEST
+                         SET USERNAME = NVL(:name, USERNAME),
+                             EMAIL_ID = NVL(:email, EMAIL_ID),
+                             ACTIVE_FLAG = :activeFlag
+                         WHERE UPPER(LOGINID) = UPPER(:loginid)`,
+                        { loginid, name: devName, email: devEmail, activeFlag }
+                    );
+                } else {
+                    await c.execute(
+                        `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE, LOGINID, USERNAME, EMAIL_ID, ACTIVE_FLAG, ID)
+                         VALUES (:company, :loginid, :name, :email, :activeFlag, (SELECT NVL(MAX(ID), 0) + 1 FROM CUSTOMERS.SEC_LOGINTEST))`,
+                        { company: devCompany, loginid, name: devName, email: devEmail, activeFlag }
+                    );
+                }
+            } catch (secErr: any) {
+                console.warn('[Support] SEC_LOGINTEST sync notice:', secErr?.message || secErr);
+            }
 
             // 2. Root Schema: CUSTOMERS.USER_TENANT_MAPPING
             try {
-                await c.execute(
-                    `MERGE INTO CUSTOMERS.USER_TENANT_MAPPING m
-                     USING (SELECT :loginid LOGINID, :tenant TENANT_ID FROM dual) src
-                     ON (UPPER(m.LOGINID) = src.LOGINID AND m.TENANT_ID = src.TENANT_ID)
-                     WHEN NOT MATCHED THEN INSERT (LOGINID, TENANT_ID, IS_DEFAULT)
-                     VALUES (src.LOGINID, src.TENANT_ID, 'Y')`,
-                    { loginid, tenant: devTenant }
-                );
-            } catch {
-                // ignore
+                const mapExists = await query(c, `SELECT 1 AS FOUND FROM CUSTOMERS.USER_TENANT_MAPPING WHERE UPPER(LOGINID)=UPPER(:loginid) AND TENANT_ID=:tenant`, { loginid, tenant: devTenant });
+                if (mapExists.length === 0) {
+                    await c.execute(
+                        `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING (LOGINID, TENANT_ID, IS_DEFAULT)
+                         VALUES (:loginid, :tenant, 'Y')`,
+                        { loginid, tenant: devTenant }
+                    );
+                }
+            } catch (mapErr: any) {
+                console.warn('[Support] USER_TENANT_MAPPING sync notice:', mapErr?.message || mapErr);
             }
 
             // 3. Root Schema: CUSTOMERS.SUPPORT_DEVELOPER
-            await c.execute(
-                `MERGE INTO CUSTOMERS.SUPPORT_DEVELOPER x
-                 USING (SELECT :loginid LOGINID FROM dual) s
-                 ON (UPPER(x.LOGINID) = s.LOGINID)
-                 WHEN MATCHED THEN UPDATE SET USERNAME=:name, EMAIL_ID=:email, SKILL_TAGS=:skills, ACTIVE_FLAG=:active, UPDATED_AT=${NOW}
-                 WHEN NOT MATCHED THEN INSERT (LOGINID, USERNAME, EMAIL_ID, COMPANY_CODE, SKILL_TAGS, ACTIVE_FLAG, CREATED_BY)
-                 VALUES (:loginid, :name, :email, :company, :skills, :active, :actor)`,
-                { loginid, name: devName, email: devEmail, skills, active: activeFlag, company: devCompany, actor: identity(u).loginid }
-            );
+            try {
+                const devExists = await query(c, `SELECT 1 AS FOUND FROM CUSTOMERS.SUPPORT_DEVELOPER WHERE UPPER(LOGINID)=UPPER(:loginid)`, { loginid });
+                if (devExists.length > 0) {
+                    await c.execute(
+                        `UPDATE CUSTOMERS.SUPPORT_DEVELOPER
+                         SET USERNAME = :name,
+                             EMAIL_ID = :email,
+                             COMPANY_CODE = :company,
+                             SKILL_TAGS = :skills,
+                             ACTIVE_FLAG = :active,
+                             UPDATED_AT = ${NOW}
+                         WHERE UPPER(LOGINID) = UPPER(:loginid)`,
+                        { loginid, name: devName, email: devEmail, company: devCompany, skills: skills || 'All Modules', active: activeFlag }
+                    );
+                } else {
+                    await c.execute(
+                        `INSERT INTO CUSTOMERS.SUPPORT_DEVELOPER (LOGINID, USERNAME, EMAIL_ID, COMPANY_CODE, SKILL_TAGS, ACTIVE_FLAG, CREATED_BY)
+                         VALUES (:loginid, :name, :email, :company, :skills, :active, :actor)`,
+                        { loginid, name: devName, email: devEmail, company: devCompany, skills: skills || 'All Modules', active: activeFlag, actor: identity(u).loginid }
+                    );
+                }
+            } catch (devErr: any) {
+                console.error('[Support] SUPPORT_DEVELOPER error:', devErr?.message || devErr);
+                throw devErr;
+            }
 
             // 4. Root Schema: CUSTOMERS.SUPPORT_MEMBER
-            await c.execute(
-                `MERGE INTO CUSTOMERS.SUPPORT_MEMBER x
-                 USING (SELECT :loginid LOGINID, :tenant TENANT_ID, :company COMPANY_CODE FROM dual) s
-                 ON (UPPER(x.LOGINID) = s.LOGINID AND x.TENANT_ID=s.TENANT_ID AND x.COMPANY_CODE=s.COMPANY_CODE)
-                 WHEN MATCHED THEN UPDATE SET ACTIVE_FLAG=:active
-                 WHEN NOT MATCHED THEN INSERT (LOGINID, TENANT_ID, COMPANY_CODE, SUPPORT_ROLE, ACTIVE_FLAG, CREATED_BY)
-                 VALUES (:loginid, :tenant, :company, 'DEVELOPER', :active, :actor)`,
-                { loginid, tenant: devTenant, company: devCompany, active: activeFlag, actor: identity(u).loginid }
-            );
+            try {
+                const memExists = await query(c,
+                    `SELECT 1 AS FOUND FROM CUSTOMERS.SUPPORT_MEMBER WHERE UPPER(LOGINID)=UPPER(:loginid) AND TENANT_ID=:tenant AND COMPANY_CODE=:company`,
+                    { loginid, tenant: devTenant, company: devCompany }
+                );
+                if (memExists.length > 0) {
+                    await c.execute(
+                        `UPDATE CUSTOMERS.SUPPORT_MEMBER SET ACTIVE_FLAG=:active WHERE UPPER(LOGINID)=UPPER(:loginid) AND TENANT_ID=:tenant AND COMPANY_CODE=:company`,
+                        { loginid, tenant: devTenant, company: devCompany, active: activeFlag }
+                    );
+                } else {
+                    await c.execute(
+                        `INSERT INTO CUSTOMERS.SUPPORT_MEMBER (LOGINID, TENANT_ID, COMPANY_CODE, SUPPORT_ROLE, ACTIVE_FLAG, CREATED_BY)
+                         VALUES (:loginid, :tenant, :company, 'DEVELOPER', :active, :actor)`,
+                        { loginid, tenant: devTenant, company: devCompany, active: activeFlag, actor: identity(u).loginid }
+                    );
+                }
+            } catch (memErr: any) {
+                console.warn('[Support] SUPPORT_MEMBER sync warning:', memErr?.message || memErr);
+            }
 
             // 5. Tenant Schemas Synchronization (BTIND, WMSDEV, and active tenant schemas)
             try {
@@ -510,23 +548,31 @@ export class SupportChatService {
                         }
 
                         const flag = activeFlag; // 'Y' when active, 'N' when inactive
-                        await c.execute(
-                            `MERGE INTO ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER d
-                             USING (SELECT :loginid LOGINID, :serialNo SERIAL_NO, :company COMPANY_CODE FROM dual) s
-                             ON (UPPER(d.LOGINID) = UPPER(s.LOGINID) AND d.SERIAL_NO_OR_ROLE_ID = s.SERIAL_NO AND d.COMPANY_CODE = s.COMPANY_CODE)
-                             WHEN MATCHED THEN
-                               UPDATE SET SSEARCH=:flag, SSAVE=:flag, SMODIFY=:flag, SNEW=:flag, SDELETE=:flag, SHELP=:flag, SPRINT=:flag, USERID=:actor, USER_DT=SYSDATE
-                             WHEN NOT MATCHED THEN
-                               INSERT (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE, SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP, USERID, CREATE_USER, CREATE_DATE)
-                               VALUES (:company, UPPER(:loginid), :serialNo, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :actor, :actor, SYSDATE)`,
-                            { loginid, serialNo: modSerial, company: devCompany, flag, actor: identity(u).loginid }
+                        const accessExists = await query(c,
+                            `SELECT 1 FROM ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(LOGINID)=UPPER(:loginid) AND SERIAL_NO_OR_ROLE_ID=:serialNo AND COMPANY_CODE=:company`,
+                            { loginid, serialNo: modSerial, company: devCompany }
                         );
-                    } catch {
-                        // ignore per-schema table existence errors
+
+                        if (accessExists.length > 0) {
+                            await c.execute(
+                                `UPDATE ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER
+                                 SET SSEARCH=:flag, SSAVE=:flag, SMODIFY=:flag, SNEW=:flag, SDELETE=:flag, SHELP=:flag, SPRINT=:flag, USERID=:actor, USER_DT=SYSDATE
+                                 WHERE UPPER(LOGINID)=UPPER(:loginid) AND SERIAL_NO_OR_ROLE_ID=:serialNo AND COMPANY_CODE=:company`,
+                                { loginid, serialNo: modSerial, company: devCompany, flag, actor: identity(u).loginid }
+                            );
+                        } else {
+                            await c.execute(
+                                `INSERT INTO ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE, SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP, USERID, CREATE_USER, CREATE_DATE)
+                                 VALUES (:company, UPPER(:loginid), :serialNo, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :actor, :actor, SYSDATE)`,
+                                { company: devCompany, loginid, serialNo: modSerial, flag, actor: identity(u).loginid }
+                            );
+                        }
+                    } catch (perSchErr: any) {
+                        console.warn(`[Support] Schema ${sch} sync notice:`, perSchErr?.message || perSchErr);
                     }
                 }
-            } catch {
-                // ignore
+            } catch (schErr: any) {
+                console.warn('[Support] Tenant schemas loop notice:', schErr?.message || schErr);
             }
 
             return { loginid, active_flag: activeFlag };
