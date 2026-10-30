@@ -321,7 +321,7 @@ export class SupportChatService {
                 supportError('Use assignment or developer progress actions for this status');
             }
 
-            await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:status,RESOLUTION=CASE WHEN :status='RESOLVED' THEN :note ELSE RESOLUTION END,DEV_STATUS=CASE WHEN :status='RESOLVED' THEN 'DONE' WHEN :status='REOPENED' THEN 'ASSIGNED' ELSE DEV_STATUS END,RESOLVED_AT=CASE WHEN :status='RESOLVED' THEN ${NOW} ELSE RESOLVED_AT END,CLOSED_AT=CASE WHEN :status='CLOSED' THEN ${NOW} ELSE NULL END,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { status, note: note || null, ticketId });
+            await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:status,RESOLUTION=NVL(:note, RESOLUTION),DEV_STATUS=CASE WHEN :status='RESOLVED' THEN 'DONE' WHEN :status='REOPENED' THEN 'ASSIGNED' ELSE DEV_STATUS END,RESOLVED_AT=CASE WHEN :status='RESOLVED' THEN ${NOW} ELSE RESOLVED_AT END,CLOSED_AT=CASE WHEN :status='CLOSED' THEN ${NOW} ELSE NULL END,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { status, note: note || null, ticketId });
             await insertMessage(c, ticketId, u, `${event === 'RESOLVED' ? 'Resolution submitted for admin review' : event === 'CLOSED' ? 'Closed by support admin' : 'Reopened'}${note ? `: ${note}` : ''}`, 'SYSTEM');
             await audit(c, ticketId, u, event, note || event);
 
