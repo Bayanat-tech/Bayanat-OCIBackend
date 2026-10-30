@@ -5,20 +5,71 @@ import { ticketAccess } from './supportAccess';
 import { emitSupportTicketChanged, emitSupportPresenceChanged, getConnectedSupportUsers } from './supportRealtime.service';
 import { getSignedUrl } from './ociUpload.service';
 import { SupportAssistantService } from './supportAssistant.service';
+import { buildSupportEmailHtml } from './supportEmailTemplate';
+
 const NOW = 'CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE)';
 const fmt = (col: string) => `TO_CHAR(${col},'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
 const email = (v: any) => { const e = text(v, 400); if (e && !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(e))
     supportError('Enter a valid email address'); return e; };
 async function admins(c: oracledb.Connection) { return (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID).join(','); }
+
 export async function queueSupportEmail(c: oracledb.Connection, ticketId: number, key: string, to: string, subject: string, body: string) {
     if (!to)
         return;
     await c.execute(`MERGE INTO CUSTOMERS.SUPPORT_EMAIL_OUTBOX d USING(SELECT :dedupKey DEDUP_KEY FROM dual)s ON(d.DEDUP_KEY=s.DEDUP_KEY) WHEN NOT MATCHED THEN INSERT(TICKET_ID,DEDUP_KEY,RECIPIENTS,SUBJECT,BODY,AVAILABLE_AT,CREATED_AT) VALUES(:ticketId,:dedupKey,:recipients,:mailSubject,:mailBody,${NOW},${NOW})`, { dedupKey: key, ticketId, recipients: to, mailSubject: subject.slice(0, 500), mailBody: { type: oracledb.CLOB, val: body } });
 }
+
 async function audit(c: oracledb.Connection, ticketId: number, u: any, event: string, note: string) { const id = identity(u); await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_EVENT(TICKET_ID,ACTOR_LOGINID,ACTOR_TENANT_ID,EVENT_TYPE,EVENT_TEXT,CREATED_AT) VALUES(:ticketId,:loginid,:tenant,:event,:note,${NOW})`, { ticketId, loginid: id.loginid, tenant: id.tenantId, event, note: note.slice(0, 2000) }); }
+
+async function resolveRequesterName(c: oracledb.Connection, u: any): Promise<string> {
+    const rawLogin = String(u.loginid || '').trim();
+    const jwtUsername = String(u.username || '').trim();
+    if (jwtUsername && jwtUsername.toUpperCase() !== rawLogin.toUpperCase()) {
+        return jwtUsername;
+    }
+
+    // 1. Try CUSTOMERS.SEC_LOGINTEST
+    try {
+        const [row] = await query(c, "SELECT USERNAME FROM CUSTOMERS.SEC_LOGINTEST WHERE UPPER(LOGINID)=UPPER(:loginid)", { loginid: rawLogin });
+        if (row?.USERNAME && row.USERNAME.trim() && row.USERNAME.trim().toUpperCase() !== rawLogin.toUpperCase()) {
+            return row.USERNAME.trim();
+        }
+    } catch {
+        // ignore
+    }
+
+    // 2. Try tenant HR employee table MS_HR_EMPLOYEE and SEC_LOGIN
+    try {
+        const tenantId = u.tenantId || '';
+        if (tenantId) {
+            const [t] = await query(c, "SELECT SCHEMA_NAME FROM CUSTOMERS.TENANT_REGISTRY WHERE UPPER(TENANT_ID)=UPPER(:tenantId) AND IS_ACTIVE='Y'", { tenantId });
+            const schema = String(t?.SCHEMA_NAME || '').toUpperCase();
+            if (/^[A-Z0-9_]+$/.test(schema)) {
+                const [emp] = await query(c, `SELECT TRIM(NVL(FIRST_NAME, '') || ' ' || NVL(LAST_NAME, '')) AS FULL_NAME, ALIAS_NAME FROM ${schema}.MS_HR_EMPLOYEE WHERE UPPER(EMPLOYEE_CODE)=UPPER(:loginid) OR UPPER(EMPLOYEE_ID)=UPPER(:loginid)`, { loginid: rawLogin });
+                if (emp?.FULL_NAME && emp.FULL_NAME.trim()) {
+                    return emp.FULL_NAME.trim();
+                }
+                if (emp?.ALIAS_NAME && emp.ALIAS_NAME.trim()) {
+                    return emp.ALIAS_NAME.trim();
+                }
+
+                const [sec] = await query(c, `SELECT USERNAME FROM ${schema}.SEC_LOGIN WHERE UPPER(LOGINID)=UPPER(:loginid) OR UPPER(USER_CODE)=UPPER(:loginid)`, { loginid: rawLogin });
+                if (sec?.USERNAME && sec.USERNAME.trim() && sec.USERNAME.trim().toUpperCase() !== rawLogin.toUpperCase()) {
+                    return sec.USERNAME.trim();
+                }
+            }
+        }
+    } catch {
+        // ignore
+    }
+
+    return jwtUsername || rawLogin;
+}
+
 async function insertMessage(c: oracledb.Connection, ticketId: number, u: any, message: string, role: string, files: any[] = []) {
     const id = identity(u);
-    const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_MESSAGE(TICKET_ID,SENDER_LOGINID,SENDER_NAME,SENDER_ROLE,MESSAGE_TEXT,HAS_ATTACHMENTS,SENDER_TENANT_ID,SENDER_COMPANY_CODE,CREATED_AT) VALUES(:ticketId,:loginid,:name,:role,:message,:files,:tenant,:company,${NOW}) RETURNING MESSAGE_ID INTO :id`, { ticketId, loginid: id.loginid, name: text(u.username || id.loginid, 400), role: role.toUpperCase(), message: { type: oracledb.CLOB, val: message }, files: files.length ? 'Y' : 'N', tenant: id.tenantId, company: id.companyCode, id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } });
+    const senderName = role.toUpperCase() === 'SYSTEM' ? 'SYSTEM' : await resolveRequesterName(c, u);
+    const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_MESSAGE(TICKET_ID,SENDER_LOGINID,SENDER_NAME,SENDER_ROLE,MESSAGE_TEXT,HAS_ATTACHMENTS,SENDER_TENANT_ID,SENDER_COMPANY_CODE,CREATED_AT) VALUES(:ticketId,:loginid,:name,:role,:message,:files,:tenant,:company,${NOW}) RETURNING MESSAGE_ID INTO :id`, { ticketId, loginid: id.loginid, name: text(senderName, 400), role: role.toUpperCase(), message: { type: oracledb.CLOB, val: message }, files: files.length ? 'Y' : 'N', tenant: id.tenantId, company: id.companyCode, id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } });
     const mid = Number((r.outBinds as any).id[0]);
     for (const f of files)
         await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_ATTACHMENT(TICKET_ID,MESSAGE_ID,FILE_NAME,FILE_TYPE,FILE_SIZE,DATA_URL,CREATED_AT) VALUES(:ticketId,:mid,:name,:fileType,:fileSize,:fileData,${NOW})`, { ticketId, mid, name: f.name, fileType: f.type, fileSize: f.size, fileData: { type: oracledb.CLOB, val: f.data } });
@@ -91,7 +142,38 @@ export class SupportChatService {
         const id = identity(u), message = text(input.message, 8000), subject = text(input.subject, 300), files = attachments(input.attachments);
         if (!subject || !message)
             supportError('Issue subject and comments are required');
-        const result = await withSupportDb(async (c) => { const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_TICKET(COMPANY_CODE,TENANT_ID,REQUESTER_LOGINID,REQUESTER_NAME,SUBJECT,MODULE_NAME,PAGE_URL,STATUS,PRIORITY,WORKFLOW_VERSION,CREATED_AT,UPDATED_AT) VALUES(:company,:tenant,:loginid,:name,:subject,:module,:page,'OPEN','NORMAL',1,${NOW},${NOW}) RETURNING TICKET_ID INTO :id`, { company: id.companyCode, tenant: id.tenantId, loginid: id.loginid, name: text(u.username || id.loginid, 400), subject, module: text(input.module, 100), page: text(input.page_url, 500), id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } }); const ticketId = Number((r.outBinds as any).id[0]); const messageId = await insertMessage(c, ticketId, u, message, 'USER', files); await audit(c, ticketId, u, 'CREATED', subject); await queueSupportEmail(c, ticketId, `created:${ticketId}`, await admins(c), `New support ticket #${ticketId}: ${subject}`, `Raised by ${id.loginid}\nCompany: ${id.companyCode}\nTenant: ${id.tenantId}\nModule: ${text(input.module, 100)}\nPage: ${text(input.page_url, 500)}\n\n${message}\n\nOpen Support to review attachments and assign a developer.`); return { ticketId, messageId }; }, true);
+        const result = await withSupportDb(async (c) => {
+            const requesterName = await resolveRequesterName(c, u);
+            const r = await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_TICKET(COMPANY_CODE,TENANT_ID,REQUESTER_LOGINID,REQUESTER_NAME,SUBJECT,MODULE_NAME,PAGE_URL,STATUS,PRIORITY,WORKFLOW_VERSION,CREATED_AT,UPDATED_AT) VALUES(:company,:tenant,:loginid,:name,:subject,:module,:page,'OPEN','NORMAL',1,${NOW},${NOW}) RETURNING TICKET_ID INTO :id`, { company: id.companyCode, tenant: id.tenantId, loginid: id.loginid, name: text(requesterName, 400), subject, module: text(input.module, 100), page: text(input.page_url, 500), id: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER } });
+            const ticketId = Number((r.outBinds as any).id[0]);
+            const messageId = await insertMessage(c, ticketId, u, message, 'USER', files);
+            await audit(c, ticketId, u, 'CREATED', subject);
+
+            const emailHtml = buildSupportEmailHtml({
+                title: `New Support Ticket #${ticketId}`,
+                ticketId,
+                subject,
+                requesterName,
+                requesterLogin: id.loginid,
+                companyCode: id.companyCode,
+                tenantId: id.tenantId,
+                moduleName: text(input.module, 100),
+                pageUrl: text(input.page_url, 500),
+                status: 'OPEN',
+                priority: 'NORMAL',
+                message
+            });
+
+            await queueSupportEmail(
+                c,
+                ticketId,
+                `created:${ticketId}`,
+                await admins(c),
+                `New support ticket #${ticketId}: ${subject}`,
+                emailHtml
+            );
+            return { ticketId, messageId };
+        }, true);
         await changed(result.ticketId, u);
         return result;
     }
@@ -133,7 +215,29 @@ export class SupportChatService {
             await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:status,RESOLUTION=CASE WHEN :status='RESOLVED' THEN :note ELSE RESOLUTION END,DEV_STATUS=CASE WHEN :status='RESOLVED' THEN 'DONE' WHEN :status='REOPENED' THEN 'ASSIGNED' ELSE DEV_STATUS END,RESOLVED_AT=CASE WHEN :status='RESOLVED' THEN ${NOW} ELSE RESOLVED_AT END,CLOSED_AT=CASE WHEN :status='CLOSED' THEN ${NOW} ELSE NULL END,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { status, note: note || null, ticketId });
             await insertMessage(c, ticketId, u, `${event === 'RESOLVED' ? 'Resolution submitted for admin review' : event === 'CLOSED' ? 'Closed by support' : 'Reopened'}${note ? `: ${note}` : ''}`, 'SYSTEM');
             await audit(c, ticketId, u, event, note || event);
-            await queueSupportEmail(c, ticketId, `${event}:${ticketId}:${Date.now()}`, await admins(c), `Support #${ticketId} ${event.toLowerCase()}`, `${t.SUBJECT}\nBy: ${identity(u).loginid}\n${note}\nReview this ticket in Support.`);
+
+            const actorName = await resolveRequesterName(c, u);
+            const emailHtml = buildSupportEmailHtml({
+                title: `Support Ticket #${ticketId} Update`,
+                ticketId,
+                subject: t.SUBJECT,
+                requesterName: actorName,
+                requesterLogin: identity(u).loginid,
+                companyCode: t.COMPANY_CODE,
+                tenantId: t.TENANT_ID,
+                status,
+                message: note || `Status updated to ${status}`,
+                note: `Action taken by ${actorName} (${identity(u).loginid})`
+            });
+
+            await queueSupportEmail(
+                c,
+                ticketId,
+                `${event}:${ticketId}:${Date.now()}`,
+                await admins(c),
+                `Support #${ticketId} ${event.toLowerCase()}: ${t.SUBJECT}`,
+                emailHtml
+            );
         }, true);
         await changed(ticketId, u);
         return { ticketId, status };
@@ -149,7 +253,31 @@ export class SupportChatService {
         supportError('Estimated time must be 1 to 43200 minutes'); await withSupportDb(async (c) => { const { ticket: t, role } = await ticketAccess(c, ticketId, u, true); if (role !== 'admin')
         supportError('Support admin access required', 403); if (['CLOSED', 'RESOLVED'].includes(t.STATUS))
         supportError('Reopen this ticket before assigning it', 409); const d=(await nativeSupportDevelopers(c)).find(x=>x.LOGINID===developer); if (!d)
-        supportError('Select an active support developer'); if(!email(d.EMAIL_ID))supportError('The developer account needs a valid email in the user master'); await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET DEVELOPER_LOGINID=:developer,DEVELOPER_NAME=:name,DEVELOPER_EMAIL=:email,ASSIGNED_TO=:developer,ASSIGNED_BY=:actor,ASSIGNED_AT=${NOW},STATUS='ASSIGNED',DEV_STATUS='ASSIGNED',PRIORITY=:priority,SLA_MINUTES=:minutes,DUE_AT=${NOW}+(:minutes/1440),OVERDUE_NOTIFIED_AT=NULL,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { developer, name: d.USERNAME, email: d.EMAIL_ID, actor: identity(u).loginid, priority, minutes, ticketId }); const note = `Assigned to ${d.USERNAME || developer}. Priority: ${priority}. Estimated time: ${minutes} minutes.${input.note ? ' ' + text(input.note, 1000) : ''}`; await insertMessage(c, ticketId, u, note, 'SYSTEM'); await audit(c, ticketId, u, 'ASSIGNED', note); await queueSupportEmail(c, ticketId, `assigned:${ticketId}:${Date.now()}`, email(d.EMAIL_ID), `Support ticket #${ticketId} assigned - ${priority}`, `${t.SUBJECT}\nCompany: ${t.COMPANY_CODE}\nTenant: ${t.TENANT_ID}\n${note}\nOpen the Support module to review the issue and reply. Submit a resolution for admin review when complete.`); }, true); await changed(ticketId, u); return { ticketId, emailQueued: true }; }
+        supportError('Select an active support developer'); if(!email(d.EMAIL_ID))supportError('The developer account needs a valid email in the user master'); await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET DEVELOPER_LOGINID=:developer,DEVELOPER_NAME=:name,DEVELOPER_EMAIL=:email,ASSIGNED_TO=:developer,ASSIGNED_BY=:actor,ASSIGNED_AT=${NOW},STATUS='ASSIGNED',DEV_STATUS='ASSIGNED',PRIORITY=:priority,SLA_MINUTES=:minutes,DUE_AT=${NOW}+(:minutes/1440),OVERDUE_NOTIFIED_AT=NULL,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { developer, name: d.USERNAME, email: d.EMAIL_ID, actor: identity(u).loginid, priority, minutes, ticketId }); const note = `Assigned to ${d.USERNAME || developer}. Priority: ${priority}. Estimated time: ${minutes} minutes.${input.note ? ' ' + text(input.note, 1000) : ''}`; await insertMessage(c, ticketId, u, note, 'SYSTEM'); await audit(c, ticketId, u, 'ASSIGNED', note);
+
+        const devName = d.USERNAME || developer;
+        const emailHtml = buildSupportEmailHtml({
+            title: `Support Ticket #${ticketId} Assigned`,
+            ticketId,
+            subject: t.SUBJECT,
+            requesterName: devName,
+            requesterLogin: developer,
+            companyCode: t.COMPANY_CODE,
+            tenantId: t.TENANT_ID,
+            priority,
+            status: 'ASSIGNED',
+            message: note,
+            note: `Assigned to ${devName}. Estimated time: ${minutes} minutes.`
+        });
+
+        await queueSupportEmail(
+            c,
+            ticketId,
+            `assigned:${ticketId}:${Date.now()}`,
+            email(d.EMAIL_ID),
+            `Support ticket #${ticketId} assigned - ${priority}: ${t.SUBJECT}`,
+            emailHtml
+        ); }, true); await changed(ticketId, u); return { ticketId, emailQueued: true }; }
     static async updateDeveloperStatus(ticketId: number, input: any, u: any) { const status = text(input.dev_status, 30); if (!['IN_PROGRESS', 'WAITING_INFO'].includes(status))
         supportError('Select In progress or Waiting for information'); await withSupportDb(async (c) => { const a = await ticketAccess(c, ticketId, u, true); if (a.role !== 'developer' || a.ticket.DEVELOPER_LOGINID !== identity(u).loginid)
         supportError('Only the assigned developer may update progress', 403); if (['CLOSED', 'RESOLVED'].includes(a.ticket.STATUS))
