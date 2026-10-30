@@ -253,22 +253,46 @@ function formHeaderPairs(data: FormData, requestNumber: string): { left: [string
   const poNos = Array.from(new Set((data.pos ?? []).map((p) => text(p.doc_no).trim()).filter(Boolean)));
   const poText = poNos.length ? poNos.join(", ") : "-";
 
+  // const left: [string, string][] = [
+  //   ["Purchase Request Number", reqNo],
+  //   ["Created By", text(h.create_user ?? first.user_id)],
+  //   ["Flow", text(h.flow_code)],
+  //   ["Description", text(h.description)],
+  //   ["Remarks", text(h.remarks)],
+  //   ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
+  //   ["Division", text(h.req_div_code)],
+  // ];
+  // const right: [string, string][] = [
+  //   ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
+  //   ["Currency", text(h.currency_code ?? first.curr_code)],
+  //   ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
+  //   ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
+  //   ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
+  //   ["Request Date", dateText(reqDate)],
+  //   ["Last Action", text(h.last_action ?? first.last_action ?? first.purch_status)],
+  //   ["PO Generated", poText],
+  // ];
+
+
+
+  const reqNoDate = `${reqNo} - ${dateText(reqDate)}`;
+
   const left: [string, string][] = [
-    ["Purchase Request Number", reqNo],
+    ["Purchase Request No-Date", reqNoDate],
     ["Created By", text(h.create_user ?? first.user_id)],
-    ["Flow", text(h.flow_code)],
+    ["Flow", `${text(h.flow_code)} - ${text(h.flow_name)}`],
     ["Description", text(h.description)],
     ["Remarks", text(h.remarks)],
     ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
     ["Division", text(h.req_div_code)],
   ];
+
   const right: [string, string][] = [
     ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
     ["Currency", text(h.currency_code ?? first.curr_code)],
     ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
     ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
     ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
-    ["Request Date", dateText(reqDate)],
     ["Last Action", text(h.last_action ?? first.last_action ?? first.purch_status)],
     ["PO Generated", poText],
   ];
@@ -315,7 +339,15 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
           ? remarkLines(v).map((line) => escapeHtml(line)).join("<br/>") || "-"
           : "<b>" + safe + "</b>";
 
-        return "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td>" + val + "</td></tr>";
+        const labelStyle = k === "Purchase Request No-Date"
+          ? ' style="white-space:nowrap;"'
+          : "";
+
+        return "<tr><td" + labelStyle + ">" +
+          escapeHtml(k) +
+          "</td><td>:</td><td>" +
+          val +
+          "</td></tr>";
       })
       .join("");
     return (
@@ -327,9 +359,10 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
   };
 
   const headerBlockHtml =
-        '<table class="pr-title-line"><tbody><tr><td>' +
-      '<h1 class="report-title">Purchase Request : ' +
-        escapeHtml(left[0]?.[1] ?? requestNumber) + "</h1>" +
+    '<table class="pr-title-line"><tbody><tr><td>' +
+    '<h1 class="report-title">Purchase Request : ' +
+    escapeHtml(requestNumber) +
+    "</h1>" +
     "</td></tr></tbody></table>" +
     '<table class="grn-two-col"><tbody><tr>' +
     "<td>" + kvTable("Request Details", left) + "</td>" +
@@ -478,7 +511,7 @@ function renderFormBody(data: FormData, requestNumber: string, orientation: Orie
     "<thead><tr>" +
     "<th>Approval Status</th>" +
     "<th>Last Updated By</th>" +
-    "<th>Last Updated Dt</th>" +
+    "<th>Last Updated Date</th>" +
     "</tr></thead>" +
     "<tbody>" + historyRows + "</tbody>" +
     "</table>";
