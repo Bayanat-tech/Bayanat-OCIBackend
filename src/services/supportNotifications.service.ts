@@ -74,9 +74,17 @@ export async function processSupportNotifications(sendMail?: (mail: any) => Prom
             try {
                 const rawBody = String(job.BODY || '');
                 const isHtml = rawBody.includes('<html') || rawBody.includes('<table') || rawBody.includes('<div');
+
+                // Filter out defaultCc from TO so Prem is never duplicated in both TO and CC
+                const toList = (job.RECIPIENTS || '')
+                    .split(',')
+                    .map((e: string) => e.trim())
+                    .filter((e: string) => e && e.toLowerCase() !== defaultCc.toLowerCase());
+                const finalTo = toList.length > 0 ? toList.join(', ') : (job.RECIPIENTS || defaultCc);
+
                 const mailOptions: any = {
                     from: process.env.SUPPORT_MAIL_FROM || username,
-                    to: job.RECIPIENTS,
+                    to: finalTo,
                     cc: defaultCc,
                     subject: job.SUBJECT,
                 };

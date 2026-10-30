@@ -41,19 +41,19 @@ export function buildSupportEmailHtml(opts: SupportEmailOptions): string {
           
           <!-- Brand & Ticket Banner -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0b63ce 0%, #1e40af 100%); padding: 24px 28px; color: #ffffff;">
+            <td bgcolor="#0759b4" style="background-color: #0759b4; padding: 22px 28px; color: #ffffff;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #93c5fd; margin-bottom: 6px;">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #93c5fd; margin-bottom: 5px;">
                       Bayanat Technology &bull; Support Desk
                     </div>
-                    <div style="font-size: 21px; font-weight: 700; color: #ffffff; line-height: 1.3;">
+                    <div style="font-size: 19px; font-weight: 700; color: #ffffff; line-height: 1.3;">
                       Ticket #${opts.ticketId}: ${escapeHtml(opts.subject)}
                     </div>
                   </td>
                   <td align="right" valign="top" style="white-space: nowrap; padding-left: 10px;">
-                    <span style="display: inline-block; background: rgba(255, 255, 255, 0.2); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255, 255, 255, 0.35);">
+                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255, 255, 255, 0.4);">
                       ${escapeHtml(opts.status || 'OPEN')}
                     </span>
                   </td>
@@ -62,84 +62,76 @@ export function buildSupportEmailHtml(opts: SupportEmailOptions): string {
             </td>
           </tr>
 
-          <!-- Admin Login Callout -->
-          <tr>
-            <td style="background-color: #f0f7ff; padding: 14px 28px; border-bottom: 1px solid #dbeafe;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="font-size: 13px; color: #1e40af; line-height: 1.5;">
-                    🔐 <strong>Admin Login Notice:</strong> Please log in using <strong>DEVADMIN</strong> at <a href="${portalUrl}" style="color: #1d4ed8; font-weight: 700; text-decoration: underline;" target="_blank">prod-new.bayanattechnology.com</a> to review, assign, or resolve this ticket.
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
           <!-- Ticket Details -->
           <tr>
-            <td style="padding: 24px 28px;">
+            <td style="padding: 22px 28px 18px 28px;">
 
               <!-- Meta Table -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 22px; border-collapse: separate; border-spacing: 0; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; border-collapse: separate; border-spacing: 0; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">
                 <tr>
-                  <td style="padding: 10px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; width: 32%;">
+                  <td style="padding: 9px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; width: 30%;">
                     Raised By:
                   </td>
-                  <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 9px 14px; font-size: 13px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">
                     ${escapeHtml(opts.requesterName)} <span style="font-weight: 500; color: #64748b; font-size: 12px;">(Emp / Login: ${escapeHtml(opts.requesterLogin)})</span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 9px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0;">
                     Company &amp; Tenant:
                   </td>
-                  <td style="padding: 10px 14px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 9px 14px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">
                     <strong>${escapeHtml(opts.companyCode)}</strong> &bull; <span style="color: #475569;">${escapeHtml(opts.tenantId)}</span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 9px 14px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0;">
                     Module &amp; Screen:
                   </td>
-                  <td style="padding: 10px 14px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">
-                    <span style="background: #e2e8f0; color: #1e293b; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: 600;">${escapeHtml(opts.moduleName || 'General')}</span>
+                  <td style="padding: 9px 14px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0;">
+                    <span style="background-color: #e2e8f0; color: #1e293b; padding: 2px 7px; border-radius: 4px; font-family: monospace; font-size: 12px; font-weight: 600;">${escapeHtml(opts.moduleName || 'General')}</span>
                     ${opts.pageUrl ? `<span style="color: #64748b; font-size: 12px; margin-left: 6px;">(${escapeHtml(opts.pageUrl)})</span>` : ''}
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 14px; font-size: 12px; font-weight: 600; color: #64748b;">
+                  <td style="padding: 9px 14px; font-size: 12px; font-weight: 600; color: #64748b;">
                     Priority:
                   </td>
-                  <td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: ${priorityColor};">
+                  <td style="padding: 9px 14px; font-size: 13px; font-weight: 700; color: ${priorityColor};">
                     ${escapeHtml(opts.priority || 'NORMAL')}
                   </td>
                 </tr>
               </table>
 
               <!-- Description Box -->
-              <div style="margin-bottom: 22px;">
-                <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px;">
                   Issue Description / Comments:
                 </div>
-                <div style="background-color: #fafafa; border-left: 4px solid #0b63ce; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; padding: 15px 18px; font-size: 14px; color: #1e293b; white-space: pre-wrap; line-height: 1.6;">${escapeHtml(opts.message)}</div>
+                <div style="background-color: #fafafa; border-left: 4px solid #0759b4; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; border-radius: 0 6px 6px 0; padding: 14px 16px; font-size: 13.5px; color: #1e293b; white-space: pre-wrap; line-height: 1.6;">${escapeHtml(opts.message)}</div>
               </div>
 
               ${opts.note ? `
               <!-- Note / Activity -->
-              <div style="margin-bottom: 22px; padding: 12px 16px; background-color: #f8fafc; border-radius: 8px; font-size: 13px; color: #475569; border: 1px solid #e2e8f0;">
+              <div style="margin-bottom: 20px; padding: 11px 14px; background-color: #f8fafc; border-radius: 6px; font-size: 12.5px; color: #475569; border: 1px solid #e2e8f0;">
                 <strong>Update:</strong> ${escapeHtml(opts.note)}
               </div>` : ''}
 
-              <!-- Direct Action Link Button -->
-              <div style="text-align: center; margin: 30px 0 14px 0;">
-                <a href="${portalUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #0b63ce 0%, #1e40af 100%); color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 13px 32px; border-radius: 8px; box-shadow: 0 4px 14px rgba(11, 99, 206, 0.35);">
-                  Open Support Portal &rarr;
-                </a>
-              </div>
-              <div style="text-align: center; font-size: 12px; color: #64748b;">
-                Portal: <a href="${portalUrl}" style="color: #0b63ce; text-decoration: underline;" target="_blank">${portalUrl}</a>
+              <!-- Direct Action Button (Solid Cross-Client Outlook Friendly) -->
+              <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 22px auto 10px auto;">
+                <tr>
+                  <td align="center" bgcolor="#0759b4" style="background-color: #0759b4; border-radius: 6px;">
+                    <a href="${portalUrl}" target="_blank" style="display: inline-block; padding: 11px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 700; color: #ffffff !important; text-decoration: none; border-radius: 6px; letter-spacing: 0.3px;">
+                      Open Support Desk &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="text-align: center; font-size: 11.5px; color: #64748b; line-height: 1.5; margin-top: 8px;">
+                Portal: <a href="${portalUrl}" target="_blank" style="color: #0759b4; font-weight: 600; text-decoration: underline;">${portalUrl}</a>
                 <br>
-                <em>(Log in using <strong>DEVADMIN</strong> to review &amp; manage this ticket)</em>
+                <em>(Log in using <strong>DEVADMIN</strong> to review and manage this ticket)</em>
               </div>
 
             </td>

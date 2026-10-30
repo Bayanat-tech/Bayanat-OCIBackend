@@ -18,10 +18,15 @@ const email = (v: any) => {
 
 async function admins(c: oracledb.Connection) {
     const list = (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID);
-    if (!list.some(e => e && e.toLowerCase() === 'prem@bayanattechnology.com')) {
-        list.push('prem@bayanattechnology.com');
+    // Exclude Prem from TO because Prem is permanently in CC
+    const toRecipients = list
+        .map(e => String(e || '').trim())
+        .filter(e => e && e.toLowerCase() !== 'prem@bayanattechnology.com');
+
+    if (toRecipients.length === 0) {
+        toRecipients.push('gaurang.pai@bayanattechnology.com');
     }
-    return list.filter(Boolean).join(',');
+    return toRecipients.join(',');
 }
 
 export async function queueSupportEmail(c: oracledb.Connection, ticketId: number, key: string, to: string, subject: string, body: string) {
