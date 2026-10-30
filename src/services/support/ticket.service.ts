@@ -31,16 +31,16 @@ export class TicketService {
           companyCode: dto.companyCode,
           requesterLoginId: dto.requesterLoginId,
           ticketId: { dir: 2, type: 4, val: null }, // OUT param for Oracle
-        }
+        } as any
       );
-      const ticketId: number = (ticketResult.outBinds?.ticketId?.[0] as number) ?? 0;
+      const ticketId: number = Number((ticketResult as any)?.outBinds?.ticketId?.[0] ?? 0);
 
       // 2️⃣ First message (description)
       await manager.query(
         `INSERT INTO SUPPORT_MESSAGE
             (TICKET_ID, MESSAGE_TEXT, CREATED_BY, CREATED_AT)
          VALUES (:ticketId, :msg, :createdBy, SYSTIMESTAMP)`,
-        { ticketId, msg: dto.description, createdBy: dto.requesterLoginId }
+        { ticketId, msg: dto.description, createdBy: dto.requesterLoginId } as any
       );
 
       // 3️⃣ Event log
@@ -48,7 +48,7 @@ export class TicketService {
         `INSERT INTO SUPPORT_EVENT
           (TICKET_ID, EVENT_TYPE, EVENT_DESC, EVENT_TIME)
          VALUES (:ticketId, 'CREATE', 'Ticket created via UI help drawer', SYSTIMESTAMP)`,
-        { ticketId }
+        { ticketId } as any
       );
 
       // 4️⃣ Optional attachments
@@ -58,7 +58,7 @@ export class TicketService {
             `INSERT INTO SUPPORT_ATTACHMENT
                 (TICKET_ID, FILE_NAME, MIME_TYPE, BLOB_DATA, CREATED_AT)
              VALUES (:ticketId, :name, :mime, :blob, SYSTIMESTAMP)`,
-            { ticketId, name: att.name, mime: att.mime, blob: att.data }
+            { ticketId, name: att.name, mime: att.mime, blob: att.data } as any
           );
         }
       }
@@ -73,7 +73,7 @@ export class TicketService {
           recipient: process.env.EMAIL_USER,
           mailSubject: `[Support] Ticket #${ticketId} – ${dto.subject}`,
           mailBody: `A new support ticket has been created.\n\nSubject: ${dto.subject}\nDescription: ${dto.description}\nTenant: ${dto.tenantId}\nCompany: ${dto.companyCode}\nRequester: ${dto.requesterLoginId}`,
-        }
+        } as any
       );
 
       return ticketId;
