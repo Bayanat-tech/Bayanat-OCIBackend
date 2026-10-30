@@ -497,10 +497,27 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     // Support is a shared application: its screen catalogue and staff grants
     // live in the configured security tenant, while ticket data stays central.
     try {
-      const supportRows=await withSupportDb(c=>nativeSupportMenu(c,identity(supportIdentity)));
-      const tenantApps=Array.isArray(permissionBasedMenuTree)?permissionBasedMenuTree:[];
-      permissionBasedMenuTree=[...tenantApps.filter((app:any)=>!['support','bt support','bt-support'].includes(String(app.title||'').toLowerCase())),...buildTree(supportRows,{})];
-    } catch(e) { console.warn('Support menu could not load from the security catalogue'); }
+      const tenantApps = Array.isArray(permissionBasedMenuTree) ? permissionBasedMenuTree : [];
+      let supportRows: any[] = [];
+      try {
+        supportRows = await withSupportDb(c => nativeSupportMenu(c, identity(supportIdentity)));
+      } catch (nativeErr) {
+        console.warn('[me] nativeSupportMenu query error:', nativeErr);
+      }
+
+      if (Array.isArray(supportRows) && supportRows.length > 0) {
+        const supportTree = buildTree(supportRows, {});
+        if (supportTree.length > 0) {
+          const nonSupportTenantApps = tenantApps.filter(
+            (app: any) => !['support', 'bt support', 'bt-support'].includes(String(app.title || '').toLowerCase())
+          );
+          permissionBasedMenuTree = [...nonSupportTenantApps, ...supportTree];
+        }
+      } else {
+        // Preserve any support menus already present in tenantApps from user's tenant permissions
+        permissionBasedMenuTree = tenantApps;
+      }
+    } catch(e) { console.warn('Support menu could not load from the security catalogue', e); }
 
     // Build structured permissions for frontend
     const permissionsStructured: StructuredResult = {};
