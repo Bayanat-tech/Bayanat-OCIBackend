@@ -146,9 +146,11 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
         return [
             {
                 SERIAL_NO: 98001,
-                APP_CODE: 'SUPPORT',
+                APP_CODE: 'Support',
+                LEVEL1: 'Developer Desk',
+                LEVEL2: 'My Assignments',
                 MODULE_CODE: 'support',
-                MODULE_NAME: 'Developer Workbench',
+                MODULE_NAME: 'My Assignments',
                 URL_PATH: 'support/assigned',
                 PARENT_SERIAL_NO: 0,
                 POSITION: 1,
@@ -162,7 +164,9 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
     return [
         {
             SERIAL_NO: 97001,
-            APP_CODE: 'SUPPORT',
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
+            LEVEL2: 'Support Dashboard',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Support Dashboard',
             URL_PATH: 'support/dashboard',
@@ -173,7 +177,9 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
         },
         {
             SERIAL_NO: 97002,
-            APP_CODE: 'SUPPORT',
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
+            LEVEL2: 'Ticket Queue',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Ticket Queue',
             URL_PATH: 'support/tickets',
@@ -184,7 +190,9 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
         },
         {
             SERIAL_NO: 97003,
-            APP_CODE: 'SUPPORT',
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
+            LEVEL2: 'Developers',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Developers',
             URL_PATH: 'support/team',
@@ -195,7 +203,9 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
         },
         {
             SERIAL_NO: 97004,
-            APP_CODE: 'SUPPORT',
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
+            LEVEL2: 'Service Overview',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Service Overview',
             URL_PATH: 'support/reports',
@@ -206,7 +216,9 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
         },
         {
             SERIAL_NO: 97005,
-            APP_CODE: 'SUPPORT',
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
+            LEVEL2: 'Notifications',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Notifications',
             URL_PATH: 'support/settings',

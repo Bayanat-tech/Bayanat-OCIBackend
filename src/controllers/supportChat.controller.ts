@@ -37,8 +37,10 @@ export const updateSupportTicket = action(r => S.updateTicket(id(r), r.body, r.u
 export const markSupportRead = action(r => S.markRead(id(r), r.user, r.body));
 export const deleteSupportMessage = action(r => S.deleteMessage(id(r), Number(r.params.messageId), r.user));
 export const getSupportDevelopers = action(r => S.getDevelopers(r.user));
+export const getCandidateDevelopers = action(r => S.getCandidateDevelopers(r.user));
 export const saveSupportDeveloper = action(r => S.upsertDeveloper(r.body, r.user));
 export const assignSupportDeveloper = action(r => S.assignDeveloper(id(r), r.body, r.user));
+export const sendSupportReminder = action(r => S.sendReminder(id(r), r.user));
 export const getDeveloperSupportTickets = action(r => S.getDeveloperTickets(r.user));
 export const updateDeveloperSupportStatus = action(r => S.updateDeveloperStatus(id(r), r.body, r.user));
 export const getSupportAssistantSuggestion = action(r => SupportAssistantService.suggest(r.body));

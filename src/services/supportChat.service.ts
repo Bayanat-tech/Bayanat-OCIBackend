@@ -17,7 +17,11 @@ const email = (v: any) => {
 };
 
 async function admins(c: oracledb.Connection) {
-    return (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID).join(',');
+    const list = (await query(c, "SELECT EMAIL_ID FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'")).map(r => r.EMAIL_ID);
+    if (!list.some(e => e && e.toLowerCase() === 'prem@bayanattechnology.com')) {
+        list.push('prem@bayanattechnology.com');
+    }
+    return list.filter(Boolean).join(',');
 }
 
 export async function queueSupportEmail(c: oracledb.Connection, ticketId: number, key: string, to: string, subject: string, body: string) {
@@ -349,6 +353,70 @@ export class SupportChatService {
                 supportError('Support admin access required', 403);
             return nativeSupportDevelopers(c);
         });
+    }
+
+    static async getCandidateDevelopers(u: any) {
+        return withSupportDb(async (c) => {
+            if (await supportRole(c, u) !== 'admin')
+                supportError('Support admin access required', 403);
+            const rows = await query(c, `
+                SELECT s.LOGINID, s.USERNAME, s.EMAIL_ID, s.COMPANY_CODE,
+                       d.ACTIVE_FLAG AS DEV_ACTIVE_FLAG,
+                       d.LOGINID AS REGISTERED_DEV
+                FROM CUSTOMERS.SEC_LOGINTEST s
+                LEFT JOIN CUSTOMERS.SUPPORT_DEVELOPER d ON UPPER(d.LOGINID) = UPPER(s.LOGINID)
+                WHERE (UPPER(s.LOGINID) LIKE 'B%' OR UPPER(s.LOGINID) LIKE 'BI%')
+                ORDER BY s.USERNAME ASC
+            `);
+            return rows.map(r => ({
+                loginid: String(r.LOGINID).trim(),
+                username: String(r.USERNAME || r.LOGINID).trim(),
+                email_id: String(r.EMAIL_ID || `${String(r.LOGINID).toLowerCase()}@bayanattechnology.com`).trim(),
+                company_code: String(r.COMPANY_CODE || 'BSG').trim(),
+                is_registered: !!r.REGISTERED_DEV,
+                is_active: r.DEV_ACTIVE_FLAG === 'Y'
+            }));
+        });
+    }
+
+    static async sendReminder(ticketId: number, u: any) {
+        const result = await withSupportDb(async (c) => {
+            if (await supportRole(c, u) !== 'admin')
+                supportError('Support admin access required', 403);
+            const [t] = await query(c, "SELECT TICKET_ID, SUBJECT, DEVELOPER_LOGINID, DEVELOPER_NAME, DEVELOPER_EMAIL, STATUS, PRIORITY, DUE_AT FROM CUSTOMERS.SUPPORT_TICKET WHERE TICKET_ID=:ticketId", { ticketId });
+            if (!t) supportError('Ticket not found', 404);
+            if (!t.DEVELOPER_LOGINID) supportError('No developer assigned to this ticket', 400);
+
+            const reminderMsg = `🔔 ADMIN REMINDER: Please prioritize progress on Ticket #${ticketId} ("${t.SUBJECT}"). Timely update or resolution is requested.`;
+            await insertMessage(c, ticketId, u, reminderMsg, 'SYSTEM');
+            await audit(c, ticketId, u, 'REMINDER_SENT', `Admin sent reminder to assigned developer ${t.DEVELOPER_NAME || t.DEVELOPER_LOGINID}`);
+
+            if (t.DEVELOPER_EMAIL) {
+                const mailHtml = buildSupportEmailHtml({
+                    title: `Reminder: Action Required on Ticket #${ticketId}`,
+                    ticketId,
+                    subject: `[REMINDER] ${t.SUBJECT}`,
+                    requesterName: t.DEVELOPER_NAME || t.DEVELOPER_LOGINID,
+                    requesterLogin: t.DEVELOPER_LOGINID,
+                    companyCode: 'BSG',
+                    tenantId: 'SUPPORT',
+                    status: t.STATUS,
+                    priority: t.PRIORITY,
+                    message: reminderMsg
+                });
+                await queueSupportEmail(
+                    c,
+                    ticketId,
+                    `reminder:${ticketId}:${Date.now()}`,
+                    t.DEVELOPER_EMAIL,
+                    `Reminder: Action required on support ticket #${ticketId}`,
+                    mailHtml
+                );
+            }
+            return { sent: true, developer: t.DEVELOPER_NAME || t.DEVELOPER_LOGINID };
+        }, true);
+        await changed(ticketId, u);
+        return result;
     }
 
     static async upsertDeveloper(input: any, u: any) {
