@@ -84,20 +84,31 @@ export async function processSupportNotifications(sendMail?: (mail: any) => Prom
                 const rawBody = String(job.BODY || '');
                 const isHtml = rawBody.includes('<html') || rawBody.includes('<table') || rawBody.includes('<div');
 
-                // Filter out defaultCc and CC recipients from TO
-                const allCcList = Array.from(new Set([defaultCc, ...dynamicCcList].filter(Boolean)));
-                const allCcLower = new Set(allCcList.map(e => e.toLowerCase()));
-
+                // 1. Compute TO list from job.RECIPIENTS
+                // Never allow defaultCc (prem@bayanattechnology.com) into TO
                 const toList = (job.RECIPIENTS || '')
                     .split(',')
                     .map((e: string) => e.trim())
-                    .filter((e: string) => e && !allCcLower.has(e.toLowerCase()));
-                const finalTo = toList.length > 0 ? toList.join(', ') : (job.RECIPIENTS || defaultCc);
+                    .filter((e: string) => e && e.toLowerCase() !== defaultCc.toLowerCase());
+
+                const finalTo = toList.length > 0
+                    ? Array.from(new Set(toList)).join(', ')
+                    : 'gaurang.pai@bayanattechnology.com, ganesh.thorat@bayanattechnology.com';
+
+                const toLowerSet = new Set(finalTo.split(',').map((e: string) => e.trim().toLowerCase()));
+
+                // 2. Compute CC list: Prem is permanent CC.
+                // Dynamic CC contacts from SUPPORT_CONTACT where RECIPIENT_TYPE = 'CC'
+                // MUST exclude any address already present in TO so no duplicates appear
+                const allCcList = Array.from(new Set([defaultCc, ...dynamicCcList].map((e: string) => e.trim()).filter(Boolean)))
+                    .filter((e: string) => !toLowerSet.has(e.toLowerCase()));
+
+                const finalCc = allCcList.length > 0 ? allCcList.join(', ') : defaultCc;
 
                 const mailOptions: any = {
                     from: process.env.SUPPORT_MAIL_FROM || username,
                     to: finalTo,
-                    cc: allCcList.join(', '),
+                    cc: finalCc,
                     subject: job.SUBJECT,
                 };
                 if (isHtml) {

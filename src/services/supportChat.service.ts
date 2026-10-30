@@ -20,17 +20,16 @@ async function admins(c: oracledb.Connection) {
     try {
         const rows = await query(c, "SELECT EMAIL_ID, NVL(RECIPIENT_TYPE, 'TO') AS RECIPIENT_TYPE FROM CUSTOMERS.SUPPORT_CONTACT WHERE ACTIVE_FLAG='Y'");
         // Only include contacts marked as TO; Prem is kept strictly in CC
-        const toRecipients = rows
+        const dbToRecipients = rows
             .filter(r => (r.RECIPIENT_TYPE || 'TO').toUpperCase() === 'TO')
             .map(r => String(r.EMAIL_ID || '').trim())
             .filter(e => e && e.toLowerCase() !== 'prem@bayanattechnology.com');
 
-        if (toRecipients.length === 0) {
-            toRecipients.push('gaurang.pai@bayanattechnology.com');
-        }
-        return toRecipients.join(',');
+        const defaultAdmins = ['gaurang.pai@bayanattechnology.com', 'ganesh.thorat@bayanattechnology.com'];
+        const combined = Array.from(new Set([...defaultAdmins, ...dbToRecipients]));
+        return combined.join(',');
     } catch {
-        return 'gaurang.pai@bayanattechnology.com';
+        return 'gaurang.pai@bayanattechnology.com,ganesh.thorat@bayanattechnology.com';
     }
 }
 
