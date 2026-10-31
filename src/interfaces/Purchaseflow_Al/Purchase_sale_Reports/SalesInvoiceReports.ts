@@ -173,6 +173,7 @@ interface SalesInvoiceHeader {
   disc_hdr_price: number;
   disc_hdr_percent: number;
   curr_code: string;
+   cancelled: boolean; 
 }
 
 function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
@@ -199,6 +200,7 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
+     cancelled: text(h.cancelled || h.canceled).toUpperCase() === "Y",
   };
 }
 
@@ -353,12 +355,14 @@ function infoGridHtml(innerHtml: string): string {
 
 // ─── Shared body pieces ─────────────────────────────────────────────────────
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled = false): string {
+  const shownTitle = cancelled ? `${title} - CANCELLED` : title;
+  const shownSub = cancelled ? `${subtitle} (This document is cancelled)` : subtitle;
   return `
     <div class="doc-title-row" style="${S_TITLE_ROW}">
       <div>
-        <h1 style="${S_H1}">${escapeHtml(title)}</h1>
-        <div class="doc-sub" style="${S_SUB}">${escapeHtml(subtitle)}</div>
+        <h1 style="${S_H1}">${escapeHtml(shownTitle)}</h1>
+        <div class="doc-sub" style="${S_SUB}">${escapeHtml(shownSub)}</div>
       </div>
     </div>`;
 }
@@ -417,8 +421,7 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
   );
 
   return `
-       ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId)}
-
+      ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
     ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
 
     <table class="data-table" style="${S_TABLE}">
@@ -464,21 +467,20 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   const bodyRows = rows
     .map((r, i) => {
        const net = lineNetOf(r);
-      const amountInclTax = num(r.amount) + num(r.tx_compnt_amt_1);
-      return `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right">${amtFmt(lineDiscOf(r))}</td>
-          <td class="right">${amtFmt(r.amount)}</td>
-            <td class="right">${amtFmt(net)}</td>
-          <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
-          <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
-          <td class="right amount">${amtFmt(amountInclTax)}</td>
-        </tr>`;
+const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
+return `
+  <tr>
+    <td>${i + 1}</td>
+    <td>...</td>
+    <td>${escapeHtml(r.p_uom)}</td>
+    <td class="right">${qtyFmt(r.quantity)}</td>
+    <td class="right">${amtFmt(r.unit_price)}</td>
+    <td class="right">${amtFmt(lineDiscOf(r))}</td>
+    <td class="right">${amtFmt(net)}</td>
+    <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
+    <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
+    <td class="right amount">${amtFmt(amountInclTax)}</td>
+  </tr>`;
     })
     .join("");
 
@@ -495,7 +497,7 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   );
 
   return `
-       ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId)}
+      ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
 
     ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
 
@@ -559,7 +561,7 @@ function renderSalesAccountDetailsBody(rows: ReportRow[], loginId: string): stri
     .join("");
 
   return `
-    ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId)}
+   ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId, text(rows[0]?.cancelled || rows[0]?.canceled).toUpperCase() === "Y")}
 
     <table class="data-table" style="${S_TABLE}">
       <thead>
