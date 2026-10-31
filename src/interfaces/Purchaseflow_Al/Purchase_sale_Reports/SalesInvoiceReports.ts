@@ -239,7 +239,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 0 0 8px 0 !important;
+    margin: 0 0 4px 0 !important;
     padding: 0 !important;
   }
   .doc-title-row h1 {
@@ -250,7 +250,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     line-height: 1.2 !important;
   }
   .doc-title-row .doc-sub {
-    margin: 2px 0 0 !important;
+    margin: 1px 0 0 !important;
     font-size: 11px;
     color: #64748b;
     line-height: 1.3 !important;
@@ -327,9 +327,10 @@ const SALES_INVOICE_EXTRA_CSS = `
 
 // ─── Inline spacing overrides (CHANGED) ─────────────────────────────────────
 // const S_TITLE_ROW = "background:#ffd6d6 !important;margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
-const S_TITLE_ROW = "margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
+// const S_TITLE_ROW = "margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
 const S_H1 = "margin:0 !important;padding:0 !important;line-height:1.2 !important;";
-const S_SUB = "margin:2px 0 0 0 !important;padding:0 !important;line-height:1.3 !important;";
+const S_TITLE_ROW = "margin:0 0 2px 0 !important;padding:0 !important;gap:0 !important;";
+const S_SUB = "margin:1px 0 0 0 !important;padding:0 !important;line-height:1.2 !important;";
 // const S_GRID      = "background:#d6e8ff !important;display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
 const S_GRID = "display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
 // const S_BLOCK     = "background:#fff3b0 !important;display:block !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 7px !important;gap:0 !important;";
@@ -400,14 +401,10 @@ function infoGridHtml(innerHtml: string): string {
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled = false): string {
   const shownTitle = cancelled ? `${title} - CANCELLED` : title;
   const shownSub = cancelled ? `${subtitle} (This document is cancelled)` : subtitle;
-  return `
-    <div class="doc-title-row" style="${S_TITLE_ROW}">
-      <div>
-        <h1 style="${S_H1}">${escapeHtml(shownTitle)}</h1>
-        <div class="doc-sub" style="${S_SUB}">${escapeHtml(shownSub)}</div>
-      </div>
-    </div>`;
-}
+     return `
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(shownTitle)}</h1>
+    </td></tr></tbody></table>`;}
 
 function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
   return infoBlockHtml(
@@ -458,10 +455,10 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
     ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
     ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
  
-    <table class="data-table" style="${S_TABLE}">
+        <table class="data-table si-items" style="${S_TABLE}">
       <thead>
         <tr>
-          <th>S.No.</th>
+          <th>S.No</th>
           <th>Product / Description</th>
           <th>Unit</th>
           <th class="right">Qty</th>
@@ -531,7 +528,7 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
     ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
     ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
  
-    <table class="data-table" style="${S_TABLE}">
+        <table class="data-table si-items-tax" style="${S_TABLE}">
       <thead>
         <tr>
           <th>S.No.</th>
@@ -634,8 +631,7 @@ export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Respo
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceBody(rows, params.loginid);
-
+    const bodyHtml = renderSalesInvoiceBody(rows, params.loginid).replace(/>\s+</g, "><");
     const html = buildReportDocument({
       title: "Sales Invoice",
       headerHtml,
@@ -670,7 +666,7 @@ export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid);
+   const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Sales Invoice (Tax)",
@@ -706,7 +702,7 @@ export const getSalesAccountDetailsReportHtml = async (req: RequestWithUser, res
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesAccountDetailsBody(rows, params.loginid);
+    const bodyHtml = renderSalesAccountDetailsBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Account Details",
