@@ -200,7 +200,7 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
-         cancelled: isCancelledRow(h),
+         cancelled: isCancelledDoc(rows),
   };
 }
 
@@ -208,10 +208,21 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** True when the document row is cancelled (add your real column name here if different) */
-const isCancelledRow = (r: ReportRow): boolean => {
-  const v = text(r.cancelled ?? r.canceled ?? r.doc_status ?? r.status).trim().toUpperCase();
-  return v === "Y" || v === "YES" || v === "1" || v === "TRUE" || v.startsWith("CANCEL");
-};
+// const isCancelledRow = (r: ReportRow): boolean => {
+//   const v = text(r.cancelled ?? r.canceled ?? r.doc_status ?? r.status).trim().toUpperCase();
+//   return v === "Y" || v === "YES" || v === "1" || v === "TRUE" || v.startsWith("CANCEL");
+// };
+
+/** Line-level cancel flag (column DET_CANCEL = 'Y') */
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+
+/** Cancelled if the header flag (from the procedure) or the line flag is Y */
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+
+/** Document is cancelled when every line is cancelled */
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
 
 
 const lineDiscOf = (r: ReportRow) => {
@@ -405,12 +416,18 @@ function infoGridHtml(innerHtml: string): string {
 // ─── Shared body pieces ─────────────────────────────────────────────────────
 
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled = false): string {
-  const shownTitle = cancelled ? `${title} - CANCELLED` : title;
-  const shownSub = cancelled ? `${subtitle} (This document is cancelled)` : subtitle;
-     return `
+  if (cancelled) {
+    return `
+    <table class="si-top-line si-top-cancel"><tbody><tr>
+      <td><h1 class="report-title">${escapeHtml(title)}</h1></td>
+      <td class="si-cancel-tag center">CANCELLED</td>
+    </tr></tbody></table>`;
+  }
+  return `
     <table class="si-top-line"><tbody><tr><td>
-      <h1 class="report-title">${escapeHtml(shownTitle)}</h1>
-    </td></tr></tbody></table>`;}
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
+}
 
 function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
   return infoBlockHtml(
@@ -430,6 +447,12 @@ function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
 // ─── Body 1: Sales Invoice ───────────────────────────────────────────────
 
 function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
+
+
+
+
+  console.log("Invoice columns👍👍:", Object.keys(rows[0] || {}));
+console.log("Cancel-like values:👍👍👍👍", Object.entries(rows[0] || {}).filter(([k]) => /cancel|status|stat|void/i.test(k)));
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
