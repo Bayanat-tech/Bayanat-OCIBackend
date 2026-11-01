@@ -254,28 +254,6 @@ function formHeaderPairs(data: FormData, requestNumber: string): { left: [string
   const poNos = Array.from(new Set((data.pos ?? []).map((p) => text(p.doc_no).trim()).filter(Boolean)));
   const poText = poNos.length ? poNos.join(", ") : "-";
 
-  // const left: [string, string][] = [
-  //   ["Purchase Request Number", reqNo],
-  //   ["Created By", text(h.create_user ?? first.user_id)],
-  //   ["Flow", text(h.flow_code)],
-  //   ["Description", text(h.description)],
-  //   ["Remarks", text(h.remarks)],
-  //   ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
-  //   ["Division", text(h.req_div_code)],
-  // ];
-  // const right: [string, string][] = [
-  //   ["Currency Rate", rateFmt(h.currency_rate ?? first.currency_rate)],
-  //   ["Currency", text(h.currency_code ?? first.curr_code)],
-  //   ["Tax Category", text(h.tx_cat_code ?? first.tx_cat_code)],
-  //   ["Tax Type", text(h.tx_compntcat_code_1 ?? first.tx_compntcat_code_1)],
-  //   ["Final Approval", text(h.final_approved ?? first.final_approved).toUpperCase() === "Y" ? "YES" : "NO"],
-  //   ["Request Date", dateText(reqDate)],
-  //   ["Last Action", text(h.last_action ?? first.last_action ?? first.purch_status)],
-  //   ["PO Generated", poText],
-  // ];
-
-
-
   const reqNoDate = `${reqNo} - ${dateText(reqDate)}`;
 
   const left: [string, string][] = [
