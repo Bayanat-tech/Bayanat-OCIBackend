@@ -175,7 +175,7 @@ export class SupportChatService {
                 where = '(UPPER(t.REQUESTER_LOGINID)=:loginid AND t.TENANT_ID=:tenantId AND t.COMPANY_CODE=:companyCode)';
             }
 
-            return query(c, `SELECT t.TICKET_ID,t.COMPANY_CODE,t.TENANT_ID,t.REQUESTER_LOGINID,t.REQUESTER_NAME,t.ASSIGNED_TO,t.SUBJECT,t.MODULE_NAME,t.PAGE_URL,t.STATUS,t.PRIORITY,t.DEVELOPER_LOGINID,t.DEVELOPER_NAME,t.DEV_STATUS,t.ASSIGNED_BY,t.SLA_MINUTES,t.RESOLUTION,
+            return query(c, `SELECT t.TICKET_ID,t.COMPANY_CODE,t.TENANT_ID,t.REQUESTER_LOGINID,t.REQUESTER_NAME,t.ASSIGNED_TO,t.SUBJECT,t.MODULE_NAME,t.PAGE_URL,t.STATUS,t.PRIORITY,t.DEVELOPER_LOGINID,t.DEVELOPER_NAME,t.DEV_STATUS,t.ASSIGNED_BY,t.SLA_MINUTES,t.RESOLUTION,t.CATEGORY_ID,t.CATEGORY_NAME,t.ESTIMATED_DAYS,t.ESTIMATED_HOURS,t.REWORK_COMMENTS,
       ${fmt('t.DUE_AT')} DUE_AT,${fmt('t.CREATED_AT')} CREATED_AT,${fmt('t.LAST_MESSAGE_AT')} LAST_MESSAGE_AT,
       DBMS_LOB.SUBSTR(t.LAST_MESSAGE,1000,1) LAST_MESSAGE,
       (SELECT COUNT(*) FROM CUSTOMERS.SUPPORT_MESSAGE m WHERE m.TICKET_ID=t.TICKET_ID AND NVL(m.IS_DELETED,'N')<>'Y' AND NOT(UPPER(m.SENDER_LOGINID)=:loginid AND NVL(m.SENDER_TENANT_ID,:tenantId)=:tenantId AND NVL(m.SENDER_COMPANY_CODE,:companyCode)=:companyCode) AND m.MESSAGE_ID>NVL((SELECT LAST_MESSAGE_ID FROM CUSTOMERS.SUPPORT_READ_RECEIPT r WHERE r.TICKET_ID=t.TICKET_ID AND r.LOGINID=:loginid AND r.TENANT_ID=:tenantId AND r.COMPANY_CODE=:companyCode),0)) UNREAD_COUNT
@@ -631,7 +631,17 @@ export class SupportChatService {
     static async assignDeveloper(ticketId: number, input: any, u: any) {
         const developer = text(input.developer_loginid, 100).toUpperCase();
         const priority = text(input.priority, 20).toUpperCase();
-        const minutes = Number(input.sla_minutes);
+        const categoryId = input.category_id ? Number(input.category_id) : null;
+        const categoryName = input.category_name ? text(input.category_name, 100) : null;
+        const days = Number(input.estimated_days) || 0;
+        const hours = Number(input.estimated_hours) || 0;
+        let minutes = Number(input.sla_minutes);
+        if (!Number.isInteger(minutes) || minutes < 1) {
+            minutes = (days * 1440) + (hours * 60);
+        }
+        if (!Number.isInteger(minutes) || minutes < 1) {
+            minutes = 480;
+        }
 
         if (!['LOW', 'NORMAL', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(priority))
             supportError('Select a valid priority');
@@ -655,8 +665,22 @@ export class SupportChatService {
             const devEmail = d.EMAIL_ID || `${developer.toLowerCase()}@bayanattechnology.com`;
             const devName = d.USERNAME || developer;
 
-            await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET DEVELOPER_LOGINID=:developer,DEVELOPER_NAME=:name,DEVELOPER_EMAIL=:email,ASSIGNED_TO=:developer,ASSIGNED_BY=:actor,ASSIGNED_AT=${NOW},STATUS='ASSIGNED',DEV_STATUS='ASSIGNED',PRIORITY=:priority,SLA_MINUTES=:minutes,DUE_AT=${NOW}+(:minutes/1440),OVERDUE_NOTIFIED_AT=NULL,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { developer, name: devName, email: devEmail, actor: identity(u).loginid, priority, minutes, ticketId });
-            const note = `Assigned to ${devName}. Priority: ${priority}. Estimated time: ${minutes} minutes.${input.note ? ' ' + text(input.note, 1000) : ''}`;
+            await c.execute(
+                `UPDATE CUSTOMERS.SUPPORT_TICKET SET
+                   DEVELOPER_LOGINID=:developer, DEVELOPER_NAME=:name, DEVELOPER_EMAIL=:email,
+                   ASSIGNED_TO=:developer, ASSIGNED_BY=:actor, ASSIGNED_AT=${NOW},
+                   STATUS='ASSIGNED', DEV_STATUS='ASSIGNED', PRIORITY=:priority,
+                   CATEGORY_ID=:categoryId, CATEGORY_NAME=:categoryName,
+                   ESTIMATED_DAYS=:days, ESTIMATED_HOURS=:hours,
+                   SLA_MINUTES=:minutes, DUE_AT=${NOW}+(:minutes/1440),
+                   OVERDUE_NOTIFIED_AT=NULL, WORKFLOW_VERSION=1, UPDATED_AT=${NOW}
+                 WHERE TICKET_ID=:ticketId`,
+                { developer, name: devName, email: devEmail, actor: identity(u).loginid, priority, categoryId, categoryName, days, hours, minutes, ticketId }
+            );
+
+            const catLabel = categoryName ? `Category: ${categoryName}. ` : '';
+            const slaLabel = `${days > 0 ? `${days}d ` : ''}${hours > 0 ? `${hours}h ` : ''}(${minutes} mins)`;
+            const note = `Assigned to ${devName}. ${catLabel}Priority: ${priority}. Target SLA: ${slaLabel}.${input.note ? ' ' + text(input.note, 1000) : ''}`;
             await insertMessage(c, ticketId, u, note, 'SYSTEM');
             await audit(c, ticketId, u, 'ASSIGNED', note);
 
@@ -671,7 +695,7 @@ export class SupportChatService {
                 priority,
                 status: 'ASSIGNED',
                 message: note,
-                note: `Assigned to ${devName}. Estimated time: ${minutes} minutes.`
+                note: `Assigned to ${devName}. SLA: ${slaLabel}. Category: ${categoryName || 'Standard'}`
             });
 
             const adminEmails = await admins(c);
@@ -695,6 +719,7 @@ export class SupportChatService {
         const status = text(input.dev_status, 30);
         if (!['IN_PROGRESS', 'WAITING_INFO', 'RESOLVED', 'CLOSED'].includes(status))
             supportError('Select a valid developer progress status');
+        const resolution = input.resolution ? text(input.resolution, 2000) : null;
         await withSupportDb(async (c) => {
             const a = await ticketAccess(c, ticketId, u, true);
             if (a.role !== 'developer' && a.role !== 'admin')
@@ -704,11 +729,100 @@ export class SupportChatService {
             const targetStatus = isDone ? 'RESOLVED' : status;
             const targetDevStatus = isDone ? 'DONE' : status;
 
-            await c.execute(`UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS=:targetStatus,DEV_STATUS=:targetDevStatus,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`, { targetStatus, targetDevStatus, ticketId });
-            await audit(c, ticketId, u, targetDevStatus, `Developer status updated to ${targetDevStatus}`);
+            await c.execute(
+                `UPDATE CUSTOMERS.SUPPORT_TICKET SET
+                   STATUS=:targetStatus, DEV_STATUS=:targetDevStatus,
+                   RESOLUTION=NVL(:resolution, RESOLUTION),
+                   RESOLVED_AT=CASE WHEN :targetStatus='RESOLVED' THEN ${NOW} ELSE RESOLVED_AT END,
+                   UPDATED_AT=${NOW}
+                 WHERE TICKET_ID=:ticketId`,
+                { targetStatus, targetDevStatus, resolution, ticketId }
+            );
+
+            const actionLabel = targetStatus === 'RESOLVED'
+                ? `Developer completed work & submitted for review. Resolution: ${resolution || 'Verified fix.'}`
+                : `Developer status updated to ${targetDevStatus}`;
+            await insertMessage(c, ticketId, u, actionLabel, 'SYSTEM');
+            await audit(c, ticketId, u, targetDevStatus, actionLabel);
+
+            if (targetStatus === 'RESOLVED') {
+                const actorName = await resolveRequesterName(c, u);
+                const emailHtml = buildSupportEmailHtml({
+                    title: `Developer Completed Work on Ticket #${ticketId}`,
+                    ticketId,
+                    subject: a.ticket.SUBJECT,
+                    requesterName: actorName,
+                    requesterLogin: identity(u).loginid,
+                    companyCode: a.ticket.COMPANY_CODE,
+                    tenantId: a.ticket.TENANT_ID,
+                    priority: a.ticket.PRIORITY,
+                    status: 'RESOLVED',
+                    message: `Developer has submitted resolution for review.\n\nResolution Details: ${resolution || 'Done'}`,
+                    note: 'Awaiting DevAdmin approval and final close.'
+                });
+                await queueSupportEmail(
+                    c,
+                    ticketId,
+                    `resolved:${ticketId}:${Date.now()}`,
+                    await admins(c),
+                    `Support #${ticketId} dev resolved: ${a.ticket.SUBJECT}`,
+                    emailHtml
+                );
+            }
         }, true);
         await changed(ticketId, u);
         return { ticketId, status };
+    }
+
+    static async rejectReopenTicket(ticketId: number, input: any, u: any) {
+        const comments = text(input.comments || input.reason, 2000);
+        if (!comments)
+            supportError('Feedback comments are required explaining why work is not done');
+        await withSupportDb(async (c) => {
+            const { ticket: t, role } = await ticketAccess(c, ticketId, u, true);
+            if (role !== 'admin')
+                supportError('Only support admin can reject resolution and request rework', 403);
+
+            await c.execute(
+                `UPDATE CUSTOMERS.SUPPORT_TICKET SET STATUS='IN_PROGRESS',DEV_STATUS='REWORK',REWORK_COMMENTS=:comments,WORKFLOW_VERSION=1,UPDATED_AT=${NOW} WHERE TICKET_ID=:ticketId`,
+                { comments, ticketId }
+            );
+
+            const sysMsg = `⚠️ DevAdmin rejected resolution (Rework Required): ${comments}`;
+            await insertMessage(c, ticketId, u, sysMsg, 'SYSTEM');
+            await audit(c, ticketId, u, 'REWORK_REQUIRED', comments);
+
+            // Notify assigned developer and admins
+            const actorName = await resolveRequesterName(c, u);
+            const devEmail = t.DEVELOPER_EMAIL || `${(t.DEVELOPER_LOGINID || '').toLowerCase()}@bayanattechnology.com`;
+            const adminEmails = await admins(c);
+            const allTo = Array.from(new Set([devEmail, ...adminEmails.split(',')].map(e => e.trim()).filter(Boolean))).join(',');
+
+            const emailHtml = buildSupportEmailHtml({
+                title: `Rework Required on Support Ticket #${ticketId}`,
+                ticketId,
+                subject: t.SUBJECT,
+                requesterName: actorName,
+                requesterLogin: identity(u).loginid,
+                companyCode: t.COMPANY_CODE,
+                tenantId: t.TENANT_ID,
+                priority: t.PRIORITY,
+                status: 'REWORK',
+                message: `DevAdmin requested rework on this ticket.\n\nFeedback / Instructions: ${comments}`,
+                note: `Action taken by ${actorName} (${identity(u).loginid})`
+            });
+
+            await queueSupportEmail(
+                c,
+                ticketId,
+                `rework:${ticketId}:${Date.now()}`,
+                allTo,
+                `Support #${ticketId} rework required: ${t.SUBJECT}`,
+                emailHtml
+            );
+        }, true);
+        await changed(ticketId, u);
+        return { ticketId, status: 'IN_PROGRESS', dev_status: 'REWORK' };
     }
 
     static async markRead(ticketId: number, u: any, input: any = {}) {
@@ -820,6 +934,50 @@ export class SupportChatService {
             );
 
             return { success: true };
+        }, true);
+    }
+
+    static async getCategories(u: any) {
+        return withSupportDb(async (c) => {
+            return query(c, "SELECT CATEGORY_ID, CATEGORY_NAME, DESCRIPTION, NVL(ESTIMATED_DAYS, 0) ESTIMATED_DAYS, NVL(ESTIMATED_HOURS, 8) ESTIMATED_HOURS, ACTIVE_FLAG, TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI') CREATED_AT FROM CUSTOMERS.SUPPORT_CATEGORY ORDER BY CATEGORY_ID");
+        });
+    }
+
+    static async saveCategory(input: any, u: any) {
+        return withSupportDb(async (c) => {
+            if (await supportRole(c, u) !== 'admin')
+                supportError('Support admin access required', 403);
+            const name = text(input.category_name, 100);
+            if (!name) supportError('Category name is required');
+            const desc = text(input.description, 300);
+            const days = Number(input.estimated_days) || 0;
+            const hours = Number(input.estimated_hours) || 0;
+            const active = input.active_flag === 'N' ? 'N' : 'Y';
+            const catId = input.category_id ? Number(input.category_id) : null;
+
+            if (catId) {
+                await c.execute(
+                    `UPDATE CUSTOMERS.SUPPORT_CATEGORY SET CATEGORY_NAME=:name,DESCRIPTION=:desc,ESTIMATED_DAYS=:days,ESTIMATED_HOURS=:hours,ACTIVE_FLAG=:active,UPDATED_AT=${NOW} WHERE CATEGORY_ID=:catId`,
+                    { name, desc, days, hours, active, catId }
+                );
+                return { category_id: catId, category_name: name, updated: true };
+            } else {
+                await c.execute(
+                    `INSERT INTO CUSTOMERS.SUPPORT_CATEGORY (CATEGORY_NAME, DESCRIPTION, ESTIMATED_DAYS, ESTIMATED_HOURS, ACTIVE_FLAG, CREATED_BY)
+                     VALUES (:name, :desc, :days, :hours, :active, :actor)`,
+                    { name, desc, days, hours, active, actor: identity(u).loginid }
+                );
+                return { category_name: name, created: true };
+            }
+        }, true);
+    }
+
+    static async deleteCategory(categoryId: number, u: any) {
+        return withSupportDb(async (c) => {
+            if (await supportRole(c, u) !== 'admin')
+                supportError('Support admin access required', 403);
+            await c.execute("UPDATE CUSTOMERS.SUPPORT_CATEGORY SET ACTIVE_FLAG='N',UPDATED_AT=SYSDATE WHERE CATEGORY_ID=:categoryId", { categoryId });
+            return { categoryId, deactivated: true };
         }, true);
     }
 }
