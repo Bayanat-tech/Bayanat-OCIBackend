@@ -44,6 +44,7 @@ import {
   createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts,
+  getAccountLiveBalance,
   getLpoDoc,
   getLPOHeader,
   getLPOPrint,
@@ -415,7 +416,8 @@ router.get("/purchaseheader/:doc_no", getPurchaseHeader);
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
 router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
 router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
-router.get("/doc_accounts", getDocAccounts);                    // Get doc accounts
+router.get("/doc_accounts", getDocAccounts);
+router.get("/account_balance", getAccountLiveBalance);                    // Get doc accounts
 router.get("/invoice_outstanding", getInvoiceOutstandingBalances); // Get outstanding balances for invoices
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data

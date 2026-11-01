@@ -33,11 +33,8 @@ import { getHrVarianceReportHtml } from "../../../controllers/wms/reports/Varian
 import { getHrEmployeeDetailsHtml } from "../../../controllers/wms/reports/EmployeeDetails.controller";
 import { getHrEmployeeWiseCostHtml } from "../../../controllers/wms/reports/EmployeeWiseCostReport.controller";
 
-
 import { getSectionMasterReportHtml } from "../../../controllers/wms/reports/HrSectionMasterReport.controller";
-
 import { getFormalDesignationReportHtml } from "../../../controllers/wms/reports/HrFormalDesignationReport.controller";
-
 import { getCategoryReportHtml } from "../../../controllers/wms/reports/HrCategoryReport.controller";
 
 const router = express.Router();
@@ -156,14 +153,14 @@ router.post(
   getAbsentMemoReportHtml
 );
 
-// 👇 NEW SECTION MASTER REPORT ROUTE ADDED HERE
+// ─── Section Master ───────────────────────────────────────────────────────────
+
 router.post(
   "/section-master/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getSectionMasterReportHtml
 );
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Retirement Report ────────────────────────────────────────────────────────
 
@@ -309,12 +306,16 @@ router.post(
   getEmployeeHeadCountReportHtml
 );
 
+// ─── Formal Designation ───────────────────────────────────────────────────────
+
 router.post(
   "/formal-designation/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getFormalDesignationReportHtml
 );
+
+// ─── Category ─────────────────────────────────────────────────────────────────
 
 router.post(
   "/category/html",

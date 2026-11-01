@@ -1565,6 +1565,48 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const getAccountLiveBalance = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { ac_code, div_code } = req.query;
+    if (!ac_code) { res.status(400).json({ success: false, message: 'ac_code is required' }); return; }
+    conn = await getConn(req);
+    const binds: any = {
+      cc: req.user.company_code,
+      ac: String(ac_code).trim(),
+    };
+    let divFilter = '';
+    if (div_code && div_code !== 'All' && div_code !== '*') {
+      divFilter = 'AND d.div_code = :dc';
+      binds.dc = String(div_code).trim();
+    }
+    const q = `
+      SELECT NVL(SUM(d.lcur_amount * d.sign_ind), 0) AS balance
+      FROM TR_AC_DETAIL d
+      WHERE d.company_code = :cc AND d.ac_code = :ac ${divFilter}
+        AND NOT EXISTS (
+          SELECT 1 FROM TR_AC_HEADER h
+          WHERE h.company_code = d.company_code
+            AND h.doc_type     = d.doc_type
+            AND h.doc_no       = d.doc_no
+            AND NVL(h.canceled, 'N') = 'Y'
+        )
+    `;
+    const result = await conn.execute(q, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const bal = Number((result.rows?.[0] as any)?.BALANCE ?? 0);
+    res.json({
+      success: true,
+      data: {
+        ac_code: String(ac_code).trim(),
+        balance: bal,
+        formatted: Math.abs(bal).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
+        sign: bal >= 0 ? 'Dr' : 'Cr',
+      }
+    });
+  } catch (err) { sendError(res, err); }
+  finally { await closeConn(conn); }
+};
+
 export const getDocAccounts = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
