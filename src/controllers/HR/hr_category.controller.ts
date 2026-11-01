@@ -1,4 +1,3 @@
-// Import required modules and interfaces
 import { Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
@@ -21,7 +20,6 @@ export const createhrcategory = async (req: RequestWithUser, res: Response) => {
     // Validate the request body using the hrCategorySchema
     const { error } = hrCategorySchema(req.body);
     if (error) {
-      // Return a bad request response if the validation fails
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
@@ -29,10 +27,25 @@ export const createhrcategory = async (req: RequestWithUser, res: Response) => {
     }
 
     // Extract the company code and category code from the request body
-    const { company_code, category_code } = req.body;
+    let { company_code, category_code } = req.body;
 
     // Get TypeORM repository
     const categoryRepo = TypeORMService.getRepository(Categorymaster);
+
+    // Handle Auto-Generate Key: If frontend sends "0" or empty, generate the next code
+    if (!category_code || category_code === "0") {
+      const lastCategory = await categoryRepo.findOne({
+        where: { company_code },
+        order: { category_code: "DESC" }
+      });
+      if (lastCategory && lastCategory.category_code) {
+        const nextId = parseInt(lastCategory.category_code, 10) + 1;
+        category_code = nextId.toString().padStart(3, '0'); // e.g., "006"
+      } else {
+        category_code = "001"; // First entry
+      }
+      req.body.category_code = category_code;
+    }
 
     // Check if a category with the same company code and category code already exists
     const existingCategory = await categoryRepo.findOne({
@@ -51,12 +64,11 @@ export const createhrcategory = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Create a new HR Category
+    // Create a new HR Category (FIXED: using user_id and user_dt)
     const newHRCategory = categoryRepo.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
       ...req.body,
+      user_id: requestUser.loginid,
+      user_dt: new Date(),
     });
 
     await categoryRepo.save(newHRCategory);
@@ -88,7 +100,6 @@ export const updatehrcategory = async (req: RequestWithUser, res: Response) => {
     // Validate the request body using the hrCategorySchema
     const { error } = hrCategorySchema(req.body);
     if (error) {
-      // Return a bad request response if the validation fails
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
@@ -118,7 +129,7 @@ export const updatehrcategory = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Update the existing category
+    // Update the existing category (FIXED: using user_id and user_dt)
     await categoryRepo.update(
       {
         company_code: company_code,
@@ -126,8 +137,8 @@ export const updatehrcategory = async (req: RequestWithUser, res: Response) => {
       },
       {
         ...req.body,
-        updated_by: requestUser.loginid,
-        updated_at: new Date()
+        user_id: requestUser.loginid,
+        user_dt: new Date()
       }
     );
 
@@ -197,7 +208,6 @@ export const deleteHRCategories = async (
     });
   } catch (error: any) {
     console.error("Error deleting HR categories:", error);
-    // Return a bad request response with the error message
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
