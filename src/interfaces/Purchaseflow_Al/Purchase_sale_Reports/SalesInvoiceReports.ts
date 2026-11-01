@@ -200,12 +200,18 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
-     cancelled: text(h.cancelled || h.canceled).toUpperCase() === "Y",
+         cancelled: isCancelledRow(h),
   };
 }
 
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/** True when the document row is cancelled (add your real column name here if different) */
+const isCancelledRow = (r: ReportRow): boolean => {
+  const v = text(r.cancelled ?? r.canceled ?? r.doc_status ?? r.status).trim().toUpperCase();
+  return v === "Y" || v === "YES" || v === "1" || v === "TRUE" || v.startsWith("CANCEL");
+};
 
 
 const lineDiscOf = (r: ReportRow) => {
