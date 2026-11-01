@@ -957,15 +957,15 @@ export class SupportChatService {
 
             if (catId) {
                 await c.execute(
-                    `UPDATE CUSTOMERS.SUPPORT_CATEGORY SET CATEGORY_NAME=:name,DESCRIPTION=:desc,ESTIMATED_DAYS=:days,ESTIMATED_HOURS=:hours,ACTIVE_FLAG=:active,UPDATED_AT=${NOW} WHERE CATEGORY_ID=:catId`,
-                    { name, desc, days, hours, active, catId }
+                    `UPDATE CUSTOMERS.SUPPORT_CATEGORY SET CATEGORY_NAME=:name,DESCRIPTION=:catDesc,ESTIMATED_DAYS=:days,ESTIMATED_HOURS=:hours,ACTIVE_FLAG=:active,UPDATED_AT=${NOW} WHERE CATEGORY_ID=:catId`,
+                    { name, catDesc: desc, days, hours, active, catId }
                 );
                 return { category_id: catId, category_name: name, updated: true };
             } else {
                 await c.execute(
                     `INSERT INTO CUSTOMERS.SUPPORT_CATEGORY (CATEGORY_NAME, DESCRIPTION, ESTIMATED_DAYS, ESTIMATED_HOURS, ACTIVE_FLAG, CREATED_BY)
-                     VALUES (:name, :desc, :days, :hours, :active, :actor)`,
-                    { name, desc, days, hours, active, actor: identity(u).loginid }
+                     VALUES (:name, :catDesc, :days, :hours, :active, :actor)`,
+                    { name, catDesc: desc, days, hours, active, actor: identity(u).loginid }
                 );
                 return { category_name: name, created: true };
             }

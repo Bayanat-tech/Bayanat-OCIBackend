@@ -131,7 +131,6 @@ export function buildSupportEmailHtml(opts: SupportEmailOptions): string {
               <div style="text-align: center; font-size: 11.5px; color: #64748b; line-height: 1.5; margin-top: 8px;">
                 Portal: <a href="${portalUrl}" target="_blank" style="color: #0759b4; font-weight: 600; text-decoration: underline;">${portalUrl}</a>
                 <br>
-                <em>(Log in using <strong>DEVADMIN</strong> to review and manage this ticket)</em>
               </div>
 
             </td>

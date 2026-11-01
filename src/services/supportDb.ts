@@ -138,7 +138,9 @@ export function supportError(message: string, status = 400): never { throw Objec
 export function text(v: unknown, max = 4000) { const s = String(v ?? '').trim(); if (s.length > max)
     supportError(`Text exceeds ${max} characters`); return s; }
 export function identity(u: any) {
-    const loginid = text(u?.loginid || u?.LOGINID, 100).toUpperCase(), tenantId = text(u?.tenantId, 80), companyCode = text(u?.company_code, 20);
+    const loginid = text(u?.loginid || u?.LOGINID, 100).toUpperCase(),
+          tenantId = text(u?.tenantId || u?.tenant_id || u?.TENANT_ID, 80),
+          companyCode = text(u?.company_code || u?.companyCode || u?.COMPANY_CODE, 20);
     if (!loginid || !tenantId || !companyCode)
         supportError('Authenticated login, tenant and company are required', 401);
     return { loginid, tenantId, companyCode };
