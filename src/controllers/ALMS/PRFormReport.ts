@@ -206,6 +206,7 @@ async function loadFormData(req: RequestWithUser, p: ReqParams): Promise<FormDat
         request_date: f.request_date,
         create_user: f.create_user,
         flow_code: f.flow_code,
+        flow_name: f.flow_name, 
         description: f.description,
         remarks: f.remarks,
         amount: f.hdr_amount,
@@ -280,7 +281,7 @@ function formHeaderPairs(data: FormData, requestNumber: string): { left: [string
   const left: [string, string][] = [
     ["Purchase Request No-Date", reqNoDate],
     ["Created By", text(h.create_user ?? first.user_id)],
-    ["Flow", `${text(h.flow_code)} - ${text(h.flow_name)}`],
+    ["Flow", [text(h.flow_code), text(h.flow_name)].filter(Boolean).join(" - ")],
     ["Description", text(h.description)],
     ["Remarks", text(h.remarks)],
     ["Amount", amtFmt(h.amount ?? items.reduce((s, r) => s + num(r.amount), 0))],
