@@ -60,9 +60,16 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
     if (!rawRows || rawRows.length === 0) {
       const directSql = `
         SELECT 
-          h.company_code, h.prin_code, mp.prin_name as client_name,
-          mp.prin_addr1, mp.prin_addr2, mp.prin_addr3, mp.prin_addr4, mp.prin_city,
-          mp.prin_telno1, mp.prin_faxno1, mp.prin_email1, mp.trn_no as prin_trn_no,
+          h.company_code, h.prin_code, nvl(mp.prin_name, mc.cust_name) as client_name,
+          nvl(mp.prin_addr1, mc.cust_addr1) as prin_addr1,
+          nvl(mp.prin_addr2, mc.cust_addr2) as prin_addr2,
+          nvl(mp.prin_addr3, mc.cust_addr3) as prin_addr3,
+          nvl(mp.prin_addr4, mc.cust_addr4) as prin_addr4,
+          nvl(mp.prin_city, mc.cust_city) as prin_city,
+          nvl(mp.prin_telno1, mc.cust_telno1) as prin_telno1,
+          nvl(mp.prin_faxno1, mc.cust_faxno1) as prin_faxno1,
+          nvl(mp.prin_email1, mc.cust_email1) as prin_email1,
+          nvl(mp.trn_no, mc.vat_no) as prin_trn_no,
           h.invoice_no, nvl(h.invno_prefixed, h.invoice_no) as invno_prefixed,
           h.invoice_date, h.from_date, h.to_date, h.curr_code, h.inv_amount,
           h.creditdays, h.salesman_code, h.remarks as onl_remrks, h.div_code,
@@ -73,9 +80,15 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
         FROM TN_INVOICE h
         INNER JOIN TN_INVOICE_DET d 
           ON d.company_code = h.company_code 
-         AND (d.consolidated_invno = h.invoice_no OR d.invoice_no = h.invoice_no)
+         AND (
+           (h.inv_type = 'C' AND d.consolidated_invno = h.invoice_no)
+           OR (nvl(h.inv_type, 'N') <> 'C' AND d.invoice_no = h.invoice_no)
+           OR (NOT EXISTS (SELECT 1 FROM TN_INVOICE_DET d2 WHERE d2.company_code = h.company_code AND d2.consolidated_invno = h.invoice_no) AND d.invoice_no = h.invoice_no)
+         )
         LEFT JOIN MS_PRINCIPAL mp 
           ON mp.company_code = h.company_code AND mp.prin_code = h.prin_code
+        LEFT JOIN MS_CUSTOMER mc
+          ON mc.company_code = h.company_code AND mc.cust_code = h.prin_code
         LEFT JOIN MS_ACTIVITY ma 
           ON ma.company_code = d.company_code AND ma.activity_code = d.act_code
         LEFT JOIN MS_ACTIVITY_GROUP mag 
@@ -83,7 +96,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
         WHERE h.company_code = :company_code 
           AND (h.invoice_no = :invoice_no OR h.invno_prefixed = :invoice_no)
           AND nvl(d.cancelled, 'N') = 'N'
-        ORDER BY d.srno
+        ORDER BY NVL2(d.job_no, 0, 1), d.srno
       `;
       try {
         const directRes = await connection.execute(directSql, { company_code, invoice_no }, { outFormat });
@@ -236,15 +249,58 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       r.tot_vat_amt = calculatedVat;
     }
 
+    // 1. Identify targetJobNo across rows and invoice details
+    let targetJobNo = rows.find(r => r.job_no && String(r.job_no).trim())?.job_no || rawRows.find(r => r.job_no && String(r.job_no).trim())?.job_no || null;
+    if (!targetJobNo) {
+      try {
+        const jFind = await connection.execute(
+          `SELECT job_no FROM TN_INVOICE_DET 
+           WHERE company_code = :company_code 
+             AND (invoice_no = :invoice_no OR consolidated_invno = :invoice_no)
+             AND job_no IS NOT NULL AND ROWNUM = 1`,
+          { company_code, invoice_no },
+          { outFormat }
+        );
+        if (jFind.rows && jFind.rows.length > 0) {
+          targetJobNo = jFind.rows[0].JOB_NO || jFind.rows[0].job_no;
+        }
+      } catch (_) {}
+    }
+
+    if (targetJobNo) {
+      for (const r of rows) {
+        if (!r.job_no) r.job_no = targetJobNo;
+      }
+    }
+
+    // Normalize divisionInfo
+    if (divisionInfo) {
+      const normDiv: any = {};
+      for (const k of Object.keys(divisionInfo)) {
+        normDiv[k.toLowerCase()] = divisionInfo[k];
+        normDiv[k.toUpperCase()] = divisionInfo[k];
+      }
+      divisionInfo = normDiv;
+    }
+
+    // Normalize companyInfo
+    if (companyInfo) {
+      const normComp: any = {};
+      for (const k of Object.keys(companyInfo)) {
+        normComp[k.toLowerCase()] = companyInfo[k];
+        normComp[k.toUpperCase()] = companyInfo[k];
+      }
+      companyInfo = normComp;
+    }
+
     // Query shipment info from TI_JOB and TF_PACKLIST if job_no exists
     let shipmentInfo: any = null;
-    const targetJobNo = rows.find(r => r.job_no)?.job_no || rows[0]?.job_no;
     if (targetJobNo) {
       try {
         const jobRes = await connection.execute(
           `SELECT 
              j.job_no, j.transport_mode, j.job_type, j.place_receipt, j.place_delivery,
-             j.doc_ref, j.hawb, j.description1, j.vessel_name, j.voyage_no,
+             j.doc_ref, j.hawb, j.description1, j.vessel_name, j.voyage_no, j.confirm_date,
              p.no_of_packings, p.net_wt, p.gross_wt, p.volume, p.container_no,
              p.po_no, p.issue_date, p.bl_date, p.bl_no, p.prod_description,
              p.consignee_name, p.consignee_address, p.remarks as pack_remarks
@@ -256,7 +312,12 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
           { outFormat }
         );
         if (jobRes.rows && jobRes.rows.length > 0) {
-          shipmentInfo = jobRes.rows[0];
+          const rawJob = jobRes.rows[0];
+          shipmentInfo = {};
+          for (const k of Object.keys(rawJob)) {
+            shipmentInfo[k.toLowerCase()] = rawJob[k];
+            shipmentInfo[k.toUpperCase()] = rawJob[k];
+          }
         }
       } catch (err) {
         console.warn("Could not load supplementary shipment info:", err);

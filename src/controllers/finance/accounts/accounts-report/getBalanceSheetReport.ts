@@ -150,7 +150,7 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
   const { companyCode, divisionCode, asOnDate } = params;
 
   const divLiteral     = divisionCode.replace(/'/g, "''");
-  const divFilter      = `('All' = '${divLiteral}' OR TR_AC_DETAIL.div_code = '${divLiteral}')`;
+  const divFilter      = `('All' = '${divLiteral}' OR VW_AC_FINANCE_POSTING_DETAIL.div_code = '${divLiteral}')`;
   const divFilterAlias = `('All' = '${divLiteral}' OR d.div_code = '${divLiteral}')`;
 
   const sql = `
@@ -169,21 +169,21 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
              WHEN '51' THEN  1
              ELSE            -1
            END) lcur_amount,
-      TR_AC_DETAIL.div_code
+      VW_AC_FINANCE_POSTING_DETAIL.div_code
     FROM  MS_AC_BLSETUP
         , MS_ACCODES
-        , TR_AC_DETAIL
+        , VW_AC_FINANCE_POSTING_DETAIL
     WHERE MS_AC_BLSETUP.company_code = MS_ACCODES.company_code
       AND MS_AC_BLSETUP.BL_CODE      = MS_ACCODES.PL_BL_CODE
-      AND TR_AC_DETAIL.company_code  = MS_ACCODES.company_code
-      AND TR_AC_DETAIL.ac_code       = MS_ACCODES.ac_code
+      AND VW_AC_FINANCE_POSTING_DETAIL.company_code  = MS_ACCODES.company_code
+      AND VW_AC_FINANCE_POSTING_DETAIL.ac_code       = MS_ACCODES.ac_code
       AND MS_AC_BLSETUP.BL_TYPE     <> 'H'
       AND MS_AC_BLSETUP.company_code = :companyCode
-      AND NVL(TR_AC_DETAIL.CANCELLED, 'N') <> 'Y'
-      AND TR_AC_DETAIL.doc_date      < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
+      AND NVL(VW_AC_FINANCE_POSTING_DETAIL.CANCELLED, 'N') <> 'Y'
+      AND VW_AC_FINANCE_POSTING_DETAIL.doc_date      < TO_DATE(:asOnDate, 'YYYY-MM-DD') + 1
       AND ${divFilter}
     GROUP BY
-      TR_AC_DETAIL.div_code,
+      VW_AC_FINANCE_POSTING_DETAIL.div_code,
       MS_AC_BLSETUP.company_code,
       MS_AC_BLSETUP.BL_CODE,
       MS_AC_BLSETUP.BL_NAME,
@@ -199,7 +199,7 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
       CAST(NULL AS VARCHAR2(200))  h_name,
       MS_AC_BLSETUP.BL_TYPE,
       (SELECT ROUND(SUM(lcur_amount * sign_ind), 3) * -1
-       FROM   TR_AC_DETAIL d
+       FROM   VW_AC_FINANCE_POSTING_DETAIL d
        WHERE  SUBSTR(d.ac_code, 1, 1) IN ('4', '5')
          AND  d.company_code = MS_AC_BLSETUP.company_code
          AND  NVL(d.CANCELLED, 'N') <> 'Y'

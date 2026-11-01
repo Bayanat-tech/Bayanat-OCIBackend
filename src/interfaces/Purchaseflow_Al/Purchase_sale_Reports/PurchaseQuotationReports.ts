@@ -192,6 +192,28 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const headerDiscOf = (h: PurchaseQuotationHeader, base: number) =>
   round2(h.disc_hdr_price || (base * h.disc_hdr_percent) / 100);
 
+const lineGrossOf = (r: ReportRow) => round2(num(r.quantity) * num(r.unit_price));
+const lineDiscOf = (r: ReportRow) =>
+  round2(num(r.disc_price) || (lineGrossOf(r) * num(r.disc_percent)) / 100);
+const lineNetOf = (r: ReportRow) => round2(lineGrossOf(r) - lineDiscOf(r));
+const lineTaxOf = (r: ReportRow) => {
+  const stored = num(r.tx_compnt_amt_1);
+  if (stored) return round2(stored);
+  return round2((lineNetOf(r) * num(r.tx_compnt_perc_1)) / 100); // fallback
+};
+
+function computeQuotationTotals(rows: ReportRow[], header: PurchaseQuotationHeader) {
+  const totalAmount = round2(rows.reduce((s, r) => s + lineGrossOf(r), 0));
+  const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
+  // Header discount is copied into the lines (PO scope), so don't subtract it twice.
+  const headerDiscount = lineDiscount > 0 ? 0 : headerDiscOf(header, totalAmount);
+  const overallDiscount = round2(lineDiscount + headerDiscount);
+  const totalTax = round2(rows.reduce((s, r) => s + lineTaxOf(r), 0));
+  const grandTotal = round2(totalAmount - overallDiscount + totalTax);
+  return { totalAmount, overallDiscount, totalTax, grandTotal };
+}
+
+
 // ─── Shared visual system (identical extra CSS across all 3 reports) ──────
 
 /** Report-specific layout CSS (shared header/footer/table CSS comes from report_common) */
@@ -325,7 +347,12 @@ function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
 
 // ─── Shared items table (7 columns, fits portrait and landscape) ───────────
 
-function quotationItemsTableHtml(rows: ReportRow[]): string {
+
+
+
+
+
+function quotationItemsTableHtml(rows: ReportRow[], withTax = false): string {
   const bodyRows = rows
     .map(
       (r) => `
@@ -337,27 +364,45 @@ function quotationItemsTableHtml(rows: ReportRow[]): string {
         <td class="num">${amtFmt(r.unit_price)}</td>
         <td class="num">${amtFmt(r.disc_price)}<br/><span class="muted">${amtFmt(r.disc_percent)}%</span></td>
         <td class="num strong">${amtFmt(r.amount)}</td>
+                ${
+          withTax
+            ? `<td class="num">${amtFmt(lineTaxOf(r))}${
+                num(r.tx_compnt_perc_1) ? `<br/><span class="muted">${amtFmt(r.tx_compnt_perc_1)}%</span>` : ""
+              }</td>`
+            : ""
+        }
       </tr>`
     )
     .join("");
 
-  return `
-    <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
-      <thead>
-        <tr>
+  const headCols = withTax
+    ? `
+          <th width="26%">Product / Description</th>
+          <th width="10%" class="right">P Qty / Uom</th>
+          <th width="8%"  class="right">L Qty / Uom</th>
+          <th width="9%"  class="right">Qty in LUOM</th>
+          <th width="11%" class="right">Unit Rate</th>
+          <th width="11%" class="right">Disc Amt / %</th>
+          <th width="12%" class="right">Amount</th>
+          <th width="13%" class="right">Tax</th>`
+    : `
           <th width="30%">Product / Description</th>
           <th width="11%" class="right">P Qty / Uom</th>
           <th width="9%"  class="right">L Qty / Uom</th>
           <th width="10%" class="right">Qty in LUOM</th>
           <th width="12%" class="right">Unit Rate</th>
           <th width="12%" class="right">Disc Amt / %</th>
-          <th width="16%" class="right">Amount</th>
+          <th width="16%" class="right">Amount</th>`;
+
+  return `
+    <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
+      <thead>
+        <tr>${headCols}
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>`;
 }
-
 /** Body only – no full HTML document */
 function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
@@ -366,9 +411,10 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
 
   const header = buildPurchaseQuotationHeader(rows);
 
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const overallDiscount = headerDiscOf(header, totalAmount);
-  const grandTotal = totalAmount - overallDiscount;
+  // const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
+  // const overallDiscount = headerDiscOf(header, totalAmount);
+  // const grandTotal = totalAmount - overallDiscount;
+  const t = computeQuotationTotals(rows, header);
 
   const bodyRows = rows
     .map(
@@ -398,10 +444,10 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
 
         ${quotationItemsTableHtml(rows)}
 
-    <div class="totals-box">
-      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
-      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+        <div class="totals-box">
+      <div class="row"><span>Total</span><span>${amtFmt(t.totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>
   `;
 }
@@ -416,28 +462,9 @@ function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string
 
   const header = buildPurchaseQuotationHeader(rows);
 
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const totalTax = rows.reduce((s, r) => s + num(r.tx_compnt_amt_1), 0);
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount + totalTax;
+  const t = computeQuotationTotals(rows, header);
 
-  const bodyRows = rows
-    .map(
-      (r) => `
-      <tr>
-        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-        <td class="center">${escapeHtml(r.p_uom)}</td>
-        <td class="right">${qtyFmt(r.qty_puom)}</td>
-        <td class="center">${escapeHtml(r.l_uom)}</td>
-        <td class="right">${qtyFmt(r.qty_luom)}</td>
-        <td class="right">${qtyFmt(r.quantity)}</td>
-        <td class="right">${amtFmt(r.unit_price)}</td>
-        <td class="right">${amtFmt(r.disc_percent)}%</td>
-        <td class="right">${amtFmt(r.disc_price)}</td>
-        <td class="right amount">${amtFmt(r.amount)}</td>
-      </tr>`
-    )
-    .join("");
+  
 
   return `
     ${docTitleRowHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, printDateTime, loginId)}
@@ -447,29 +474,13 @@ function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string
       ${quotationDetailsBlockHtml(header)}
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Product / Description</th>
-          <th class="center">P Uom</th>
-          <th class="right">P Qty</th>
-          <th class="center">L Uom</th>
-          <th class="right">L Qty</th>
-          <th class="right">Quantity in LUOM</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Disc %</th>
-          <th class="right">Disc Amt</th>
-          <th class="right">Amount</th>
-        </tr>
-      </thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
+        ${quotationItemsTableHtml(rows, true)}
 
     <div class="totals-box">
-      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
-      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-      <div class="row"><span>TAX Amt</span><span>${amtFmt(totalTax)}</span></div>
-      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+      <div class="row"><span>Total</span><span>${amtFmt(t.totalAmount)}</span></div>
+<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+<div class="row"><span>TAX Amt</span><span>${amtFmt(t.totalTax)}</span></div>
+<div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>
   `;
 }
@@ -932,28 +943,98 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
 
 // ─── Excel builder 1: Quotation ─────────────────────────────────────────────
 
+// function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
+//   const header = buildPurchaseQuotationHeader(rows);
+//   const COL_COUNT = 10;
+//   const rows_: XlRow[] = [];
+//   const merges: XlMerge[] = [];
+
+//   rows_.push([xlCell("QUOTATION", "title"), null, null, null, null, null, null, null, null, null]);
+//   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+
+//   rows_.push([
+//     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
+//     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
+//     xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
+//   ]);
+//   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+//   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+//   merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
+
+//   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
+//   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
+
+//   rows_.push(new Array(COL_COUNT).fill(null));
+
+//   rows_.push([
+//     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
+//     xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
+//     xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
+//   ]);
+
+//   let totalAmount = 0;
+//   rows.forEach((r) => {
+//     totalAmount += num(r.amount);
+//     rows_.push([
+//       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+//       xlCell(text(r.p_uom), "data"),
+//       xlCell(num(r.qty_puom), "dataNum"),
+//       xlCell(text(r.l_uom), "data"),
+//       xlCell(num(r.qty_luom), "dataNum"),
+//       xlCell(num(r.quantity), "dataNum"),
+//       xlCell(num(r.unit_price), "dataNum"),
+//       xlCell(num(r.disc_percent), "dataNum"),
+//       xlCell(num(r.disc_price), "dataNum"),
+//       xlCell(num(r.amount), "dataNum"),
+//     ]);
+//   });
+
+//   const overallDiscount = header.disc_hdr_price;
+//   const grandTotal = totalAmount - overallDiscount;
+
+//   rows_.push(new Array(COL_COUNT).fill(null));
+
+//   const totalRow = rows_.length;
+//   rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
+//   merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
+
+//   const discRow = rows_.length;
+//   rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
+//   merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
+
+//   const grandRow = rows_.length;
+//   rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
+//   merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
+
+//   rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+
+//   return buildXlsxBuffer("Quotation", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
+// }
+
 function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildPurchaseQuotationHeader(rows);
+  const t = computeQuotationTotals(rows, header);
   const COL_COUNT = 10;
+  const blank = (n: number): null[] => new Array(n).fill(null);
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("QUOTATION", "title"), null, null, null, null, null, null, null, null, null]);
+  rows_.push([xlCell("QUOTATION", "title"), ...blank(COL_COUNT - 1)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
+    xlCell(`A/C Code: ${header.ac_code}`, "meta"), ...blank(COL_COUNT - 7),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
+  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: COL_COUNT - 1 } });
 
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
+  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), ...blank(COL_COUNT - 1)]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(blank(COL_COUNT));
 
   rows_.push([
     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
@@ -961,9 +1042,7 @@ function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
     xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
   ]);
 
-  let totalAmount = 0;
   rows.forEach((r) => {
-    totalAmount += num(r.amount);
     rows_.push([
       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
@@ -978,64 +1057,135 @@ function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
     ]);
   });
 
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount;
+  rows_.push(blank(COL_COUNT));
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: XlRow = blank(COL_COUNT);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("Grand Total", t.grandTotal, true);
 
-  const totalRow = rows_.length;
-  rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
-
-  const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
-
-  const grandRow = rows_.length;
-  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
-
-  rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  const footer: XlRow = blank(COL_COUNT);
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer");
+  rows_.push(footer);
 
   return buildXlsxBuffer("Quotation", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Excel builder 2: Quotation With Rates ──────────────────────────────────
 
+// function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
+//   const header = buildPurchaseQuotationHeader(rows);
+//   const COL_COUNT = 10;
+//   const rows_: XlRow[] = [];
+//   const merges: XlMerge[] = [];
+
+//   rows_.push([xlCell("QUOTATION (WITH RATES)", "title"), null, null, null, null, null, null, null, null, null]);
+//   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+
+//   rows_.push([
+//     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
+//     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
+//     xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
+//   ]);
+//   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+//   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+//   merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
+
+//   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
+//   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
+
+//   rows_.push(new Array(COL_COUNT).fill(null));
+
+//   rows_.push([
+//     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
+//     xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
+//     xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
+//   ]);
+
+//   let totalAmount = 0;
+//   let totalTax = 0;
+//   rows.forEach((r) => {
+//     totalAmount += num(r.amount);
+//     totalTax += num(r.tx_compnt_amt_1);
+//     rows_.push([
+//       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+//       xlCell(text(r.p_uom), "data"),
+//       xlCell(num(r.qty_puom), "dataNum"),
+//       xlCell(text(r.l_uom), "data"),
+//       xlCell(num(r.qty_luom), "dataNum"),
+//       xlCell(num(r.quantity), "dataNum"),
+//       xlCell(num(r.unit_price), "dataNum"),
+//       xlCell(num(r.disc_percent), "dataNum"),
+//       xlCell(num(r.disc_price), "dataNum"),
+//       xlCell(num(r.amount), "dataNum"),
+//     ]);
+//   });
+
+//   const overallDiscount = header.disc_hdr_price;
+//   const grandTotal = totalAmount - overallDiscount + totalTax;
+
+//   rows_.push(new Array(COL_COUNT).fill(null));
+
+//   const totalRow = rows_.length;
+//   rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
+//   merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
+
+//   const discRow = rows_.length;
+//   rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
+//   merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
+
+//   const taxRow = rows_.length;
+//   rows_.push([xlCell("TAX Amt", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalTax, "groupTotalNum")]);
+//   merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 8 } });
+
+//   const grandRow = rows_.length;
+//   rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
+//   merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
+
+//   rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+
+//   return buildXlsxBuffer("Quotation With Rates", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
+// }
 function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildPurchaseQuotationHeader(rows);
-  const COL_COUNT = 10;
+  const t = computeQuotationTotals(rows, header);
+  const COL_COUNT = 11;
+  const blank = (n: number): null[] => new Array(n).fill(null);
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("QUOTATION (WITH RATES)", "title"), null, null, null, null, null, null, null, null, null]);
+  rows_.push([xlCell("QUOTATION (WITH RATES)", "title"), ...blank(COL_COUNT - 1)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
+    xlCell(`A/C Code: ${header.ac_code}`, "meta"), ...blank(COL_COUNT - 7),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
+  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: COL_COUNT - 1 } });
 
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
+  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), ...blank(COL_COUNT - 1)]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(blank(COL_COUNT));
 
   rows_.push([
     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
     xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
-    xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
+    xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"),
+    xlCell("Amount", "header"), xlCell("Tax", "header"),
   ]);
 
-  let totalAmount = 0;
-  let totalTax = 0;
   rows.forEach((r) => {
-    totalAmount += num(r.amount);
-    totalTax += num(r.tx_compnt_amt_1);
     rows_.push([
       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
@@ -1047,31 +1197,28 @@ function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
       xlCell(num(r.disc_percent), "dataNum"),
       xlCell(num(r.disc_price), "dataNum"),
       xlCell(num(r.amount), "dataNum"),
+      xlCell(lineTaxOf(r), "dataNum"),
     ]);
   });
 
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount + totalTax;
+  rows_.push(blank(COL_COUNT));
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: XlRow = blank(COL_COUNT);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("TAX Amt", t.totalTax);
+  addTotal("Grand Total", t.grandTotal, true);
 
-  const totalRow = rows_.length;
-  rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
-
-  const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
-
-  const taxRow = rows_.length;
-  rows_.push([xlCell("TAX Amt", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalTax, "groupTotalNum")]);
-  merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 8 } });
-
-  const grandRow = rows_.length;
-  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
-
-  rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  const footer: XlRow = blank(COL_COUNT);
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer");
+  rows_.push(footer);
 
   return buildXlsxBuffer("Quotation With Rates", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
 }

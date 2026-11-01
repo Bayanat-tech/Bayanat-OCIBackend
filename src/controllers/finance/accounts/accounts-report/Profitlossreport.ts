@@ -195,7 +195,7 @@ async function loadPnlRows(
     FROM
       ms_ac_plsetup p,
       ms_accodes    m,
-      tr_ac_detail  d
+      VW_AC_FINANCE_POSTING_DETAIL  d
     WHERE
           p.company_code   = m.company_code
       AND p.pl_code        = m.pl_bl_code

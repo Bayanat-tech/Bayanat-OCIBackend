@@ -395,37 +395,37 @@ function sendExcel(res: Response, buffer: Buffer, filename: string) {
 //
 // FIX: MS_ACCODES is now joined on company_code as well as ac_code (same as the
 //      Level-1 query). Without it, an ac_code that exists in more than one
-//      company multiplies the TR_AC_DETAIL rows and inflates every SUM.
+//      company multiplies the VW_AC_FINANCE_POSTING_DETAIL rows and inflates every SUM.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const L2_SQL = `
   SELECT
-    TR_AC_DETAIL.company_code,
-    TR_AC_DETAIL.ac_code,
+    VW_AC_FINANCE_POSTING_DETAIL.company_code,
+    VW_AC_FINANCE_POSTING_DETAIL.ac_code,
     MAX(MS_ACCODES.ac_name)                                          ac_name,
     SUM(CASE WHEN sign_ind > 0 THEN lcur_amount ELSE 0 END)          debit_amount,
     SUM(CASE WHEN sign_ind < 0 THEN lcur_amount ELSE 0 END)          credit_amount,
     SUM(ROUND(lcur_amount * sign_ind, 3))                            closing_amount,
-    TR_AC_DETAIL.div_code
+    VW_AC_FINANCE_POSTING_DETAIL.div_code
   FROM
-    TR_AC_DETAIL,
+    VW_AC_FINANCE_POSTING_DETAIL,
     MS_ACCODES
   WHERE
-        TR_AC_DETAIL.ac_code      = MS_ACCODES.ac_code
-    AND TR_AC_DETAIL.company_code = MS_ACCODES.company_code
-    AND TR_AC_DETAIL.company_code = :companyCode
-    AND TR_AC_DETAIL.doc_date    >= TO_DATE(:fromDate, 'YYYY-MM-DD')
-    AND TR_AC_DETAIL.doc_date    <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
+        VW_AC_FINANCE_POSTING_DETAIL.ac_code      = MS_ACCODES.ac_code
+    AND VW_AC_FINANCE_POSTING_DETAIL.company_code = MS_ACCODES.company_code
+    AND VW_AC_FINANCE_POSTING_DETAIL.company_code = :companyCode
+    AND VW_AC_FINANCE_POSTING_DETAIL.doc_date    >= TO_DATE(:fromDate, 'YYYY-MM-DD')
+    AND VW_AC_FINANCE_POSTING_DETAIL.doc_date    <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
     AND MS_ACCODES.pl_bl_code     = :plCode
-    AND TR_AC_DETAIL.doc_type    <> 'EJV'
-    AND NVL(TR_AC_DETAIL.cancelled, 'N') <> 'Y'
-    AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
+    AND VW_AC_FINANCE_POSTING_DETAIL.doc_type    <> 'EJV'
+    AND NVL(VW_AC_FINANCE_POSTING_DETAIL.cancelled, 'N') <> 'Y'
+    AND ('All' = :divisionCode OR VW_AC_FINANCE_POSTING_DETAIL.div_code = :divisionCode)
   GROUP BY
-    TR_AC_DETAIL.div_code,
-    TR_AC_DETAIL.company_code,
-    TR_AC_DETAIL.ac_code
+    VW_AC_FINANCE_POSTING_DETAIL.div_code,
+    VW_AC_FINANCE_POSTING_DETAIL.company_code,
+    VW_AC_FINANCE_POSTING_DETAIL.ac_code
   ORDER BY
-    TR_AC_DETAIL.ac_code
+    VW_AC_FINANCE_POSTING_DETAIL.ac_code
 `;
 
 export const getPnlDrilldownL2 = async (
@@ -697,7 +697,7 @@ const L3_SQL = `
     000000000.000 op_balance,
     d.DIV_CODE
   FROM
-    TR_AC_DETAIL d,
+    VW_AC_FINANCE_POSTING_DETAIL d,
     MS_ACCODES   a,
     MS_ACCODES   b
   WHERE

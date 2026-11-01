@@ -1,3 +1,5 @@
+import { postingAmounts } from './financePostingAmounts';
+
 /** Shared contract for both LPO create and update. Optional trailing SP arguments
  * keep existing PowerBuilder / legacy callers compatible. */
 export const LPO_DETAIL_INSERT_SQL = `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
@@ -19,7 +21,7 @@ export function buildLpoDetailBindings(
 ) {
   const rate = Number(detail.ex_rate ?? header.ex_rate ?? 1);
   const amount = Number(detail.amount ?? 0);
-  const taxAmount = Number(detail.tx_compnt_amt_1 ?? 0);
+  const calculated = postingAmounts(detail, header);
   const taxPercent = Number(detail.tx_compnt_perc_1 ?? 0);
   return {
     cc: companyCode, dt: docType, dn: docNo,
@@ -27,15 +29,15 @@ export function buildLpoDetailBindings(
     ac: detail.ac_code, hac: header.ac_code,
     am: amount, cu: detail.curr_code ?? header.curr_code, er: rate,
     si: detail.sign_ind ?? 1, dv: detail.div_code ?? header.div_code,
-    la: detail.lcur_amount ?? amount * rate,
+    la: calculated.LCUR_AMOUNT,
     qty: Number(detail.qty ?? 1), pr: Number(detail.price ?? 0),
     pc: detail.prod_code ?? null, pcc: detail.cost_code ?? null,
     or: detail.other_remarks ?? null, rm: detail.remarks ?? null,
     tcc: detail.tx_cat_code ?? null, tc: detail.tx_compntcat_code_1 ?? null,
-    tp: detail.tx_compnt_perc_1 ?? null, tm: detail.tx_compnt_amt_1 ?? null,
+    tp: detail.tx_compnt_perc_1 ?? null, tm: calculated.TX_COMPNT_AMT_1,
     dd: new Date(detail.doc_date ?? header.doc_date).toISOString().slice(0, 10),
     job: detail.job_no || null, dept: detail.dept_code || null,
     tax_type: detail.tx_compnt_1_expmt || header.tx_compnt_1_expmt || (taxPercent > 0 ? 'S' : 'N'),
-    tax_base: detail.tx_compnt_lcuramt_1 ?? taxAmount * rate,
+    tax_base: calculated.TX_COMPNT_LCURAMT_1,
   };
 }

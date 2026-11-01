@@ -91,6 +91,40 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
     
     // Build hierarchy
     const response = buildHierarchy(normalizedData);
+    let usage: oracledb.Result<{ AC_CODE: string }>;
+    try {
+      usage = await connection.execute<{ AC_CODE: string }>(
+        `SELECT ac_code FROM VW_AC_ACCOUNT_USAGE WHERE company_code = :cc`,
+        { cc: requestUser.company_code },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+    } catch (error: any) {
+      if (error.errorNum !== 942) throw error;
+      // Keep other tenant schemas usable until their expanded history guard is migrated.
+      usage = await connection.execute<{ AC_CODE: string }>(
+        `SELECT ac_code FROM TR_AC_DETAIL WHERE company_code=:cc
+         UNION SELECT ac_code FROM TR_AC_HEADER WHERE company_code=:cc
+         UNION SELECT bank_ac_code FROM TR_AC_HEADER WHERE company_code=:cc
+         UNION SELECT ac_code FROM TR_AC_INVDETAIL WHERE company_code=:cc
+         UNION SELECT tx_in_ac FROM MS_TAX_COMPNTCATEGORY WHERE company_code=:cc
+         UNION SELECT tx_out_ac FROM MS_TAX_COMPNTCATEGORY WHERE company_code=:cc`,
+        { cc: requestUser.company_code },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+    }
+    const protectedAccounts = new Set((usage.rows || []).map(row => row.AC_CODE));
+    const markUsage = (nodes: any[]) => {
+      for (const node of nodes) {
+        if (node.level === 5) {
+          node.delete_blocked = protectedAccounts.has(String(node.id));
+          node.delete_block_reason = node.delete_blocked
+            ? 'This account has transactions, allocation history or tax configuration. Deactivate it instead.'
+            : null;
+        }
+        markUsage(node.children || []);
+      }
+    };
+    markUsage(response);
     
     res.status(constants.STATUS_CODES.OK).json({ 
       success: true, 

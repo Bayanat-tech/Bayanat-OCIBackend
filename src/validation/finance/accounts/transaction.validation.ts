@@ -1,5 +1,6 @@
 import Joi from "joi";
 import constants from "../../../helpers/constants";
+const gstLinesSchema = Joi.array().items(Joi.object({ serial_no: Joi.number().integer().positive().required(), tax_direction: Joi.string().valid('INPUT','OUTPUT').required(), supplier_state: Joi.string().pattern(/^[0-9]{2}$/).required(), place_of_supply: Joi.string().pattern(/^[0-9]{2}$/).required(), hsn_sac: Joi.string().allow('').optional() }));
 
 export const chequePaymentSchema = (
   data: any,
@@ -7,6 +8,7 @@ export const chequePaymentSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
+    gst_lines: gstLinesSchema.optional(),
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional, casts to string)
     doc_type: Joi.string()
       .valid(
@@ -395,6 +397,7 @@ export const purchaseSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
+    gst_lines: gstLinesSchema.optional(),
     // Define the Joi schema for the cheque payment document
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional)
     doc_type: Joi.string() // Document type (required)
@@ -735,6 +738,7 @@ export const salesSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
+    gst_lines: gstLinesSchema.optional(),
     // Define the Joi schema for the cheque payment document
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional)
     doc_type: Joi.string() // Document type (required)
@@ -1042,6 +1046,7 @@ export const LpoSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
+    gst_lines: gstLinesSchema.optional(),
     // Define the Joi schema for the cheque payment document
     // doc_no: Joi.number().optional().allow("", null), // Document number (optional)
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)),
@@ -1379,6 +1384,7 @@ export const pettyCashSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
+    gst_lines: gstLinesSchema.optional(),
     doc_no: Joi.number().optional().allow("", null),
     doc_type: Joi.string()
       .valid(

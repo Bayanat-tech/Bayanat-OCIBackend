@@ -17,7 +17,7 @@ import { getLeaveWorkflowTargets, getLeaveWorkflowRequest, saveLeaveWorkflowActi
 import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterreport";
 import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
 import { leaveRequestFlow } from "../controllers/HR/leave_request_flow";
-
+import {updateConsolidateCancelFlag} from "../controllers/HR/updConsolidateCancelFlag.hr.controller"
 // Initialize the Express router
 const router = express.Router();
 
@@ -37,6 +37,12 @@ router.get('/mobile/leave/:bucket',
   checkUserAuthorization,
   getMobileLeaveBucket,
 );
+
+router.put("/consolidate/cancel",
+    passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+   updateConsolidateCancelFlag);
 
 // Define a common GET API endpoint to retrieve HR master data based on the master name
 router.get(

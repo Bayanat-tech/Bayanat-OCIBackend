@@ -1,3 +1,4 @@
+import { taxReportContext, taxInvoiceTotal } from "./taxReportValues";
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../../database/TenantManager";
@@ -139,18 +140,9 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
     // Company code comes from the request (same slot the procedure uses)
     const companyCode = text(req.body.company_code || code1).trim();
 
-    // Currency = CURRENCY from MS_COMPANYINFO for that company
-    let reportCurrency = "";
-    if (companyCode) {
-      const currResult = await connection.execute(
-        `SELECT CURRENCY FROM MS_COMPANYINFO WHERE COMPANY_CODE = :company_code`,
-        { company_code: companyCode },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      const currRow = ((currResult.rows as any[]) || [])[0];
-      reportCurrency = text(currRow?.CURRENCY).trim();
-    }
-    const money = makeMoney(currencyDecimals(reportCurrency));
+    const context = await taxReportContext(connection, companyCode);
+    const reportCurrency = context.currency;
+    const money = makeMoney(context.decimals);
     const formatBalance = (value: number) =>
       value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
@@ -163,7 +155,7 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
     rows.forEach((r) => {
       const invAmount = Number(r.inv_amount) || 0;
       const taxableInvAmt = Number(r.taxable_amt) || 0;
-      const totInvAmount = Number(r.inv_amount) || 0;
+      const totInvAmount = taxInvoiceTotal(r);
       const taxAmount = Number(r.tax_amount) || 0;
 
       totalInvAmount += invAmount;
