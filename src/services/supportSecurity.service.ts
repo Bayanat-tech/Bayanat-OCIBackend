@@ -208,17 +208,30 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
             SERIAL_NO: 97004,
             APP_CODE: 'Support',
             LEVEL1: 'Service Desk',
+            LEVEL2: 'Category Master',
+            MODULE_CODE: 'support',
+            MODULE_NAME: 'Category Master',
+            URL_PATH: 'support/categories',
+            PARENT_SERIAL_NO: 0,
+            POSITION: 4,
+            IS_ACTIVE: 'Y',
+            ICON: 'Tags'
+        },
+        {
+            SERIAL_NO: 97005,
+            APP_CODE: 'Support',
+            LEVEL1: 'Service Desk',
             LEVEL2: 'Service Overview',
             MODULE_CODE: 'support',
             MODULE_NAME: 'Service Overview',
             URL_PATH: 'support/reports',
             PARENT_SERIAL_NO: 0,
-            POSITION: 4,
+            POSITION: 5,
             IS_ACTIVE: 'Y',
             ICON: 'BarChart3'
         },
         {
-            SERIAL_NO: 97005,
+            SERIAL_NO: 97006,
             APP_CODE: 'Support',
             LEVEL1: 'Service Desk',
             LEVEL2: 'Notifications',
@@ -226,7 +239,7 @@ export async function nativeSupportMenu(c: oracledb.Connection, id: SupportIdent
             MODULE_NAME: 'Notifications',
             URL_PATH: 'support/settings',
             PARENT_SERIAL_NO: 0,
-            POSITION: 5,
+            POSITION: 6,
             IS_ACTIVE: 'Y',
             ICON: 'Bell'
         }

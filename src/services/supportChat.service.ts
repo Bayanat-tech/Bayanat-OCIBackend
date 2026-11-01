@@ -44,6 +44,24 @@ async function audit(c: oracledb.Connection, ticketId: number, u: any, event: st
     await c.execute(`INSERT INTO CUSTOMERS.SUPPORT_EVENT(TICKET_ID,ACTOR_LOGINID,ACTOR_TENANT_ID,EVENT_TYPE,EVENT_TEXT,CREATED_AT) VALUES(:ticketId,:loginid,:tenant,:event,:note,${NOW})`, { ticketId, loginid: id.loginid, tenant: id.tenantId, event, note: note.slice(0, 2000) });
 }
 
+async function resolveUserEmail(c: oracledb.Connection, loginid: string): Promise<string> {
+    if (!loginid) return '';
+    try {
+        const [row] = await query(
+            c,
+            "SELECT EMAIL_ID FROM CUSTOMERS.SEC_LOGINTEST WHERE UPPER(LOGINID) = UPPER(:loginid)",
+            { loginid: String(loginid).trim() }
+        );
+        const email = String(row?.EMAIL_ID || '').trim();
+        if (email && email.includes('@')) {
+            return email;
+        }
+    } catch {
+        // ignore
+    }
+    return '';
+}
+
 async function resolveRequesterName(c: oracledb.Connection, u: any): Promise<string> {
     const rawLogin = String(u.loginid || '').trim();
     const jwtUsername = String(u.username || '').trim();
@@ -263,11 +281,15 @@ export class SupportChatService {
                 message
             });
 
+            const userEmail = await resolveUserEmail(c, id.loginid);
+            const adminRecipients = await admins(c);
+            const toRecipients = Array.from(new Set([...adminRecipients.split(','), userEmail].map(e => e.trim()).filter(Boolean))).join(',');
+
             await queueSupportEmail(
                 c,
                 ticketId,
                 `created:${ticketId}`,
-                await admins(c),
+                toRecipients,
                 `New support ticket #${ticketId}: ${subject}`,
                 emailHtml
             );
@@ -343,11 +365,19 @@ export class SupportChatService {
                 note: `Action taken by ${actorName} (${identity(u).loginid})`
             });
 
+            let toRecipients = await admins(c);
+            if (event === 'CLOSED') {
+                const userEmail = await resolveUserEmail(c, t.REQUESTER_LOGINID);
+                if (userEmail) {
+                    toRecipients = Array.from(new Set([...toRecipients.split(','), userEmail].map(e => e.trim()).filter(Boolean))).join(',');
+                }
+            }
+
             await queueSupportEmail(
                 c,
                 ticketId,
                 `${event}:${ticketId}:${Date.now()}`,
-                await admins(c),
+                toRecipients,
                 `Support #${ticketId} ${event.toLowerCase()}: ${t.SUBJECT}`,
                 emailHtml
             );

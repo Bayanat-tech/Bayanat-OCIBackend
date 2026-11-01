@@ -101,7 +101,7 @@ export class TenantManager {
       console.log(`[getTenantForUser] STEP 2: Executing USER_TENANT_MAPPING query...`);
       const result = await conn.execute(
         `SELECT TENANT_ID FROM USER_TENANT_MAPPING 
-         WHERE LOGINID = :loginid AND IS_DEFAULT = 'Y'`,
+         WHERE UPPER(TRIM(LOGINID)) = UPPER(TRIM(:loginid)) AND IS_DEFAULT = 'Y'`,
         { loginid },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
