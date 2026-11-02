@@ -72,6 +72,13 @@ import {
   trkContainerOffload,
   trkCheckCompletion,
   trkCfsCreate,
+  trkDashboard,
+  trkNotificationList,
+  trkNotificationMarkRead,
+  trkProQueueList,
+  trkProTaskSave,
+  trkDcStationList,
+  trkDcContainerUpdate,
 } from "../../controllers/Freight/freightTrackerProcedures";
 import {
   frtPacklistDelete,
@@ -194,6 +201,13 @@ router.post("/tracker/task-update", trkTaskUpdate);
 router.post("/tracker/container-offload", trkContainerOffload);
 router.post("/tracker/check-completion", trkCheckCompletion);
 router.post("/tracker/cfs-create", trkCfsCreate);
+router.post("/tracker/dashboard", trkDashboard);
+router.post("/tracker/notifications/list", trkNotificationList);
+router.post("/tracker/notifications/mark-read", trkNotificationMarkRead);
+router.post("/tracker/pro-queue/list", trkProQueueList);
+router.post("/tracker/pro-queue/save", trkProTaskSave);
+router.post("/tracker/dc-station/list", trkDcStationList);
+router.post("/tracker/dc-station/update-container", trkDcContainerUpdate);
 router.post("/tax/categories", frtTaxCategoryList);
 router.post("/tax/components", frtTaxComponentList);
 

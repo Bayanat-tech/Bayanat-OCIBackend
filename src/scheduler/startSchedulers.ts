@@ -1,4 +1,5 @@
 import { startNotificationEmailScheduler } from "./notificationEmail.scheduler";
+import { startFreightTrackerScheduler } from "./freightTracker.scheduler";
 
 export async function startSchedulers(): Promise<void> {
   const enabled = process.env.SCHEDULER_ENABLED;
@@ -11,6 +12,8 @@ export async function startSchedulers(): Promise<void> {
     console.log("Starting schedulers...");
     startNotificationEmailScheduler();
     console.log("NotificationEmailScheduler initialized");
+    startFreightTrackerScheduler();
+    console.log("FreightTrackerScheduler initialized");
     console.log("All schedulers started");
   } catch (error) {
     console.error("Failed to start schedulers:", error);

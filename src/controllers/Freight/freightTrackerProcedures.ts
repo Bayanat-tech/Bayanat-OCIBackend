@@ -400,7 +400,17 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
     const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const taskType = value(req.body.task_type ?? req.body.TASK_TYPE);
-    const status = value(req.body.status ?? req.body.STATUS); // IN_PROGRESS, ON_HOLD, COMPLETED
+    const rawStatus = value(req.body.status ?? req.body.STATUS);
+    let status = rawStatus;
+    if (rawStatus === 'IN_TRANSIT' || rawStatus === 'ASSIGNED' || rawStatus === 'BREAKDOWN') {
+      status = 'PULLED_OUT';
+    } else if (rawStatus === 'AT_DC' || req.body.arrived === true || req.body.arrived === 'Y') {
+      status = 'ARRIVED';
+    } else if (rawStatus === 'EMPTY_RETURNED') {
+      status = 'RETURNED';
+    } else if (rawStatus && !['PENDING', 'ARRIVED', 'PULLED_OUT', 'OFFLOADED', 'RETURNED'].includes(rawStatus)) {
+      status = 'PENDING';
+    } // IN_PROGRESS, ON_HOLD, COMPLETED
     const holdEntity = value(req.body.hold_entity ?? req.body.HOLD_ENTITY);
     const holdReason = value(req.body.hold_reason ?? req.body.HOLD_REASON);
     const holdRemark = value(req.body.hold_remark ?? req.body.HOLD_REMARK);
@@ -503,6 +513,37 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
     const isCompleted = (result.outBinds as any)?.p_is_completed === "Y";
 
     // Trigger background email notification (non-blocking)
+    
+    // Insert In-App Notification (non-blocking)
+    try {
+      let notifTitle = `Milestone Update: ${jobNo}`;
+      let notifMsg = `Task ${taskType} changed to ${status}`;
+      let notifCat = 'STAGE_ADVANCED';
+
+      if (status === 'ON_HOLD') {
+        notifTitle = `⚠️ Milestone On Hold: ${jobNo} (${taskType})`;
+        notifMsg = `Hold placed by ${holdEntity || 'Review'}: ${holdReason || holdRemark || 'Pending resolution'}`;
+        notifCat = 'HOLD_APPLIED';
+      } else if (status === 'COMPLETED') {
+        notifTitle = `✓ Milestone Completed: ${jobNo} (${taskType})`;
+        notifMsg = `Completed by ${userId}. Ready for next milestone.`;
+        notifCat = 'STAGE_ADVANCED';
+      } else if (releaseRemark) {
+        notifTitle = `🔓 Hold Released: ${jobNo} (${taskType})`;
+        notifMsg = `Hold on ${taskType} resolved: "${releaseRemark}"`;
+        notifCat = 'HOLD_RELEASED';
+      }
+
+      await connection.execute(
+        `INSERT INTO TRK_NOTIFICATIONS (NOTIFICATION_ID, COMPANY_CODE, PRIN_CODE, JOB_NO, RECIPIENT_ID, CHANNEL, CATEGORY, TITLE, MESSAGE, IS_READ, CREATED_DT)
+          VALUES (RAWTOHEX(SYS_GUID()), :comp, :prin, :job, 'ALL', 'IN_APP', :cat, :title, :msg, 'N', SYSDATE)`,
+        { comp: companyCode, prin: prinCode, job: jobNo, cat: notifCat, title: notifTitle, msg: notifMsg },
+        { autoCommit: true }
+      );
+    } catch (notifErr) {
+      console.warn('[trkTaskUpdate] In-app notification creation notice:', notifErr);
+    }
+
     sendTrackerStageEmail(connection, {
       companyCode,
       prinCode,
@@ -745,6 +786,428 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
 };
 
 // =============================================================================
+
+// =============================================================================
+// 9. SHIPMENT TRACKER DASHBOARD AGGREGATIONS
+// Powers KPI cards, Stage Funnel, Active Holds Radar, DO Expiry & Container Pipeline
+// =============================================================================
+export const trkDashboard = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    // 1. High-level Summary Counts
+    const summaryRes = await connection.execute(
+      `SELECT 
+         (SELECT COUNT(*) FROM TRK_SHIPMENT WHERE COMPANY_CODE = :comp AND CURRENT_STAGE != 'COMPLETED') AS ACTIVE_SHIPMENTS,
+         (SELECT COUNT(*) FROM TRK_SHIPMENT WHERE COMPANY_CODE = :comp AND CURRENT_STAGE = 'COMPLETED') AS COMPLETED_SHIPMENTS,
+         (SELECT COUNT(*) FROM TRK_SHIPMENT_TASKS WHERE COMPANY_CODE = :comp AND STATUS = 'ON_HOLD') AS ACTIVE_HOLDS,
+         (SELECT COUNT(*) FROM TRK_CONTAINERS WHERE COMPANY_CODE = :comp) AS TOTAL_CONTAINERS,
+         (SELECT COUNT(*) FROM TRK_CONTAINERS WHERE COMPANY_CODE = :comp AND STATUS = 'OFFLOADED') AS OFFLOADED_CONTAINERS,
+         (SELECT COUNT(*) FROM TRK_SHIPMENT WHERE COMPANY_CODE = :comp AND DO_VALIDITY_DATE IS NOT NULL AND TRUNC(DO_VALIDITY_DATE) <= TRUNC(SYSDATE + 3) AND CURRENT_STAGE != 'COMPLETED') AS DO_EXPIRING_COUNT
+       FROM DUAL`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const summaryRow: any = (summaryRes.rows as any[])?.[0] || {};
+
+    // 2. Counts By Stage
+    const stageRes = await connection.execute(
+      `SELECT CURRENT_STAGE, COUNT(*) AS CNT
+         FROM TRK_SHIPMENT
+        WHERE COMPANY_CODE = :comp
+        GROUP BY CURRENT_STAGE`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const stageCounts: Record<string, number> = {
+      CUSTOMER: 0,
+      FFD_REVIEW: 0,
+      IN_PROGRESS: 0,
+      TRANSPORT: 0,
+      DC_TRANSPORT: 0,
+      COMPLETED: 0,
+    };
+    for (const r of (stageRes.rows as any[]) || []) {
+      if (r.CURRENT_STAGE) stageCounts[r.CURRENT_STAGE] = Number(r.CNT || 0);
+    }
+
+    // 3. In-Progress Task Breakdown
+    const taskBreakdownRes = await connection.execute(
+      `SELECT t.TASK_TYPE, t.STATUS, COUNT(*) AS CNT
+         FROM TRK_SHIPMENT_TASKS t
+         JOIN TRK_SHIPMENT s ON s.COMPANY_CODE = t.COMPANY_CODE AND s.PRIN_CODE = t.PRIN_CODE AND s.JOB_NO = t.JOB_NO
+        WHERE t.COMPANY_CODE = :comp AND s.CURRENT_STAGE != 'COMPLETED'
+        GROUP BY t.TASK_TYPE, t.STATUS`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const taskPipeline: Record<string, { active: number; on_hold: number; completed: number }> = {};
+    for (const r of (taskBreakdownRes.rows as any[]) || []) {
+      const type = String(r.TASK_TYPE);
+      if (!taskPipeline[type]) {
+        taskPipeline[type] = { active: 0, on_hold: 0, completed: 0 };
+      }
+      const st = String(r.STATUS);
+      if (st === "COMPLETED") taskPipeline[type].completed += Number(r.CNT || 0);
+      else if (st === "ON_HOLD") taskPipeline[type].on_hold += Number(r.CNT || 0);
+      else taskPipeline[type].active += Number(r.CNT || 0);
+    }
+
+    // 4. Active Holds Radar
+    const holdsRes = await connection.execute(
+      `SELECT t.JOB_NO, s.PRIN_CODE, s.BL_NUMBER, j.CUST_CODE, c.CUST_NAME,
+              t.TASK_TYPE, t.HOLD_ENTITY, t.HOLD_REASON, t.HOLD_REMARK,
+              NVL(t.CREATED_DT, SYSDATE) AS HELD_AT,
+              ROUND((SYSDATE - NVL(t.CREATED_DT, SYSDATE)) * 24, 1) AS HELD_HOURS
+         FROM TRK_SHIPMENT_TASKS t
+         JOIN TRK_SHIPMENT s ON s.COMPANY_CODE = t.COMPANY_CODE AND s.PRIN_CODE = t.PRIN_CODE AND s.JOB_NO = t.JOB_NO
+         JOIN TI_JOB j ON j.COMPANY_CODE = s.COMPANY_CODE AND j.PRIN_CODE = s.PRIN_CODE AND j.JOB_NO = s.JOB_NO
+         LEFT JOIN MS_CUSTOMER c ON c.COMPANY_CODE = j.COMPANY_CODE AND c.PRIN_CODE = j.PRIN_CODE AND c.CUST_CODE = j.CUST_CODE
+        WHERE t.COMPANY_CODE = :comp AND t.STATUS = 'ON_HOLD'
+        ORDER BY t.CREATED_DT ASC`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // 5. Container Status Pipeline
+    const cntrRes = await connection.execute(
+      `SELECT STATUS, COUNT(*) AS CNT
+         FROM TRK_CONTAINERS
+        WHERE COMPANY_CODE = :comp
+        GROUP BY STATUS`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const containerCounts: Record<string, number> = {
+      PENDING: 0,
+      ASSIGNED: 0,
+      IN_TRANSIT: 0,
+      BREAKDOWN: 0,
+      AT_DC: 0,
+      OFFLOADED: 0,
+      RETURNED: 0,
+    };
+    for (const r of (cntrRes.rows as any[]) || []) {
+      if (r.STATUS) containerCounts[r.STATUS] = Number(r.CNT || 0);
+    }
+
+    // 6. DO Expiry Radar List (Sea shipments)
+    const doRes = await connection.execute(
+      `SELECT s.JOB_NO, s.PRIN_CODE, s.BL_NUMBER, s.DO_VALIDITY_DATE,
+              ROUND(TRUNC(s.DO_VALIDITY_DATE) - TRUNC(SYSDATE)) AS DAYS_REMAINING,
+              j.VESSEL_NAME, j.PORT_CODE, j.DESTINATION_PORT, c.CUST_NAME
+         FROM TRK_SHIPMENT s
+         JOIN TI_JOB j ON j.COMPANY_CODE = s.COMPANY_CODE AND j.PRIN_CODE = s.PRIN_CODE AND j.JOB_NO = s.JOB_NO
+         LEFT JOIN MS_CUSTOMER c ON c.COMPANY_CODE = j.COMPANY_CODE AND c.PRIN_CODE = j.PRIN_CODE AND c.CUST_CODE = j.CUST_CODE
+        WHERE s.COMPANY_CODE = :comp 
+          AND s.DO_VALIDITY_DATE IS NOT NULL
+          AND s.CURRENT_STAGE != 'COMPLETED'
+        ORDER BY s.DO_VALIDITY_DATE ASC`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // 7. Recent Live Event Stream
+    const eventsRes = await connection.execute(
+      `SELECT EVENT_ID, JOB_NO, EVENT_TYPE, STAGE_FROM, STAGE_TO, ACTOR_ID, REMARK, CREATED_DT
+         FROM TRK_SHIPMENT_EVENTS
+        WHERE COMPANY_CODE = :comp
+        ORDER BY CREATED_DT DESC
+        FETCH FIRST 20 ROWS ONLY`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          activeShipments: Number(summaryRow.ACTIVE_SHIPMENTS || 0),
+          completedShipments: Number(summaryRow.COMPLETED_SHIPMENTS || 0),
+          activeHolds: Number(summaryRow.ACTIVE_HOLDS || 0),
+          totalContainers: Number(summaryRow.TOTAL_CONTAINERS || 0),
+          offloadedContainers: Number(summaryRow.OFFLOADED_CONTAINERS || 0),
+          doExpiringCount: Number(summaryRow.DO_EXPIRING_COUNT || 0),
+        },
+        stageCounts,
+        taskPipeline,
+        activeHolds: holdsRes.rows || [],
+        containerCounts,
+        doRadar: doRes.rows || [],
+        recentActivity: eventsRes.rows || [],
+      },
+    });
+  });
+};
+
+
+// =============================================================================
+// 10. IN-APP NOTIFICATIONS & ALERTS
+// Powers the Header Notification Bell & Alert Center
+// =============================================================================
+export const trkNotificationList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    const userId = req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "Admin";
+    const unreadOnly = req.body.unread_only === true || req.body.unread_only === "Y";
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    let sql = `
+      SELECT NOTIFICATION_ID, COMPANY_CODE, PRIN_CODE, JOB_NO, RECIPIENT_ID,
+             CHANNEL, CATEGORY, TITLE, MESSAGE, IS_READ, READ_AT, CREATED_DT
+        FROM TRK_NOTIFICATIONS
+       WHERE COMPANY_CODE = :comp
+         AND (RECIPIENT_ID = :user_id OR RECIPIENT_ID = 'ALL')
+    `;
+
+    if (unreadOnly) {
+      sql += ` AND IS_READ = 'N'`;
+    }
+
+    sql += ` ORDER BY CREATED_DT DESC FETCH FIRST 50 ROWS ONLY`;
+
+    const listRes = await connection.execute(
+      sql,
+      { comp: companyCode, user_id: userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const unreadRes = await connection.execute(
+      `SELECT COUNT(*) AS CNT
+         FROM TRK_NOTIFICATIONS
+        WHERE COMPANY_CODE = :comp
+          AND (RECIPIENT_ID = :user_id OR RECIPIENT_ID = 'ALL')
+          AND IS_READ = 'N'`,
+      { comp: companyCode, user_id: userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const unreadCount = Number((unreadRes.rows as any[])?.[0]?.CNT || 0);
+
+    res.json({
+      success: true,
+      data: {
+        notifications: listRes.rows || [],
+        unreadCount,
+      },
+    });
+  });
+};
+
+export const trkNotificationMarkRead = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    const notificationId = req.body.notification_id ?? req.body.NOTIFICATION_ID;
+    const markAll = req.body.all === true || req.body.mark_all === true;
+    const userId = req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "Admin";
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    if (markAll) {
+      await connection.execute(
+        `UPDATE TRK_NOTIFICATIONS
+            SET IS_READ = 'Y', READ_AT = SYSDATE
+          WHERE COMPANY_CODE = :comp
+            AND (RECIPIENT_ID = :user_id OR RECIPIENT_ID = 'ALL')
+            AND IS_READ = 'N'`,
+        { comp: companyCode, user_id: userId },
+        { autoCommit: true }
+      );
+      res.json({ success: true, message: "All notifications marked as read" });
+    } else if (notificationId) {
+      await connection.execute(
+        `UPDATE TRK_NOTIFICATIONS
+            SET IS_READ = 'Y', READ_AT = SYSDATE
+          WHERE COMPANY_CODE = :comp
+            AND NOTIFICATION_ID = :notif_id`,
+        { comp: companyCode, notif_id: notificationId },
+        { autoCommit: true }
+      );
+      res.json({ success: true, message: "Notification marked as read" });
+    } else {
+      res.status(400).json({ success: false, message: "notification_id or mark_all is required" });
+    }
+  });
+};
+
+
+// =============================================================================
+// 11. ROLE-BASED SPECIALIZED WORKBENCHES (PRO Queue & DC Offloading Station)
+// =============================================================================
+export const trkProQueueList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    const taskTypeFilter = req.body.task_type ?? req.body.TASK_TYPE; // 'ALL', 'PERMIT', 'BAYAN'
+    const statusFilter = req.body.status ?? req.body.STATUS; // 'ALL', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED'
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    let sql = `
+      SELECT t.TASK_ID, t.JOB_NO, s.PRIN_CODE, s.BL_NUMBER, j.CUST_CODE, c.CUST_NAME,
+             t.FLOW_LEVEL, t.TASK_TYPE, t.STATUS, t.ASSIGNED_TEAM, t.ASSIGNED_TO,
+             t.HOLD_ENTITY, t.HOLD_REASON, t.HOLD_REMARK, t.RELEASE_REMARK,
+             t.DUE_AT, t.CREATED_DT,
+             ROUND((SYSDATE - t.CREATED_DT) * 24, 1) AS HOURS_OPEN,
+             s.PERMIT_REF, s.PERMIT_NOT_REQUIRED, s.EXPORT_BAYAN_NO,
+             s.CURRENT_STAGE, s.SHIPMENT_TYPE, s.IS_DRY
+        FROM TRK_SHIPMENT_TASKS t
+        JOIN TRK_SHIPMENT s ON s.COMPANY_CODE = t.COMPANY_CODE AND s.PRIN_CODE = t.PRIN_CODE AND s.JOB_NO = t.JOB_NO
+        JOIN TI_JOB j ON j.COMPANY_CODE = s.COMPANY_CODE AND j.PRIN_CODE = s.PRIN_CODE AND j.JOB_NO = s.JOB_NO
+        LEFT JOIN MS_CUSTOMER c ON c.COMPANY_CODE = j.COMPANY_CODE AND c.PRIN_CODE = j.PRIN_CODE AND c.CUST_CODE = j.CUST_CODE
+       WHERE t.COMPANY_CODE = :comp
+         AND t.TASK_TYPE IN ('PERMIT', 'PRO_PERMITS', 'BAYAN', 'CUSTOMS_BAYAN', 'CCRO')
+         AND s.CURRENT_STAGE != 'COMPLETED'
+    `;
+
+    if (taskTypeFilter && taskTypeFilter !== "ALL") {
+      sql += ` AND (t.TASK_TYPE = '${taskTypeFilter}' OR t.TASK_TYPE LIKE '%${taskTypeFilter}%')`;
+    }
+
+    if (statusFilter && statusFilter !== "ALL") {
+      sql += ` AND t.STATUS = '${statusFilter}'`;
+    }
+
+    sql += ` ORDER BY CASE WHEN t.STATUS = 'ON_HOLD' THEN 1 WHEN t.STATUS = 'IN_PROGRESS' THEN 2 ELSE 3 END, t.DUE_AT ASC NULLS LAST`;
+
+    const result = await connection.execute(
+      sql,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({
+      success: true,
+      data: result.rows || [],
+    });
+  });
+};
+
+export const trkProTaskSave = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
+    const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
+    const permitRef = value(req.body.permit_ref ?? req.body.PERMIT_REF);
+    const permitNotRequired = req.body.permit_not_required === "Y" ? "Y" : "N";
+    const exportBayanNo = value(req.body.export_bayan_no ?? req.body.EXPORT_BAYAN_NO);
+    const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "PRO_USER");
+
+    if (!companyCode || !jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "company_code, job_no, and prin_code are required" });
+      return;
+    }
+
+    await connection.execute(
+      `UPDATE TRK_SHIPMENT
+          SET PERMIT_REF = NVL(:pref, PERMIT_REF),
+              PERMIT_NOT_REQUIRED = :pnr,
+              EXPORT_BAYAN_NO = NVL(:bno, EXPORT_BAYAN_NO),
+              UPDATED_BY = :usr,
+              UPDATED_DT = SYSDATE
+        WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
+      { pref: permitRef, pnr: permitNotRequired, bno: exportBayanNo, usr: userId, comp: companyCode, prin: prinCode, job: jobNo },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "PRO Customs details updated successfully" });
+  });
+};
+
+
+export const trkDcContainerUpdate = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const containerId = value(req.body.container_id ?? req.body.CONTAINER_ID);
+    const rawStatus = value(req.body.status ?? req.body.STATUS);
+    let status = rawStatus;
+    if (rawStatus === "IN_TRANSIT" || rawStatus === "ASSIGNED" || rawStatus === "BREAKDOWN") {
+      status = "PULLED_OUT";
+    } else if (rawStatus === "AT_DC" || req.body.arrived === true || req.body.arrived === "Y") {
+      status = "ARRIVED";
+    } else if (rawStatus === "EMPTY_RETURNED") {
+      status = "RETURNED";
+    } else if (rawStatus && !["PENDING", "ARRIVED", "PULLED_OUT", "OFFLOADED", "RETURNED"].includes(rawStatus)) {
+      status = "PENDING";
+    }
+    const truckPlate = value(req.body.truck_plate_number ?? req.body.TRUCK_PLATE_NUMBER);
+    const driverName = value(req.body.driver_name ?? req.body.DRIVER_NAME);
+    const dcRemark = value(req.body.dc_remark ?? req.body.DC_REMARK);
+    const arrived = req.body.arrived === true || req.body.arrived === "Y";
+
+    if (!containerId) {
+      res.status(400).json({ success: false, message: 'container_id is required' });
+      return;
+    }
+
+    let sql = `
+      UPDATE TRK_CONTAINERS
+         SET STATUS = NVL(:st, STATUS),
+             TRUCK_PLATE_NUMBER = NVL(:tp, TRUCK_PLATE_NUMBER),
+             DRIVER_NAME = NVL(:dn, DRIVER_NAME),
+             DC_REMARK = NVL(:rem, DC_REMARK)
+    `;
+    if (arrived) {
+      sql += ', ARRIVED_AT = NVL(ARRIVED_AT, SYSDATE)';
+    }
+    sql += ' WHERE CONTAINER_ID = :cid';
+
+    await connection.execute(
+      sql,
+      { st: status, tp: truckPlate, dn: driverName, rem: dcRemark, cid: containerId },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: 'Container details updated successfully' });
+  });
+};
+
+export const trkDcStationList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    const result = await connection.execute(
+      `SELECT c.CONTAINER_ID, c.JOB_NO, c.PRIN_CODE, s.BL_NUMBER, cust.CUST_NAME,
+              c.CONTAINER_NUMBER, c.SEAL_NO, c.STATUS, c.TRUCK_PLATE_NUMBER, c.DRIVER_NAME,
+              c.EXPECTED_ARRIVAL_AT, c.ARRIVED_AT, c.ACTUAL_PULL_OUT_DATE,
+              c.OFFLOADED_AT, c.OFFLOADED_BY, c.DC_REMARK, c.TRANSPORT_REMARK,
+              s.CUSTOMS_RELEASE_STATUS, s.OFFLOADING_POINT_ID, s.EMPTY_RETURN_POINT_ID,
+              s.CURRENT_STAGE, s.SHIPMENT_TYPE
+         FROM TRK_CONTAINERS c
+         JOIN TRK_SHIPMENT s ON s.COMPANY_CODE = c.COMPANY_CODE AND s.PRIN_CODE = c.PRIN_CODE AND s.JOB_NO = c.JOB_NO
+         JOIN TI_JOB j ON j.COMPANY_CODE = s.COMPANY_CODE AND j.PRIN_CODE = s.PRIN_CODE AND j.JOB_NO = s.JOB_NO
+         LEFT JOIN MS_CUSTOMER cust ON cust.COMPANY_CODE = j.COMPANY_CODE AND cust.PRIN_CODE = j.PRIN_CODE AND cust.CUST_CODE = j.CUST_CODE
+        WHERE c.COMPANY_CODE = :comp
+          AND s.CURRENT_STAGE != 'COMPLETED'
+        ORDER BY CASE WHEN c.STATUS = 'BREAKDOWN' THEN 1 WHEN c.STATUS = 'AT_DC' THEN 2 WHEN c.STATUS = 'IN_TRANSIT' THEN 3 WHEN c.STATUS = 'ASSIGNED' THEN 4 ELSE 5 END, c.CREATED_DT DESC`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({
+      success: true,
+      data: result.rows || [],
+    });
+  });
+};
+
 // DATABASE CONNECTION & HELPER UTILITIES
 // =============================================================================
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
