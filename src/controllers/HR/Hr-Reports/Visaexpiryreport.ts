@@ -14,6 +14,7 @@ import {
 
 const NO_DATA_MESSAGE = "No records found for the selected criteria.";
 const DASH = "\u2014";
+const ALL = "All";
 
 const text = (v: any): string => (v == null ? "" : String(v));
 
@@ -36,6 +37,29 @@ const escapeHtml = (v: unknown): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+/** "All" / empty -> "" (no filter), otherwise the comma separated list. */
+const csvOrEmpty = (v: any): string => {
+  const s = text(v).trim();
+  return !s || s.toLowerCase() === "all" ? "" : s;
+};
+
+/** Adds "col IN (:p0,:p1,..)" with bind variables; nothing when list is empty (= All). */
+function addInClause(
+  col: string,
+  csv: string,
+  prefix: string,
+  binds: Record<string, any>,
+  where: string[]
+) {
+  const items = csv.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!items.length) return;
+  const names = items.map((v, i) => {
+    binds[`${prefix}${i}`] = v;
+    return `:${prefix}${i}`;
+  });
+  where.push(`${col} IN (${names.join(", ")})`);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VisaRow {
@@ -57,20 +81,49 @@ interface VisaReportParams {
   companyCode: string;
   division: string;
   department: string;
+  section: string;
+  grade: string;
+  designation: string;
+  employee: string;
+  sponsor: string;
   date_from: string;
   date_to: string;
   emp_type: string;
 }
 
+// ─── Resolve request body into VisaReportParams ──────────────────────────────
+// code1 company, code2 division, code3 department, code4 section, code5 grade,
+// code6 designation, code7 employee (employee_id), code8 sponsor (sponsor_name),
+// code9 employee type (A / ALL), date1/date2 visa expiry from/to.
+
+function resolveParams(body: any): VisaReportParams {
+  const {
+    parameter, loginid, company_code,
+    code1, code2, code3, code4, code5, code6, code7, code8, code9,
+    date1, date2,
+  } = body;
+  return {
+    parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+    loginid: loginid || "ADMIN",
+    companyCode: text(company_code || code1),
+    division: csvOrEmpty(code2),
+    department: csvOrEmpty(code3),
+    section: csvOrEmpty(code4),
+    grade: csvOrEmpty(code5),
+    designation: csvOrEmpty(code6),
+    employee: csvOrEmpty(code7),
+    sponsor: csvOrEmpty(code8),
+    date_from: date1 || "",
+    date_to: date2 || "",
+    emp_type: code9 || "A",
+  };
+}
+
 // ─── Shared: fetch rows from DB ───────────────────────────────────────────────
 
 async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: any }> {
-  const {
-    parameter, loginid,
-    code1, code2, code3, code4, code5,
-    code6, code7, code8, code9,
-    date1, date2,
-  } = body;
+  const { parameter, loginid, code1, code9, date1, date2 } = body;
+  const p = resolveParams(body);
 
   let tenantId = getCurrentTenantId();
   if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
@@ -79,12 +132,15 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
   const connection = await TenantManager.getConnection(tenantId);
 
   try {
+    // The proc only understands ONE value per filter, so the multi-select filters
+    // (code2..code8) are always sent as "All" and applied below with IN (...).
     const binds: any = {
       parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
       loginid: loginid || "ADMIN",
-      code1: code1 || null, code2: code2 || null, code3: code3 || null,
-      code4: code4 || null, code5: code5 || null, code6: code6 || null,
-      code7: code7 || null, code8: code8 || null, code9: code9 || null,
+      code1: code1 || null,
+      code2: ALL, code3: ALL, code4: ALL, code5: ALL,
+      code6: ALL, code7: ALL, code8: ALL,
+      code9: code9 || null,
       out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
@@ -98,17 +154,17 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
 
     const result = await connection.execute(
       `DECLARE v_sql VARCHAR2(32767);
-             BEGIN
-               PROC_BUILD_DYNAMIC_SQL_COMMON20(
-                 :parameter, :loginid,
-                 :code1,:code2,:code3,:code4,:code5,:code6,:code7,:code8,:code9,:code10,
-                 :code11,:code12,:code13,:code14,:code15,:code16,:code17,:code18,:code19,:code20,
-                 :number1,:number2,:number3,:number4,
-                 :date1,:date2,:date3,:date4,
-                 v_sql
-               );
-               :out_sql := v_sql;
-             END;`,
+       BEGIN
+         PROC_BUILD_DYNAMIC_SQL_COMMON20(
+           :parameter, :loginid,
+           :code1,:code2,:code3,:code4,:code5,:code6,:code7,:code8,:code9,:code10,
+           :code11,:code12,:code13,:code14,:code15,:code16,:code17,:code18,:code19,:code20,
+           :number1,:number2,:number3,:number4,
+           :date1,:date2,:date3,:date4,
+           v_sql
+         );
+         :out_sql := v_sql;
+       END;`,
       binds
     );
 
@@ -116,7 +172,39 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
     console.log("[VisaExpiryReport] Generated SQL:", rawSql);
     if (!rawSql) throw new Error("PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL.");
 
-    const dataResult = await connection.execute(rawSql, [], {
+    // ── Apply the multi-select filters on top of the proc's SQL ──
+    // Only binds that are actually used in the SQL are passed (otherwise ORA-01036).
+    const fBinds: Record<string, any> = {};
+
+    // Employee-level filters (looked up in MS_HR_EMPLOYEE, matched by EMPLOYEE_CODE)
+    const empWhere: string[] = [];
+    addInClause("E.DIV_CODE", p.division, "div", fBinds, empWhere);
+    addInClause("E.DEPT_CODE", p.department, "dept", fBinds, empWhere);
+    addInClause("E.SECTION_CODE", p.section, "sect", fBinds, empWhere);
+    addInClause("E.GRADE_CODE", p.grade, "grd", fBinds, empWhere);
+    addInClause("E.DESG_CODE", p.designation, "desg", fBinds, empWhere);
+    addInClause("E.EMPLOYEE_ID", p.employee, "emp", fBinds, empWhere);
+
+    const outerWhere: string[] = [];
+    if (empWhere.length) {
+      if (p.companyCode) {
+        fBinds.f_company = p.companyCode;
+        empWhere.unshift("E.COMPANY_CODE = :f_company");
+      }
+      outerWhere.push(
+        `X.EMPLOYEE_CODE IN (SELECT E.EMPLOYEE_CODE FROM MS_HR_EMPLOYEE E WHERE ${empWhere.join(" AND ")})`
+      );
+    }
+
+    // Sponsor: the report already returns SPONSOR_NAME, so filter on it directly
+    addInClause("X.SPONSOR_NAME", p.sponsor, "spn", fBinds, outerWhere);
+
+    const baseSql = String(rawSql).trim().replace(/;\s*$/, "");
+    const finalSql = outerWhere.length
+      ? `SELECT X.* FROM (${baseSql}) X WHERE ${outerWhere.join(" AND ")}`
+      : baseSql;
+
+    const dataResult = await connection.execute(finalSql, fBinds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
@@ -135,6 +223,20 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
   }
 }
 
+// ─── Filter strip rows (shared by PDF + Excel) ────────────────────────────────
+
+const filterRows = (p: VisaReportParams): { label: string; value: string }[] => [
+  { label: "Period", value: `${dateOrDash(p.date_from)} – ${dateOrDash(p.date_to)}` },
+  { label: "Division", value: p.division || ALL },
+  { label: "Department", value: p.department || ALL },
+  { label: "Section", value: p.section || ALL },
+  { label: "Grade", value: p.grade || ALL },
+  { label: "Designation", value: p.designation || ALL },
+  { label: "Employee", value: p.employee || ALL },
+  { label: "Sponsor", value: p.sponsor || ALL },
+  { label: "Emp. Type", value: p.emp_type === "A" ? "Active Employees" : "All Employees" },
+];
+
 // ─── Excel HTML (standalone .xls export – same colours as the PDF) ───────────
 
 function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): string {
@@ -147,7 +249,6 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 
   const excelRows = rows.map((r, i) => {
     const daysNum = Number(r.days_remaining);
-    // Same as Freight: every row uses the same background (#fafcfe)
     const dayColor = daysNum < 0
       ? "color:#b91c1c;font-weight:bold"
       : daysNum <= 30
@@ -172,6 +273,13 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
         </tr>`;
   }).join("");
 
+  const metaRows = filterRows(params)
+    .map(
+      (f) =>
+        `<tr><td class="meta-lbl" style="border:none">${escapeHtml(f.label)} :</td><td class="meta-val" style="border:none">${escapeHtml(f.value)}</td></tr>`
+    )
+    .join("");
+
   return `
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:x="urn:schemas-microsoft-com:office:excel"
@@ -195,12 +303,9 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 <table style="border:none;width:auto;margin-bottom:6px">
   <tr><td style="border:none;font-size:16pt;font-weight:800;color:#172033;padding:0 0 2px 0" colspan="2">AL MADINA LOGISTICS</td></tr>
   <tr><td style="border:none;font-size:13pt;font-weight:700;color:#00378c;padding:0 0 10px 0" colspan="2">Visa Expiry Listing Report</td></tr>
-  <tr><td class="meta-lbl" style="border:none">Period :</td>       <td class="meta-val" style="border:none"><b>${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}</b></td></tr>
-  <tr><td class="meta-lbl" style="border:none">Division :</td>     <td class="meta-val" style="border:none">${escapeHtml(params.division) || "All"}</td></tr>
-  <tr><td class="meta-lbl" style="border:none">Department :</td>   <td class="meta-val" style="border:none">${escapeHtml(params.department) || "All"}</td></tr>
-  <tr><td class="meta-lbl" style="border:none">Emp. Type :</td>    <td class="meta-val" style="border:none">${params.emp_type === "A" ? "Active Employees" : "All Employees"}</td></tr>
-  <tr><td class="meta-lbl" style="border:none">Printed on :</td>   <td class="meta-val" style="border:none">${reportDate}</td></tr>
-  <tr><td class="meta-lbl" style="border:none">User :</td>         <td class="meta-val" style="border:none">${escapeHtml(generatedBy)}</td></tr>
+  ${metaRows}
+  <tr><td class="meta-lbl" style="border:none">Printed on :</td><td class="meta-val" style="border:none">${reportDate}</td></tr>
+  <tr><td class="meta-lbl" style="border:none">User :</td><td class="meta-val" style="border:none">${escapeHtml(generatedBy)}</td></tr>
 </table>
 <br>
 <table>
@@ -237,15 +342,10 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 }
 
 // ─── Layout CSS – identical to the Freight "Enquiry List" PDF ────────────────
-// Sizes: company 16px, title 18px, filter strip 10.5px, table text 10.5px, footer 9px.
-// Colours: navy #00378c header, #eaf0f8 strips, #fafcfe rows (ALL rows same, no tint),
-//          #e2e8f0 row lines, #dbe4f0 total row.
-// Used with fontMode: "native".
 
 const VISA_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  /* Make Chrome print background colors */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -254,11 +354,9 @@ const VISA_EXTRA_CSS = `
 
   html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
 
-  /* No page border (screen + print) – same as Freight */
   body::before,
   body::after { display: none !important; content: none !important; }
 
-  /* Letterhead – navy rule under the header */
   .company-header {
     border-bottom: 2px solid #00378c;
     padding: 0 0 10px 0;
@@ -269,7 +367,6 @@ const VISA_EXTRA_CSS = `
   .company-logo-wrap  { max-width: 180px; }
   .company-logo       { max-height: 56px; max-width: 180px; }
 
-  /* Title + filter strip */
   h1.report-title {
     margin: 28px 0 14px 0;
     font-size: 18px;
@@ -278,7 +375,6 @@ const VISA_EXTRA_CSS = `
   }
   .applied-filters { font-size: 10.5px; margin-bottom: 28px; }
 
-  /* Data table */
   table.data-table {
     width: 100%;
     table-layout: fixed;
@@ -291,7 +387,7 @@ const VISA_EXTRA_CSS = `
     overflow: visible;
     overflow-wrap: anywhere;
     word-break: break-word;
-    white-space: normal !important;   /* wrap long text INSIDE its own column */
+    white-space: normal !important;
     min-width: 0;
   }
 
@@ -299,7 +395,6 @@ const VISA_EXTRA_CSS = `
   table.data-table .center { text-align: center !important; }
   table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
 
-  /* Header: solid navy bar, white bold text */
   table.data-table thead tr th {
     background: #00378c !important;
     color: #ffffff !important;
@@ -311,7 +406,6 @@ const VISA_EXTRA_CSS = `
     white-space: normal !important;
   }
 
-  /* Data rows – every row same colour (like Freight) */
   table.data-table tbody tr.data-row td {
     background: #fafcfe !important;
     font-size: 10.5px;
@@ -322,18 +416,15 @@ const VISA_EXTRA_CSS = `
     vertical-align: middle;
     white-space: normal !important;
   }
-  /* Codes / dates / numbers stay on one line */
   table.data-table tbody tr.data-row td.nw {
     white-space: nowrap !important;
     font-variant-numeric: tabular-nums;
   }
   table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
 
-  /* Status shown ONLY by text colour (no row background tint) */
   table.data-table tbody td.days-exp  { color: #b91c1c !important; font-weight: 700; }
   table.data-table tbody td.days-warn { color: #b45309 !important; font-weight: 700; }
 
-  /* Total row – shaded, bold navy, right aligned (same as Enquiry "Total: n Records") */
   table.data-table tbody tr.grand-total-row td {
     background: #dbe4f0 !important;
     color: #00378c !important;
@@ -348,7 +439,6 @@ const VISA_EXTRA_CSS = `
   .grand-total-row .t-ok   { color: #15803d; }
   .grand-total-row .t-sep  { color: #94a3b8; font-weight: 400; padding: 0 6px; }
 
-  /* Empty state */
   table.data-table tbody tr.empty-row td {
     padding: 20px;
     text-align: center;
@@ -356,7 +446,6 @@ const VISA_EXTRA_CSS = `
     background: #fafcfe !important;
   }
 
-  /* Footer – keep fully inside the page (fixes "Powered by Bayanat Technolog" cut) */
   .report-footer {
     width: 100% !important;
     max-width: 100% !important;
@@ -377,7 +466,7 @@ const VISA_EXTRA_CSS = `
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
 
-// % widths – add up to 100. Sized so the 10 columns also fit portrait without cut text.
+// % widths – add up to 100
 const COL_WIDTHS = [11.5, 12, 11, 9, 9, 12, 9, 10.3, 10.3, 5.9];
 
 function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
@@ -422,13 +511,7 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
         </tr>`;
   }
 
-  const filtersHtml = reportAppliedFilters([
-    { label: "Period", value: `${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}` },
-    { label: "Division", value: params.division || "All" },
-    { label: "Department", value: params.department || "All" },
-    { label: "Emp. Type", value: params.emp_type === "A" ? "Active Employees" : "All Employees" },
-  ]);
-
+  const filtersHtml = reportAppliedFilters(filterRows(params));
   const colgroup = COL_WIDTHS.map((w) => `<col style="width:${w}%"/>`).join("");
 
   return `
@@ -458,25 +541,7 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
   `;
 }
 
-// ─── Resolve request body into VisaReportParams ──────────────────────────────
-
-function resolveParams(body: any): VisaReportParams {
-  const { parameter, loginid, company_code, code1, code2, code3, date1, date2, code9 } = body;
-  return {
-    parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
-    loginid: loginid || "ADMIN",
-    companyCode: text(company_code || code1),
-    division: code2 || "",
-    department: code3 || "",
-    date_from: date1 || "",
-    date_to: date2 || "",
-    emp_type: code9 || "A",
-  };
-}
-
 // ─── HTML Controller ──────────────────────────────────────────────────────────
-// No rows is NOT an error: the report still renders and the table shows
-// "No records found for the selected criteria." (same as DN Summary).
 
 export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): Promise<void> => {
   let connection: any;
@@ -510,7 +575,6 @@ export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): 
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(html);
-
   } catch (error: any) {
     console.error("Visa Expiry Report Error:", error);
     res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
@@ -527,7 +591,6 @@ export const exportVisaExpiryReportExcel = async (req: Request, res: Response): 
     const { rows, connection: conn } = await fetchVisaRows(req.body);
     connection = conn;
 
-    // Nothing to export -> friendly message, no file (same as DN Summary Excel)
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
@@ -541,7 +604,6 @@ export const exportVisaExpiryReportExcel = async (req: Request, res: Response): 
       `attachment; filename="VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls"`
     );
     res.status(200).send(excelHtml);
-
   } catch (error: any) {
     console.error("Visa Expiry Report Excel Error:", error);
     res.status(500).json({ success: false, message: "Unable to export report", details: error.message });

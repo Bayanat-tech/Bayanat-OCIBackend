@@ -65,6 +65,46 @@ const dateToLocalString = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
   `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+// "YYYY-MM-DD" part of a date string / Date (local time), or null if it can't be parsed
+const toDatePart = (v: unknown): string | null => {
+  const s = str(v);
+  if (!s) return null;
+  const m = s.match(/^\d{4}-\d{2}-\d{2}/);
+  if (m) return m[0];
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : dateToLocalString(d).slice(0, 10);
+};
+
+const todayDatePart = (): string => dateToLocalString(new Date()).slice(0, 10);
+
+// Tenant whose approved leave requests are pushed to the HR API (lower-case)
+const HR_SYNC_TENANT = "wmsdev_tenant";
+
+/** Outcome of the HR push, returned to the client. */
+interface HrSyncResult {
+  attempted: boolean;
+  success?: boolean;
+  action?: "INSERT" | "UPDATE_RESUME";
+  message?: string;
+}
+
+// Turn an HR API / axios error into one short, readable line
+// e.g. "Database error: ORA-20100: Resume date cannot be future date.\nORA-06512: ..."
+//   -> "Resume date cannot be future date."
+const extractHrErrorMessage = (err: any): string => {
+  const data = err?.response?.data;
+  let msg: unknown =
+    typeof data === "string" ? data : data?.message ?? data?.error ?? err?.message;
+  if (typeof msg !== "string" || !msg.trim()) msg = "Unknown error from HR API";
+  const firstLine = (msg as string).split("\n")[0].trim();
+  return (
+    firstLine
+      .replace(/^Database error:\s*/i, "")
+      .replace(/^ORA-\d+:\s*/i, "")
+      .trim() || "Unknown error from HR API"
+  );
+};
+
 // LEAVE_START_DATE -> leaveStartDate, Date -> local string
 const rowToLeaveRequest = (row: Record<string, any>): LeaveRequestFlow => {
   const out: Record<string, any> = {};
@@ -92,6 +132,17 @@ export const leaveRequestFlow = async (
     }
     if (!body.companyCode) {
       res.status(400).json({ success: false, message: "Missing required field 'companyCode'" });
+      return;
+    }
+
+    // HR rejects a future actual resume date (ORA-20100), so stop here, before anything is
+    // saved or sent to HR, and tell the client straight away.
+    const actualResumeDay = toDatePart(body.actualResumeDate);
+    if (actualResumeDay && actualResumeDay > todayDatePart()) {
+      res.status(400).json({
+        success: false,
+        message: "Actual resume date cannot be a future date",
+      });
       return;
     }
 
@@ -226,36 +277,103 @@ export const leaveRequestFlow = async (
 
     console.log("Leave request saved successfully. Request Number:", savedRequestNumber);
 
-    // Push to HR only when the request is fully approved
-    if (savedRequestNumber) {
+    // HR sync outcome, returned to the client
+    let hrSync: HrSyncResult = { attempted: false };
+
+    // Push to HR only for HR_SYNC_TENANT, and only when the request is fully approved
+    if (savedRequestNumber && tenantId.toLowerCase() === HR_SYNC_TENANT) {
       try {
         const fetchSql = `SELECT * FROM LEAVE_REQUEST_FLOW WHERE COMPANY_CODE = :companyCode AND REQUEST_NUMBER = :requestNumber`;
-        const fetchResult = await conn.execute<any>( 
-            fetchSql,
-            { companyCode: body.companyCode, requestNumber: savedRequestNumber },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        const fetchResult = await conn.execute<any>(
+          fetchSql,
+          { companyCode: body.companyCode, requestNumber: savedRequestNumber },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         const row = fetchResult.rows?.[0];
 
         if (row && String(row.FINAL_APPROVED ?? "").toUpperCase() === "YES") {
-          console.log("Sending approved leave request to HR API:", savedRequestNumber);
+          const leaveRequest = rowToLeaveRequest(row);
+
+          // Both resume dates present -> request already exists in HR, so update instead of insert.
+          // LeaveResumeDatesUpdate expects Date objects, so take them from the raw row
+          // (rowToLeaveRequest converts dates to strings).
+          const dutyResumeDate: Date | null = row.DUTY_RESUME_DATE
+            ? new Date(row.DUTY_RESUME_DATE)
+            : null;
+          const actualResumeDate: Date | null = row.ACTUAL_RESUME_DATE
+            ? new Date(row.ACTUAL_RESUME_DATE)
+            : null;
+          const hasResumeDates = !!dutyResumeDate && !!actualResumeDate;
+
           try {
-            await HrService.insertLeaveRequest(rowToLeaveRequest(row));
-            console.log("HR insertLeaveRequest succeeded for", savedRequestNumber);
+            if (dutyResumeDate && actualResumeDate) {
+              console.log("Sending resume dates update to HR API:", savedRequestNumber);
+              await HrService.updateLeaveResume({
+                requestNumber: savedRequestNumber,
+                dutyResumeDate,
+                actualResumeDate,
+              });
+              console.log("HR updateLeaveResume succeeded for", savedRequestNumber);
+              hrSync = {
+                attempted: true,
+                success: true,
+                action: "UPDATE_RESUME",
+                message: "Resume dates updated in HR",
+              };
+            } else {
+              console.log("Sending approved leave request to HR API:", savedRequestNumber);
+              await HrService.insertLeaveRequest(leaveRequest);
+              console.log("HR insertLeaveRequest succeeded for", savedRequestNumber);
+              hrSync = {
+                attempted: true,
+                success: true,
+                action: "INSERT",
+                message: "Leave request sent to HR",
+              };
+            }
           } catch (hrErr: any) {
             // DB already committed – log but do not fail the client response
-            console.error("HR insertLeaveRequest failed:", hrErr?.message ?? hrErr);
+            console.error(
+              `HR ${hasResumeDates ? "updateLeaveResume" : "insertLeaveRequest"} failed:`,
+              hrErr?.message ?? hrErr
+            );
+            hrSync = {
+              attempted: true,
+              success: false,
+              action: hasResumeDates ? "UPDATE_RESUME" : "INSERT",
+              message: extractHrErrorMessage(hrErr),
+            };
           }
+        } else {
+          // Not final-approved yet, nothing to send to HR
+          hrSync = {
+            attempted: false,
+            message: "HR sync skipped: request is not final approved yet",
+          };
         }
       } catch (fetchErr: any) {
         console.error("Failed to fetch leave request for HR push:", fetchErr?.message ?? fetchErr);
+        hrSync = {
+          attempted: true,
+          success: false,
+          message: "Could not read the saved request to send it to HR",
+        };
       }
+    }
+
+    // DB save already succeeded, so success stays true; HR problems are reported in the message
+    let message = "Record inserted / updated successfully";
+    if (hrSync.attempted && hrSync.success) {
+      message = `Record saved successfully. ${hrSync.message}.`;
+    } else if (hrSync.attempted && !hrSync.success) {
+      message = `Record saved, but HR sync failed: ${hrSync.message}`;
     }
 
     res.json({
       success: true,
-      message: "Record inserted / updated successfully",
+      message,
       requestNumber: savedRequestNumber,
+      hrSync,
     });
   } catch (error: any) {
     console.error("Oracle Error:", error);
