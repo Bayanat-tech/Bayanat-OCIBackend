@@ -190,6 +190,7 @@ console.time("Mapping");
       SUPPLIER: d.SUPPLIER ?? header.SUPPLIER ?? null,
       REF_DOC_NO: Number(d.REF_DOC_NO ?? 0),
       DISCOUNT_AMOUNT: Number(d.DISCOUNT_AMOUNT ?? 0),
+      DISC_PERC: Number(d.DISC_PERC ?? 0), 
       FINAL_RATE: Number(d.FINAL_RATE ?? 0),
       COST_CODE: d.COST_CODE ?? null,
       CAPEX: String(d.CAPEX ?? "N"),
