@@ -317,11 +317,17 @@ router.post(
 
 // ─── Category ─────────────────────────────────────────────────────────────────
 
-router.post(
+router.get(
   "/category/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getCategoryReportHtml
 );
 
+router.post(
+  "/category/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getCategoryReportHtml
+);  
 export default router;
