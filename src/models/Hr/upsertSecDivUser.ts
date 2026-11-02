@@ -22,23 +22,6 @@ export const upsertSecDivUser = async (
   try {
 
     const rows = req.body;
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      res.status(400).json({
-        success: false,
-        message: "Data array is required"
-      });
-      return;
-    }
-
-    if (!rows[0]?.company_code) {
-      res.status(400).json({
-        success: false,
-        message: "company_code is required"
-      });
-      return;
-    }
-
     let tenantId: string | undefined;
 
     try {

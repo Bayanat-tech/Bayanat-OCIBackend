@@ -46,6 +46,7 @@ export class CompanyService {
     address3: string;
     city: string;
     country: string;
+    company_logo?: string;
     created_by: string;
     updated_by: string;
   }): Promise<Company> {

@@ -74,6 +74,10 @@ import { HrAirport } from "../../models/Hr/hr_airport";
 import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
 import {insUpdHRHolidayCalendarBulk} from "../../controllers/HR/holiday_calendar_hr.controller";
 import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
+import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave_approval";
+import { getMHEmployeesHandler, MHleaveDaysCntHandler, MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
+import { getPayslipReportHtml } from "../../controllers/HR/MHDL/Payslip.report.controller";
+import { mhgetRequestFlowUsers } from "../../controllers/HR/MHDL/mh_hr_leave_flow_sentback";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -142,23 +146,32 @@ router.post("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code"
 router.put("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code", "empstatus_code"]));
 
 router.put("/upsertLeaveApprovalHandler", upsertLeaveApprovalHandler);
+router.put("/mhupsertLeaveApprovalHandler", mhupsertLeaveApprovalHandler); 
 
 // Save file route
 router.post("/saveFile", (req, res, next) => {
   saveFileHR(req, res).catch(next);
 });
+
 router.get("/getRequestFlowUsers", getRequestFlowUsers as any );
+router.get("/mhgetRequestFlowUsers", mhgetRequestFlowUsers as any)
+
 // HR .NET API routes
-router.get("/employees", getEmployeesHandler);
+router.get("/employees", getMHEmployeesHandler);
 router.get("/leavebalance/:employeeId", getLeaveBalanceHandler);
 router.get("/leaveentitle/:employeeId", getLeaveEntitleHandler);
 router.get("/leavehistory", getLeaveHistoryHandler);
-// router.get("/validateleave", validateLeaveHandler);
+
 router.get("/validateleave", newvalidateLeaveHandler);
+router.get("/mhvalidateleave",MHvalidateLeaveHandler);
+
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
+
 router.get("/leavedayscount", leaveDaysCntHandler);
+router.get("/msleavedayscount", MHleaveDaysCntHandler);
 // router.post("/absentmemo", generateAbsentMemoDaily);
 // Exporting the router
+router.get("/reports/payslip", getPayslipReportHtml);
 
 //raw sql execution route
 router.post("/executeRawSql", executeRawSql); // Raw SQL execution route

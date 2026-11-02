@@ -72,6 +72,28 @@ export const frtQuotationSave = async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    if (!header.quotation_nr || ["0", "AUTO", "NEW"].includes(String(header.quotation_nr).toUpperCase().trim())) {
+      try {
+        const numRes = await connection.execute(
+          `SELECT NVL(MAX(quotation_nr), 30) AS MAX_NO FROM MS_COMPANYINFO WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR' OR ROWNUM = 1)`,
+          { company_code: header.company_code || "BSG" },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const nextNo = (Number((numRes.rows?.[0] as any)?.MAX_NO) || 30) + 1;
+        try {
+          await connection.execute(
+            `UPDATE MS_COMPANYINFO SET quotation_nr = :nextNo WHERE company_code = :company_code AND (country = 'OMAN' OR UPPER(currency) = 'OMR')`,
+            { nextNo, company_code: header.company_code || "BSG" },
+            { autoCommit: true }
+          );
+        } catch (_) {}
+        const mode = String(header.transport_mode || "A").substring(0, 1).toUpperCase();
+        const type = String(header.job_type || "I").substring(0, 1).toUpperCase();
+        const prin = String(header.prin_code || "00001").padStart(5, "0");
+        header.quotation_nr = `${mode}${type}/${prin}/${String(nextNo).padStart(5, "0")}`;
+      } catch (_) {}
+    }
+
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_QUOTATION_SAVE(:p_header, :p_details, :p_terms, :p_quotation_nr_out);
@@ -85,7 +107,7 @@ export const frtQuotationSave = async (req: Request, res: Response): Promise<voi
       { autoCommit: true }
     );
 
-    const quotationNr = (result.outBinds as any).p_quotation_nr_out;
+    const quotationNr = (result.outBinds as any).p_quotation_nr_out || header.quotation_nr;
     res.json({ success: true, message: "Quotation saved successfully", data: { quotation_nr: quotationNr } });
   });
 };
@@ -229,7 +251,7 @@ function toQuotationHeaderObject(header: Record<string, unknown>) {
     WEIGHT: numberValue(header.weight),
     VOLUME: numberValue(header.volume),
     REMARKS: stringValue(header.remarks),
-    PAYMENT_TERMS: stringValue(header.payment_terms),
+    PAYMENT_TERMS: stringValue(header.payment_terms)?.slice(0, 3) ?? null,
     CURR_CODE: stringValue(header.curr_code),
     EX_RATE: numberValue(header.ex_rate, 1),
     JOB_TYPE: stringValue(header.job_type),
@@ -314,7 +336,7 @@ function toQuotationTermObject(row: Record<string, unknown>, header: Record<stri
     QUOTATION_NR: stringValue(row.quotation_nr, stringValue(header.quotation_nr, "0")),
     SERIAL_NO: numberValue(row.serial_no, index),
     SR_NO: stringValue(row.sr_no, String(index)),
-    TYPE_IND: stringValue(row.type_ind),
+    TYPE_IND: stringValue(row.type_ind)?.slice(0, 1) || "T",
     DESCRIPTION: stringValue(row.description),
     FONT_TYPE: stringValue(row.font_type, "Normal"),
     FONT_SIZE: stringValue(row.font_size, "Normal"),

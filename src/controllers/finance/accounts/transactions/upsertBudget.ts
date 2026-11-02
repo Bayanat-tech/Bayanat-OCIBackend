@@ -38,47 +38,37 @@ export const upsertBudget = async (req: Request, res: Response): Promise<void> =
 
     connection = await TenantManager.getConnection(tenantId);
 
-    const months = [
-      { name: "JAN", code: "01" },
-      { name: "FEB", code: "02" },
-      { name: "MAR", code: "03" },
-      { name: "APR", code: "04" },
-      { name: "MAY", code: "05" },
-      { name: "JUN", code: "06" },
-      { name: "JUL", code: "07" },
-      { name: "AUG", code: "08" },
-      { name: "SEP", code: "09" },
-      { name: "OCT", code: "10" },
-      { name: "NOV", code: "11" },
-      { name: "DEC", code: "12" },
-    ];
-
-    // Prepare data for executeMany
-    const binds = months.map(m => ({
+    const BudgetObjType: any = await connection.getDbObjectClass("TR_AC_BUDGET_OBJ");
+    const budgetData = new BudgetObjType({
       COMPANY_CODE: data.company_code,
-      DOC_TYPE: data.doc_type || null,
-      DOC_NO: data.doc_no,
-      DOC_DATE: data.doc_date ? new Date(data.doc_date) : null,
-      BUDGET_YEAR: data.budget_year,
-      BUDGET_MONTH: m.code,
-      AC_CODE: data.ac_code,
-      BDG_AMOUNT: data[`${m.name}_BUDGET_MONTH`] || 0,
-      CURR_CODE: data.curr_code || null,
-      DIV_CODE: data.div_code || null
-    }));
+      DOC_TYPE: data.doc_type || "BDG",
+      DOC_NO: Number(data.doc_no),
+      DOC_DATE: data.doc_date ? new Date(data.doc_date) : new Date(),
+      BUDGET_YEAR: String(data.budget_year),
+      AC_CODE: String(data.ac_code),
+      JAN_AMOUNT: Number(data.JAN_BUDGET_MONTH ?? data.JAN_AMOUNT ?? 0),
+      FEB_AMOUNT: Number(data.FEB_BUDGET_MONTH ?? data.FEB_AMOUNT ?? 0),
+      MAR_AMOUNT: Number(data.MAR_BUDGET_MONTH ?? data.MAR_AMOUNT ?? 0),
+      APR_AMOUNT: Number(data.APR_BUDGET_MONTH ?? data.APR_AMOUNT ?? 0),
+      MAY_AMOUNT: Number(data.MAY_BUDGET_MONTH ?? data.MAY_AMOUNT ?? 0),
+      JUN_AMOUNT: Number(data.JUN_BUDGET_MONTH ?? data.JUN_AMOUNT ?? 0),
+      JUL_AMOUNT: Number(data.JUL_BUDGET_MONTH ?? data.JUL_AMOUNT ?? 0),
+      AUG_AMOUNT: Number(data.AUG_BUDGET_MONTH ?? data.AUG_AMOUNT ?? 0),
+      SEP_AMOUNT: Number(data.SEP_BUDGET_MONTH ?? data.SEP_AMOUNT ?? 0),
+      OCT_AMOUNT: Number(data.OCT_BUDGET_MONTH ?? data.OCT_AMOUNT ?? 0),
+      NOV_AMOUNT: Number(data.NOV_BUDGET_MONTH ?? data.NOV_AMOUNT ?? 0),
+      DEC_AMOUNT: Number(data.DEC_BUDGET_MONTH ?? data.DEC_AMOUNT ?? 0),
+      CURR_CODE: data.curr_code || "AED",
+      EX_RATE: Number(data.ex_rate ?? 1),
+      USER_ID: data.user_id || data.loginid || "SYSTEM",
+      VERSION: data.version || "1.0",
+      DIV_CODE: data.div_code || "01"
+    });
 
-    const sql = `
-      INSERT INTO TR_AC_BUDGET (
-        COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, BUDGET_YEAR,
-        BUDGET_MONTH, AC_CODE, BDG_AMOUNT, CURR_CODE, DIV_CODE
-      ) VALUES (
-        :COMPANY_CODE, :DOC_TYPE, :DOC_NO, :DOC_DATE, :BUDGET_YEAR,
-        :BUDGET_MONTH, :AC_CODE, :BDG_AMOUNT, :CURR_CODE, :DIV_CODE
-      )
-    `;
-
-    // Bulk insert
-    await connection.executeMany(sql, binds, { autoCommit: true });
+    await connection.execute(
+      `BEGIN PROC_UPSERT_BUDGET(:p_data); END;`,
+      { p_data: budgetData }
+    );
 
     res.json({
       success: true,

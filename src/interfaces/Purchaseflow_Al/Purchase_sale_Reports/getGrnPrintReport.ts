@@ -4,31 +4,31 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-
-// ─── Types ────────────────────────────────────────────────────────────────
-
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
+ 
+ 
 type ReportRow = Record<string, any>;
-
+ 
 interface ReqParams {
   loginid:      string;
   company_code: string;
   doc_type:     string; // "GRN"
   doc_no:       string;
 }
-
+ 
 // ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
-
+ 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
   if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
   if (!tenantId) throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
   return TenantManager.getConnection(tenantId);
 }
-
+ 
 async function closeConn(conn?: oracledb.Connection) {
   if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
 }
-
+ 
 function normalize(rows: any[] = []): ReportRow[] {
   return rows.map((row) =>
     Object.keys(row).reduce((acc: ReportRow, key) => {
@@ -37,46 +37,46 @@ function normalize(rows: any[] = []): ReportRow[] {
     }, {})
   );
 }
-
+ 
 // ─── Formatting helpers ─────────────────────────────────────────────────────
-
+ 
 function text(value: unknown): string {
   if (value == null) return "";
   return String(value);
 }
-
+ 
 function num(v: unknown): number {
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : 0;
 }
-
+ 
 function dateText(value: unknown): string {
   if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
-
+ 
 function escapeHtml(value: unknown): string {
   return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
-
+ 
 function escapeXml(value: unknown): string {
   return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
-
+ 
 function qtyFmt(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
-
+ 
 function amtFmt(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
+ 
 // Matches the original DataWindow computed field: doc_type + '-' + doc_no.
 function formatDocNo(docType: string, docNo: string): string {
   const dt = text(docType).trim();
@@ -85,9 +85,9 @@ function formatDocNo(docType: string, docNo: string): string {
   if (dn.toUpperCase().startsWith(dt.toUpperCase())) return dn;
   return `${dt}-${dn}`;
 }
-
+ 
 // ─── Param extraction ───────────────────────────────────────────────────────
-
+ 
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   const q = (req.query || {}) as Record<string, any>;
@@ -98,15 +98,15 @@ function extractParams(req: RequestWithUser): ReqParams {
     doc_no:       text(b.doc_no) || text(q.doc_no),
   };
 }
-
+ 
 // ─── Data loader ────────────────────────────────────────────────────────────
-
+ 
 interface GrnData {
   rows: ReportRow[];
   terms: ReportRow[];
   footer: ReportRow;
 }
-
+ 
 async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData> {
   const conn = await getConn(req);
   try {
@@ -127,10 +127,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
               vw_erp_grn.uppp, vw_erp_grn.quantity, vw_erp_grn.amount, vw_erp_grn.required_dt,
               vw_erp_grn.sign_ind, vw_erp_grn.qty_processed, vw_erp_grn.det_cancel,
               vw_erp_grn.det_cancel_date, vw_erp_grn.unit_price, vw_erp_grn.disc_price,
-              vw_erp_grn.disc_percent,
-              (SELECT hr.comp_logo
-                 FROM ms_hr_division hr
-                WHERE hr.div_code = vw_erp_grn.div_code) AS logo_url
+              vw_erp_grn.disc_percent
        FROM vw_erp_grn
        WHERE company_code = :company_code
          AND doc_type = :doc_type
@@ -138,7 +135,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { company_code: p.company_code, doc_type: p.doc_type, doc_no: p.doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     const termsResult = await conn.execute(
       `SELECT srno, term, is_payterm
        FROM ms_ac_setup_terms
@@ -147,7 +144,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { doc_type: p.doc_type },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     const footerResult = await conn.execute(
       `SELECT prepared, verified, approved, received
        FROM ms_ac_setup_doc
@@ -155,7 +152,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { doc_type: p.doc_type },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     return {
       rows: normalize(grnResult.rows as any[]),
       terms: normalize(termsResult.rows as any[]),
@@ -165,9 +162,9 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
     await closeConn(conn);
   }
 }
-
+ 
 // ─── Report line model ──────────────────────────────────────────────────────
-
+ 
 interface GrnHeader {
   doc_no: string;
   doc_date: any;
@@ -190,9 +187,8 @@ interface GrnHeader {
   dlvr_term: string;
   remarks: string;
   cancelled: boolean;
-  logo_url: string | null;
 }
-
+ 
 function buildHeader(rows: ReportRow[]): GrnHeader {
   const h = rows[0] || {};
   return {
@@ -217,375 +213,358 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     dlvr_term: text(h.dlvr_term),
     remarks: text(h.remarks),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
-    logo_url: h.logo_url ? String(h.logo_url) : null,
   };
 }
-
+ 
 function computeTotals(rows: ReportRow[]) {
   const totalPQty = rows.reduce((s, r) => s + num(r.qty_puom), 0);
   const totalLQty = rows.reduce((s, r) => s + num(r.qty_luom), 0);
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   return { totalPQty, totalLQty, totalQty };
 }
-
-// ─── HTML renderer ──────────────────────────────────────────────────────────
-
+ 
+// ─── HTML renderer (built entirely on the shared report shell) ────────────
+ 
 const REPORT_TITLE = "Goods Receipt Note";
-const REPORT_SUBTITLE = "GRN Document";
-
-// Renders a label:value pair as a <table> row (not CSS grid) — this is the
-// most reliably-aligned approach across Chrome print/PDF renderers.
-// Every row across both info blocks shares the same first-column width,
-// so colons line up vertically no matter how long the label text is.
-function infoRow(label: string, value: string, boldValue = false): string {
+ 
+// A key/value line rendered as a <tr> inside a .data-table so it inherits
+// the exact same borders/spacing/font as every other report on the shared
+// shell — no bespoke "info-table" CSS needed anymore.
+function kvRow(label: string, value: string, strongValue = false): string {
   const v = escapeHtml(value) || "&nbsp;";
   return `<tr>
-        <td class="info-label">${escapeHtml(label)}</td>
-        <td class="info-colon">:</td>
-        <td class="info-value">${boldValue ? `<strong>${v}</strong>` : v}</td>
+        <td class="muted" style="width:100px;white-space:nowrap;">${escapeHtml(label)}</td>
+        <td style="width:12px;">:</td>
+        <td class="${strongValue ? "strong" : ""}">${v}</td>
       </tr>`;
 }
-
-function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
-  const { rows, terms, footer } = data;
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
-  const header = buildHeader(rows);
-  const totals = computeTotals(rows);
-
-  const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
-  const emailToShow = header.dlvr_email || header.e_mail;
-
-  let bodyRows = "";
-  rows.forEach((r, i) => {
-    bodyRows += `
-                        <tr>
-                            <td class="c-sno">${i + 1}</td>
-                            <td class="c-desc">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td class="c-uom">${escapeHtml(r.p_uom)}</td>
-                            <td class="c-qty right">${qtyFmt(r.qty_puom)}</td>
-                            <td class="c-uom">${escapeHtml(r.l_uom)}</td>
-                            <td class="c-qty right">${qtyFmt(r.qty_luom)}</td>
-                            <td class="c-qty right amount">${qtyFmt(r.quantity)}</td>
-                        </tr>`;
-  });
-
-  let termsHtml = "";
-  terms.forEach((t) => {
-    termsHtml += `<div class="term-line">${escapeHtml(t.term)}</div>`;
-  });
-
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(REPORT_TITLE)} ${escapeHtml(header.doc_no)}</title>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { height: 100%; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-            min-height: calc(100vh - 40px);
-            display: flex;
-            flex-direction: column;
-        }
-        .report-body { flex: 0 0 auto; }
-        .report-footer-block {
-            margin-top: auto;      /* pins signatures to the bottom of the page */
-            padding-top: 24px;
-        }
-        .action-toolbar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .action-toolbar button {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            transition: background 0.15s ease;
-        }
-        .btn-pdf { background: #1d4ed8; color: #fff; }
-        .btn-pdf:hover { background: #1e40af; }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-
-        /* ── Info blocks: real <table> rows so label/colon/value always align ── */
-        .info-grid { display: table; table-layout: fixed; width: 100%; margin-bottom: 18px; border-spacing: 24px 0; }
-        .info-grid-row { display: table-row; }
-        .info-block-cell { display: table-cell; width: 50%; vertical-align: top; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; background: #f8fafc; height: 100%; }
-        .info-block .label {
-            font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-            color: #6b7280; font-weight: 700; margin: 0 0 8px 0;
-            border-bottom: 1px solid #e5e7eb; padding-bottom: 6px;
-        }
-        .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .info-table td { padding: 2px 0; vertical-align: top; line-height: 1.7; }
-        .info-label { width: 92px; color: #6b7280; font-weight: 500; white-space: nowrap; }
-        .info-colon { width: 10px; color: #6b7280; padding: 0 4px !important; }
-        .info-value { color: #111827; font-weight: 500; word-break: break-word; }
-        .info-value strong { color: #1e3a8a; }
-
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-
-        /* ── Item table: tight, single line per item ── */
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11.5px;
-            margin-top: 4px;
-            table-layout: fixed;
-        }
-        .report-table thead th {
-            background: #1d4ed8; color: #fff; padding: 7px 8px; text-align: left; font-weight: 600;
-            font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
-        }
-        .report-table tbody td {
-            padding: 6px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .report-table tbody tr:nth-child(even) { background: #fafbfc; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 600; color: #065f46; }
-        .c-sno   { width: 40px; text-align: center; }
-        .c-desc  { width: auto; white-space: normal; }
-        .c-uom   { width: 40px; }
-        .c-qty   { width: 85px; }
-
-        .totals-box {
-    margin-top: 14px;
-    margin-left: auto;
-    width: 300px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.totals-box .row {
+ 
+// A couple of small, purely layout-level rules (two-column split, status chip)
+// that the shared CSS doesn't define. Everything else (fonts, colors, table
+// borders, header, footer, print rules) comes straight from COMMON_REPORT_CSS.
+const GRN_EXTRA_CSS = `
+  /* Force print / PDF engines to keep background colors (fixes grey
+     "Total Quantity" row losing its blue background on print/PDF). */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+ 
+  /* Report title shown inside the body (same look as the other reports) */
+  .grn-report-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0b4ca1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 2px 0 8px 0;
+  }
+ 
+  .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
+  .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
+  .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
+  .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
+  .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
+ 
+  .totals-box { margin-top: 10px; margin-left: auto; width: 260px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 11.5px; border-bottom: 1px solid #f1f5f9; }
+.totals-box .row.grand { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
+ 
+  /* ── Items table: fixed layout with widths pinned per column via
+     nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
+  .grn-items-table { table-layout: fixed; width: 100%; }
+ 
+  .grn-items-table th:nth-child(1),
+  .grn-items-table td:nth-child(1) { width: 36px; white-space: nowrap; }
+ 
+  .grn-items-table th:nth-child(2),
+  .grn-items-table td:nth-child(2) {
+    width: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+ 
+  .grn-items-table th:nth-child(3),
+  .grn-items-table td:nth-child(3) { width: 50px; }
+ 
+  .grn-items-table th:nth-child(4),
+  .grn-items-table td:nth-child(4) { width: 80px; text-align: right; }
+ 
+  .grn-items-table th:nth-child(5),
+  .grn-items-table td:nth-child(5) { width: 50px; }
+ 
+  .grn-items-table th:nth-child(6),
+  .grn-items-table td:nth-child(6) { width: 80px; text-align: right; }
+ 
+  .grn-items-table th:nth-child(7),
+  .grn-items-table td:nth-child(7) { width: 95px; text-align: right; }
+ 
+  .grn-sign {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 6px 8px;
-    font-size: 12px;
-    border-bottom: 1px solid #f3f4f6;
-}
-    .totals-box .row span:last-child {
-    width: 85px;
-    min-width: 85px;
-    text-align: right;
-    padding-right: 0;
-    font-variant-numeric: tabular-nums;
-}
-
-       .totals-box .row.grand {
-    background: #1d4ed8;
-    color: #fff;
+    width: 100%;
+    margin-top: 22px;
+    text-align: center;
+    page-break-inside: avoid;
+    font-size: 10px;
+  }
+ 
+  .sign-box {
+    width: 23%;
+    min-height: 70px;
+  }
+ 
+  .sign-space {
+    height: 32px;
+  }
+ 
+  .sign-line {
+    width: 100%;
+    border-top: 1px solid #64748b;
+    margin-bottom: 6px;
+  }
+ 
+  .sign-label {
+    font-size: 10px;
     font-weight: 700;
-    font-size: 13px;
-    border-bottom: none;
-}
-        .remarks-box { margin-top: 14px; font-size: 12px; }
-        .remarks-box .label { font-weight: 600; margin-right: 4px; color: #374151; }
-        .terms-section { margin-top: 8px; font-size: 11px; color: #6b7280; }
-        .term-line { margin-bottom: 2px; }
-        .footer-sign { display: flex; justify-content: space-between; text-align: center; font-size: 11px; color: #6b7280; }
-        .footer-sign div { border-top: 1px solid #d1d5db; padding-top: 6px; width: 20%; }
+    color: #334155;
+  }
+ 
+  .sign-name {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 3px;
+  }
 
-        @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            .no-print { display: none !important; }
-            html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #fff; }
-            .report-container {
-                width: 100%; min-height: 277mm; margin: 0; padding: 10mm;
-                border-radius: 0; box-shadow: none; border: none;
-                display: flex; flex-direction: column;
-            }
-            .report-body { flex: 0 0 auto; }
-            .report-footer-block { margin-top: auto; padding-top: 24px; page-break-inside: avoid; }
-            .report-header { border-bottom-color: #000; }
-            .report-table thead th { background: #1d4ed8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .footer-sign div { border-top: 1px solid #000; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="action-toolbar no-print">
-            <button type="button" class="btn-pdf" onclick="window.print()">🖨️ Save as PDF</button>
-        </div>
-
-        <div class="report-body">
-        <div class="report-header">
-            <div class="report-title-area">
-                ${header.logo_url ? `<img src="${escapeHtml(header.logo_url)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(REPORT_TITLE)}</div>
-                    <div class="report-subtitle">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-                    ${header.cancelled ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>` : ""}
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
-        </div>
-
-        <div class="info-grid">
-            <div class="info-grid-row">
-                <div class="info-block-cell">
-                    <div class="info-block">
-                        <div class="label">To</div>
-                        <table class="info-table">
-                            ${infoRow("Name", header.party_name, true)}
-                            ${infoRow("Address", header.party_address)}
-                            ${infoRow("Tel", header.party_phone)}
-                            ${infoRow("Fax", header.party_fax)}
-                        </table>
-                    </div>
-                </div>
-                <div class="info-block-cell">
-                    <div class="info-block">
-                        <div class="label">GRN Details</div>
-                        <table class="info-table">
-                            ${infoRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
-                            ${infoRow("Date", dateText(header.doc_date))}
-                            ${infoRow("A/C Code", header.ac_code)}
-                            ${infoRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
-                            ${infoRow("Deliver To", header.delivery_to)}
-                            ${infoRow("Contact", contactMobile)}
-                            ${infoRow("Email", emailToShow)}
-                            ${infoRow("Delivery Term", header.dlvr_term)}
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        ${rows.length === 0 ? `
-            <div style="text-align:center;padding:40px 20px;color:#6b7280;">No line items found for this GRN.</div>
-        ` : `
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th class="c-sno">S.No.</th>
-                        <th class="c-desc">Product / Description</th>
-                        <th class="c-uom">PUOM</th>
-                        <th class="c-qty right">P. Qty</th>
-                        <th class="c-uom">LUOM</th>
-                        <th class="c-qty right">L. Qty</th>
-                        <th class="c-qty right">Qty in LUOM</th>
-                    </tr>
-                </thead>
-                <tbody>${bodyRows}</tbody>
-            </table>
-
-            <div class="totals-box">
-                <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
-                <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
-                <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-            </div>
-        `}
-
-        ${header.remarks ? `<div class="remarks-box"><span class="label">Remarks:</span>${escapeHtml(header.remarks)}</div>` : ""}
-
-        ${termsHtml ? `<div class="terms-section">${termsHtml}</div>` : ""}
-        </div>
-
-        <div class="report-footer-block">
-            <div class="footer-sign">
-                <div>${escapeHtml(footer.prepared) || "Prepared By"}</div>
-                <div>${escapeHtml(footer.verified) || "Verified By"}</div>
-                <div>${escapeHtml(footer.approved) || "Approved By"}</div>
-                <div>${escapeHtml(footer.received) || "Received By"}</div>
-            </div>
-        </div>
+    .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .info-block .value-line {
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+  .info-block .kv-line {
+    display: flex;
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.7;
+  }
+  .info-block .kv-label {
+    flex: 0 0 100px;
+    color: #475569;
+  }
+  .info-block .kv-value {
+    flex: 1;
+  }
+`;
+ 
+async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
+  const { rows, terms, footer } = data;
+  const header = buildHeader(rows);
+  const totals = computeTotals(rows);
+ 
+  const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
+  const emailToShow = header.dlvr_email || header.e_mail;
+ 
+  // ── Shared company header (logo + name + address), same as every other report ──
+  const headerHtml = await reportHeader({ company_code: p.company_code, req });
+ 
+  // ── Party / GRN details, two data-tables side by side ──
+   const detailsHtml = `
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+      </div>
+      <div class="info-block">
+        <div class="label">GRN Details</div>
+        <div class="kv-line"><span class="kv-label">GRN No</span><span class="kv-value">: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></span></div>
+        <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
+        <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
+        <div class="kv-line"><span class="kv-label">Ref No</span><span class="kv-value">: ${escapeHtml(header.ref_no)}${header.ref_date ? ` (${escapeHtml(dateText(header.ref_date))})` : ""}</span></div>
+        <div class="kv-line"><span class="kv-label">Deliver To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
+        <div class="kv-line"><span class="kv-label">Contact</span><span class="kv-value">: ${escapeHtml(contactMobile)}</span></div>
+        <div class="kv-line"><span class="kv-label">Email</span><span class="kv-value">: ${escapeHtml(emailToShow)}</span></div>
+        <div class="kv-line"><span class="kv-label">Delivery Term</span><span class="kv-value">: ${escapeHtml(header.dlvr_term)}</span></div>
+      </div>
     </div>
-</body>
-</html>`;
+    ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
+ 
+  // ── Line items, using the shared data-table look exactly like every other report ──
+  let itemsHtml: string;
+  if (!rows.length) {
+    itemsHtml = `<div class="empty">No line items found for this GRN.</div>`;
+  } else {
+    let bodyRows = "";
+    rows.forEach((r, i) => {
+      bodyRows += `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="center">${escapeHtml(r.p_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_puom)}</td>
+          <td class="center">${escapeHtml(r.l_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_luom)}</td>
+          <td class="num strong">${qtyFmt(r.quantity)}</td>
+        </tr>`;
+    });
+ 
+    itemsHtml = `
+      <table class="data-table grn-items-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th style="text-align:left;">Product / Description</th>
+            <th>PUOM</th>
+            <th>P. Qty</th>
+            <th>LUOM</th>
+            <th>L. Qty</th>
+            <th>Net Qty</th>
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+      <div class="totals-box">
+  <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
+  <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
+  <div class="row grand"><span>Net Qty</span><span>${qtyFmt(totals.totalQty)}</span></div>
+</div>
+      </table>`;
+  }
+ 
+  // ── Remarks / terms ──
+  const remarksHtml = header.remarks
+    ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>`
+    : "";
+ 
+  const termsHtml = terms.length
+    ? `<div class="group"><div class="group-title">Terms</div>${terms
+        .map((t) => `<div class="muted">${escapeHtml(t.term)}</div>`)
+        .join("")}</div>`
+    : "";
+ 
+  // ── Signature strip ──
+  const signHtml = `
+  <div class="grn-sign">
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Prepared By</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Checked By</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Approved By</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Receiver's Name &amp; Signature</div>
+    </div>
+  </div>`;
+  // ── Body: report title first, then details / items / remarks / terms ──
+  const bodyHtml = `
+    <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
+    ${detailsHtml}
+    <div class="group">
+      ${itemsHtml}
+    </div>
+    ${remarksHtml}
+    ${termsHtml}`;
+ 
+  // ── Shared footer (print date / user / report name) ──
+  const footerHtml = `
+  ${signHtml}
+ 
+  ${reportFooter({
+    reportName: REPORT_TITLE,
+    userName: loginId,
+    endLabel: "End of GRN",
+  })}
+`;
+  // ── Assemble the whole page using the same shell every other report uses ──
+  return buildReportDocument({
+    title: `${REPORT_TITLE} ${header.doc_no}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: GRN_EXTRA_CSS,
+    showPrintButton: true,
+  });
 }
-
-// ─── Excel builder ──────────────────────────────────────────────────────────
-
+ 
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
+ 
 function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const { rows, footer } = data;
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
+ 
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
   const GREEN_BG = "FFD1FAE5";
-
+ 
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
-
+ 
   const COL_COUNT = 7; // S.No, Product/Description, PUOM, P.Qty, LUOM, L.Qty, Quantity
-
+ 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
   const rows_: Row[] = [];
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-
+ 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
-
+ 
   rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
+ 
   rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
-
+ 
   rows_.push([
     cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
     cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
   merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 6 } });
-
+ 
   rows_.push([null, null, null, null, null, null, null]);
-
+ 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("PUOM", "header"),
     cell("P. Qty", "header"), cell("LUOM", "header"), cell("L. Qty", "header"), cell("Quantity", "header"),
   ]);
-
+ 
   rows.forEach((r, i) => {
     rows_.push([
       cell(i + 1, "data"),
@@ -597,29 +576,31 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       cell(num(r.quantity), "dataNum"),
     ]);
   });
-
+ 
   rows_.push([null, null, null, null, null, null, null]);
-
+ 
   const totalRows: [string, number][] = [
-    ["Total P. Qty", totals.totalPQty],
-    ["Total L. Qty", totals.totalLQty],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
-  });
+  ["Total P. Qty", totals.totalPQty],
+  ["Total L. Qty", totals.totalLQty],
+];
+totalRows.forEach(([label, value]) => {
+  const r = rows_.length;
+  rows_.push([cell(label, "groupTotal"), null, null, null, null, null, cell(value, "groupTotalNum")]);
+  merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
+});
 
-  const gtRow = rows_.length;
-  rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
+const gtRow = rows_.length;
+rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, null, cell(totals.totalQty, "grandTotalNum")]);
+merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
 
+rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+ 
   // ── Style registration engine ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
   interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
   interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
-
+ 
   const styleDefs: Record<string, any> = {
     title: {
       font: { bold: true, sz: 16, color: { rgb: WHITE } },
@@ -660,8 +641,9 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
+    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
-
+ 
   const fonts: FontDef[] = [{}];
   const fills: FillDef[] = [{}, {}];
   const borders: BorderDef[] = [{}];
@@ -669,7 +651,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const cellXfs: XfDef[] = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
   const sigCache = new Map<string, number>();
   let nextCustomNumFmtId = 164;
-
+ 
   const registerFont = (f: any): number => {
     const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 10, color: f?.color?.rgb };
     const key = `font:${JSON.stringify(def)}`;
@@ -679,7 +661,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerFill = (f: any): number => {
     if (!f?.fgColor?.rgb) return 0;
     const def: FillDef = { color: f.fgColor.rgb };
@@ -690,7 +672,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
@@ -704,7 +686,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerNumFmt = (code?: string): number => {
     if (!code) return 0;
     const existing = numFmts.find((n) => n.code === code);
@@ -713,7 +695,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     numFmts.push({ id, code });
     return id;
   };
-
+ 
   const registerXf = (styleObj: any): number => {
     if (!styleObj) return 0;
     const fontId = registerFont(styleObj.font);
@@ -729,13 +711,13 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
-
+ 
   const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="18" customWidth="1"/>`
   ).join("");
-
+ 
   let sheetDataXml = "";
   rows_.forEach((row, ri) => {
     const rn = ri + 1;
@@ -753,12 +735,12 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     rowXml += "</row>";
     sheetDataXml += rowXml;
   });
-
+ 
   const mergesXml = merges.map((m) =>
     `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
   ).join("");
   const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
-
+ 
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheetFormatPr defaultRowHeight="15"/>
@@ -766,11 +748,11 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeFinal}
 </worksheet>`;
-
+ 
   const numFmtsXml = numFmts.length
     ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
     : "";
-
+ 
   const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
     <font>
         ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
@@ -780,7 +762,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         ${f.italic ? "<i/>" : ""}
     </font>`).join("")}
 </fonts>`;
-
+ 
   const fillsXml = `<fills count="${fills.length}">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
@@ -792,7 +774,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         </patternFill>
     </fill>`).join("")}
 </fills>`;
-
+ 
   const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
   const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
     <border>
@@ -803,7 +785,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         <diagonal/>
     </border>`).join("")}
 </borders>`;
-
+ 
   const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
     const applyAlign = xf.align || xf.wrap;
     return `
@@ -814,7 +796,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     </xf>`;
   }).join("")}
 </cellXfs>`;
-
+ 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
     ${numFmtsXml}
@@ -825,23 +807,23 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     ${cellXfsXml}
     <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
-
+ 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets><sheet name="GRN" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
-
+ 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
-
+ 
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`;
-
+ 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -850,7 +832,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`;
-
+ 
   const zip = new AdmZip();
   zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
   zip.addFile("_rels/.rels", Buffer.from(rels));
@@ -860,9 +842,9 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
   return zip.toBuffer();
 }
-
+ 
 // ─── Route handlers ─────────────────────────────────────────────────────────
-
+ 
 export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
@@ -872,13 +854,13 @@ export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Pr
       return;
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(data, params.loginid, params));
+    res.send(await renderHtml(data, params.loginid, params, req));
   } catch (error: any) {
     console.error("GRN Report HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate GRN report" });
   }
 };
-
+ 
 export const getGrnPrintReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
@@ -888,7 +870,7 @@ export const getGrnPrintReportExcel = async (req: RequestWithUser, res: Response
       return;
     }
     const buffer = buildExcelBuffer(data, params.loginid);
-
+ 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="GRN.xlsx"');
     res.end(buffer);

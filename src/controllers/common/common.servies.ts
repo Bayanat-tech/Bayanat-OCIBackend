@@ -340,6 +340,11 @@ console.log('check dynamic sql',req.body);
       return;
     }
 
+    let param = parameter;
+    if (param === "Account_Currency_CODE_Search") {
+      param = "Account_Currency_CODE_Serach";
+    }
+
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
@@ -368,7 +373,7 @@ console.log('check dynamic sql',req.body);
       END;
       `,
       {
-        parameter,
+        parameter: param,
         loginid,
         code1,
         code2,

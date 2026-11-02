@@ -14,20 +14,46 @@ export type TAppraisalTaskDtl = {
 };
 
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import { QueryExecutor } from "../../database/QueryExecutor";
-//import { TAppraisalTaskDtl } from "./models";
+import { RequestWithUser } from "../../interfaces/common.interface";
+import { getPamsTenantSchema } from "./pamsTenantSafety";
 
 export async function updateAppraisalRatings(
-  req: Request,
+  req: RequestWithUser,
   res: Response
 ) {
   try {
-    console.log("UPDATE API HIT");
-    console.log("Incoming body:", req.body);
-    
-    const rows = req.body.rows.map((r: TAppraisalTaskDtl) => ({
-      COMPANY_CODE: r.COMPANY_CODE,
+    if (!Array.isArray(req.body?.rows) || req.body.rows.length === 0) {
+      res.status(400).json({ success: false, message: "At least one appraisal rating row is required" });
+      return;
+    }
+
+    const inputRows = req.body.rows as TAppraisalTaskDtl[];
+    if (inputRows.some((row) => !row || typeof row !== "object")) {
+      res.status(400).json({ success: false, message: "Appraisal rating rows must be objects" });
+      return;
+    }
+
+    const authenticatedCompanyCode = String(req.user?.company_code || "").trim();
+    if (!authenticatedCompanyCode) {
+      res.status(403).json({ success: false, message: "Authenticated company is unavailable" });
+      return;
+    }
+
+    if (inputRows.some((row) =>
+      row.COMPANY_CODE &&
+      String(row.COMPANY_CODE).trim().toUpperCase() !== authenticatedCompanyCode.toUpperCase()
+    )) {
+      res.status(403).json({
+        success: false,
+        message: "An appraisal rating row belongs to a different company"
+      });
+      return;
+    }
+
+    const rows = inputRows.map((r) => ({
+      COMPANY_CODE: authenticatedCompanyCode,
       APPRAISAL_DOC_NO: r.APPRAISAL_DOC_NO,
       ITEM_TYPE: r.ITEM_TYPE,
       EMPLOYEE_CODE: r.EMPLOYEE_CODE,
@@ -36,26 +62,27 @@ export async function updateAppraisalRatings(
       TOTAL: r.TOTAL ?? null,
       STANDARD_WEIGHTAGE: r.STANDARD_WEIGHTAGE ?? null
     }));
-     
-    console.log("Mapped rows:", rows);
+
+    const tenantSchema = await getPamsTenantSchema();
+
     await QueryExecutor.executeRawQuery(
       `
       BEGIN
-        PROC_UPD_APPRAISAL_TASK_RATING(:p_rows);
+        ${tenantSchema}.PROC_UPD_APPRAISAL_TASK_RATING(:p_rows);
       END;
       `,
       {
         p_rows: {
-          type: "APPRAISAL_TASK_DTL_TAB",
+          type: `${tenantSchema}.APPRAISAL_TASK_DTL_TAB`,
           val: rows
         }
       }
     );
 
-    res.json({ message: "Ratings updated successfully" });
+    res.json({ success: true, message: "Ratings updated successfully" });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Update failed" });
+    res.status(500).json({ success: false, error: "Update failed" });
   }
 }

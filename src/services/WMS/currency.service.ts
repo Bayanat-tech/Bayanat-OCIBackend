@@ -41,6 +41,8 @@ export class CurrencyService {
     const repository = this.getCurrencyMasterRepository();
     
     const currency = repository.create({
+      ex_rate: (currencyData as any).ex_rate != null ? Number((currencyData as any).ex_rate) : 1,
+      subdivision: (currencyData as any).subdivision != null ? Number((currencyData as any).subdivision) : 100,
       ...currencyData,
       created_at: new Date(),
       updated_at: new Date(),

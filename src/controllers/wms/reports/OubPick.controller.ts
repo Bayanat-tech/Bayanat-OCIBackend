@@ -4,6 +4,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,8 +29,8 @@ interface DetailLine {
 
 interface GroupTotals {
   quantity: number;
-  puom: Record<string, number>;   // QTY_PUOM bucketed by P_UOM
-  luom: Record<string, number>;   // QTY_LUOM bucketed by L_UOM
+  puom: Record<string, number>;
+  luom: Record<string, number>;
   volume: number;
   netWt: number;
 }
@@ -79,7 +84,6 @@ function text(value: unknown): string {
 function dateText(value: unknown): string {
   if (!value) return "—";
   const s = String(value);
-  // already formatted string like "31-12-2025"
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return s.substring(0, 10);
@@ -207,6 +211,7 @@ function computeGrandTotals(groups: SiteOrderGroup[]): GroupTotals {
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
+
 async function loadPickListData(
   req: RequestWithUser,
   jobNo: string,
@@ -235,25 +240,104 @@ async function loadPickListData(
   }
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── Pick List-only CSS — freight palette ─────────────────────────────────────
 
-function renderHtml(
+const PICK_LIST_EXTRA_CSS = `
+  /* No @page/body margins — from report_common COMMON_REPORT_CSS */
+
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0; font-size: 18px; font-weight: 800; color: #00378c;
+  }
+
+  .doc-header {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #00378c;
+  }
+  .hdr-col { display: flex; flex-direction: column; gap: 2px; }
+  .hdr-row { display: flex; align-items: baseline; line-height: 1.8; }
+  .hdr-label { font-size: 10.5px; color: #64748b; white-space: nowrap; min-width: 120px; }
+  .hdr-sep  { font-size: 10.5px; color: #94a3b8; margin-right: 6px; }
+  .hdr-value { font-size: 11px; font-weight: 700; color: #1e293b; }
+  .hdr-value.nil { font-weight: 400; color: #cbd5e1; }
+
+  table.rpt-table {
+    width: 100%; border-collapse: collapse; table-layout: fixed;
+    font-size: 10.5px; margin-top: 3px;
+  }
+  col.c-mfg { width: 11%; } col.c-lot { width: 9%; } col.c-exp { width: 11%; }
+  col.c-qty { width: 9%; } col.c-puom { width: 16%; } col.c-luom { width: 16%; }
+  col.c-vol { width: 14%; } col.c-wt { width: 14%; }
+
+  table.rpt-table thead th {
+    background: #00378c; color: #ffffff; font-size: 10px; font-weight: 700;
+    padding: 6px 5px; border-top: 1px solid #00378c; border-bottom: 1px solid #00378c;
+    text-align: center; white-space: nowrap;
+  }
+  tbody tr.data-row td {
+    padding: 4px 5px; border-bottom: 1px solid #e2e8f0; color: #1e293b;
+    font-size: 10.5px; vertical-align: top;
+  }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  tr.grp-row td {
+    background: #00378c; color: #ffffff; font-weight: 700; font-size: 10.5px; padding: 6px 8px;
+  }
+  .grp-field { margin-right: 22px; }
+  .grp-label { color: #eaf0f8; font-weight: 600; margin-right: 4px; }
+  .grp-sep   { color: #cbd5e1; margin-right: 6px; }
+  .grp-value { color: #ffffff; }
+  .grp-dots  {
+    display: inline-block; min-width: 70px;
+    border-bottom: 1px dotted #cbd5e1; height: 1px; vertical-align: middle;
+  }
+
+  tr.prod-row td {
+    background: #eaf0f8; color: #00378c; font-weight: 700; font-size: 10.5px;
+    padding: 5px 8px; border-bottom: 1px solid #e2e8f0;
+  }
+  .prod-code { font-weight: 700; }
+
+  tr.sub-row td {
+    background: #f1f5f9; color: #00378c; font-weight: 700; font-size: 10.5px;
+    padding: 5px 8px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+  }
+  tr.grand-row td {
+    background: #00378c; color: #ffffff; font-weight: 700; font-size: 11px; padding: 8px 8px;
+  }
+  .total-label { text-align: right; letter-spacing: .04em; }
+
+  .sig-block {
+    margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px;
+  }
+  .sig-col  { display: flex; flex-direction: column; gap: 10px; }
+  .sig-line { display: flex; align-items: flex-end; gap: 8px; font-size: 10.5px; color: #334155; line-height: 1.8; }
+  .sig-label { white-space: nowrap; min-width: 110px; }
+  .sig-dots  { flex: 1; border-bottom: 1px dotted #94a3b8; margin-bottom: 2px; min-width: 40px; }
+
+  @media print {
+    thead { display: table-header-group; }
+    tr.grp-row { break-after: avoid; }
+    tr.prod-row { break-after: avoid; }
+    .sig-block { break-before: avoid; }
+  }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderPickListBody(
   rows:        ReportRow[],
   groups:      SiteOrderGroup[],
   jobNo:       string,
   prinCode:    string,
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+  reportTitle: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
-  const h = rows[0] || {};   // job-level header fields come from first row
+  const h = rows[0] || {};
   const grand = computeGrandTotals(groups);
 
-  // ── Helper: render one header field ──────────────────────────────────────
   const hf = (label: string, val: unknown) => {
     const v = text(val);
     return `
@@ -264,7 +348,6 @@ function renderHtml(
       </div>`;
   };
 
-  // ── Helper: render one detail line ──────────────────────────────────────
   const renderLine = (l: DetailLine) => `
       <tr class="data-row">
         <td>${escapeHtml(dateText(l.mfg_date))}</td>
@@ -277,7 +360,6 @@ function renderHtml(
         <td class="num">${l.net_wt != null && l.net_wt !== "" ? escapeHtml(numFmt(l.net_wt)) : "—"}</td>
       </tr>`;
 
-  // ── Helper: render a subtotal / grand-total row ──────────────────────────
   const renderTotalRow = (label: string, t: GroupTotals, cls: string) => `
       <tr class="${cls}">
         <td colspan="3" class="total-label">${escapeHtml(label)}</td>
@@ -288,7 +370,6 @@ function renderHtml(
         <td class="num">${escapeHtml(numFmt(t.netWt))}</td>
       </tr>`;
 
-  // ── Body: groups -> products -> lines -> subtotal ───────────────────────
   let bodyRows = "";
   for (const g of groups) {
     const siteLabel = [g.siteCode, g.locationCode].filter(Boolean).join(" ");
@@ -316,272 +397,81 @@ function renderHtml(
 
   bodyRows += renderTotalRow("Grand Total", grand, "grand-row");
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 11px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 190mm;
-      min-height: 277mm;
-      margin: 0 auto;
-      background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
-
-    /* ── Banner ── */
-    .rpt-banner {
-      background: #1e3a5f; color: #fff;
-      text-align: center; text-transform: uppercase;
-      font-size: 13px; font-weight: 700; letter-spacing: .08em;
-      padding: 9px 16px;
-      border-radius: 3px 3px 0 0;
-    }
-
-    /* ── Print meta ── */
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 5px 2px 5px;
-      font-size: 9.5px; color: #4b5563;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 8px;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-
-    /* ── Header block: two-column grid, flat label : value ── */
-    .doc-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 24px;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #1e3a5f;
-    }
-    .hdr-col { display: flex; flex-direction: column; gap: 2px; }
-    .hdr-row { display: flex; align-items: baseline; gap: 0; line-height: 1.8; }
-    .hdr-label {
-      font-size: 10.5px; color: #6b7280; white-space: nowrap;
-      min-width: 120px;
-    }
-    .hdr-sep  { font-size: 10.5px; color: #9ca3af; margin-right: 6px; }
-    .hdr-value {
-      font-size: 11px; font-weight: 700; color: #111827;
-    }
-    .hdr-value.nil { font-weight: 400; color: #d1d5db; }
-
-    /* ── Data table ── */
-    table.rpt-table {
-      width: 100%; border-collapse: collapse; table-layout: fixed;
-    }
-
-    col.c-mfg   { width: 11%; }
-    col.c-lot   { width: 9%;  }
-    col.c-exp   { width: 11%; }
-    col.c-qty   { width: 9%;  }
-    col.c-puom  { width: 16%; }
-    col.c-luom  { width: 16%; }
-    col.c-vol   { width: 14%; }
-    col.c-wt    { width: 14%; }
-
-    thead th {
-      background: #1e3a5f; color: #fff;
-      font-size: 9.5px; font-weight: 700;
-      padding: 7px 8px;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      text-align: center;
-      white-space: nowrap;
-    }
-    thead th:last-child { border-right: none; }
-
-    tbody tr.data-row td {
-      padding: 4px 8px;
-      border-bottom: 1px solid #e5e7eb;
-      color: #374151;
-      font-size: 10.5px;
-      vertical-align: top;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-
-    /* ── Site / order group header row ── */
-    tr.grp-row td {
-      background: #1e3a5f; color: #fff;
-      font-weight: 700; font-size: 10.5px;
-      padding: 6px 8px;
-      border-top: 2px solid #162d4a;
-    }
-    .grp-field { margin-right: 22px; }
-    .grp-label { color: #cbd5e1; font-weight: 600; margin-right: 4px; }
-    .grp-sep   { color: #93a5bd; margin-right: 6px; }
-    .grp-value { color: #fff; }
-    .grp-dots  {
-      display: inline-block; min-width: 70px;
-      border-bottom: 1px dotted #93a5bd; height: 1px; vertical-align: middle;
-    }
-
-    /* ── Product sub-header row ── */
-    tr.prod-row td {
-      background: #dbe4ee; color: #1e3a5f;
-      font-weight: 700; font-size: 10.5px;
-      padding: 5px 8px;
-      border-bottom: 1px solid #c4cdd9;
-    }
-    .prod-code { font-weight: 700; }
-
-    /* ── Subtotal / grand total rows ── */
-    tr.sub-row td {
-      background: #f3f4f6; color: #1e3a5f;
-      font-weight: 700; font-size: 10.5px;
-      padding: 5px 8px;
-      border-top: 1px solid #c4cdd9;
-      border-bottom: 1px solid #c4cdd9;
-    }
-    tr.grand-row td {
-      background: #1e3a5f; color: #fff;
-      font-weight: 700; font-size: 11px;
-      padding: 8px 8px;
-      border-top: 2px solid #162d4a;
-    }
-    .total-label { text-align: right; letter-spacing: .04em; }
-
-    /* ── Signature block ── */
-    .sig-block {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 24px;
-    }
-    .sig-col  { display: flex; flex-direction: column; gap: 10px; }
-    .sig-line { display: flex; align-items: flex-end; gap: 8px; font-size: 10.5px; color: #374151; line-height: 1.8; }
-    .sig-label { white-space: nowrap; min-width: 110px; }
-    .sig-dots  { flex: 1; border-bottom: 1px dotted #9ca3af; margin-bottom: 2px; min-width: 40px; }
-
-    /* ── Footer ── */
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-      tr.grp-row { break-before: avoid; page-break-before: avoid; break-after: avoid; }
-      tr.prod-row { break-after: avoid; page-break-after: avoid; }
-      .sig-block { break-before: avoid; page-break-before: avoid; }
-    }
-  </style>
-</head>
-<body>
-<main class="sheet">
-
-  <!-- ── Banner ── -->
-  <div class="rpt-banner">${escapeHtml(reportTitle)}</div>
-
-  <!-- ── Print meta ── -->
-  <div class="rpt-meta">
-    <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-  </div>
-
-  <!-- ── Document header (flat label : value, no box) ── -->
-  <div class="doc-header">
-
-    <div class="hdr-col">
-      ${hf("Job No",     h.job_no || jobNo)}
-      ${hf("Job Date",   dateText(h.job_date))}
-      ${hf("Principal",  [text(h.prin_code) || prinCode, text(h.prin_name)].filter(Boolean).join(" | "))}
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
-    <div class="hdr-col">
-      ${hf("Stuffing Start",     "")}
-      ${hf("Stuffing End",       "")}
-      ${hf("Total Time Taken",  "")}
+    <div class="doc-header">
+      <div class="hdr-col">
+        ${hf("Job No",     h.job_no || jobNo)}
+        ${hf("Job Date",   dateText(h.job_date))}
+        ${hf("Principal",  [text(h.prin_code) || prinCode, text(h.prin_name)].filter(Boolean).join(" | "))}
+      </div>
+      <div class="hdr-col">
+        ${hf("Stuffing Start",     "")}
+        ${hf("Stuffing End",       "")}
+        ${hf("Total Time Taken",  "")}
+      </div>
     </div>
 
-  </div><!-- /doc-header -->
+    <table class="rpt-table">
+      <colgroup>
+        <col class="c-mfg"/>  <col class="c-lot"/>
+        <col class="c-exp"/>  <col class="c-qty"/>
+        <col class="c-puom"/> <col class="c-luom"/>
+        <col class="c-vol"/>  <col class="c-wt"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Mfg. Date</th>
+          <th>Lot No</th>
+          <th>Exp Date</th>
+          <th>Quantity</th>
+          <th>Primary UOM</th>
+          <th>Least UOM</th>
+          <th>Volume</th>
+          <th>Net Weight</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyRows}
+      </tbody>
+    </table>
 
-  <!-- ── Line items table ── -->
-  <table class="rpt-table">
-    <colgroup>
-      <col class="c-mfg"/>  <col class="c-lot"/>
-      <col class="c-exp"/>  <col class="c-qty"/>
-      <col class="c-puom"/> <col class="c-luom"/>
-      <col class="c-vol"/>  <col class="c-wt"/>
-    </colgroup>
-    <thead>
-      <tr>
-        <th>Mfg. Date</th>
-        <th>Lot No</th>
-        <th>Exp Date</th>
-        <th>Quantity</th>
-        <th>Primary UOM</th>
-        <th>Least UOM</th>
-        <th>Volume</th>
-        <th>Net Weight</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyRows}
-    </tbody>
-  </table>
-
-  <!-- ── Signature block ── -->
-  <div class="sig-block">
-    <div class="sig-col">
-      <div class="sig-line"><span class="sig-label">Picked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
+    <div class="sig-block">
+      <div class="sig-col">
+        <div class="sig-line"><span class="sig-label">Picked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
+      </div>
+      <div class="sig-col">
+        <div class="sig-line"><span class="sig-label">Checked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
+      </div>
     </div>
-    <div class="sig-col">
-      <div class="sig-line"><span class="sig-label">Checked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-    </div>
-  </div>
 
-  <!-- ── Footer ── -->
-  <div class="rpt-footer">
-    <span>Report Name : <code>${escapeHtml(jobNo)}</code></span>
-    <span>Powered by Bayanat Technology</span>
-  </div>
-
-</main>
-<script>
-  window.addEventListener("message", (e) => {
-    if (e.data === "print") window.print();
-  });
-  ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-</script>
-</body>
-</html>`;
+    <script>
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
+  `;
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
 
 const STYLE_ID = {
   default:      0,
-  header:       1,   // dark blue bg, white bold – title / col headers
-  hdrLeft:      2,   // dark blue bg, white bold – left-aligned col header
-  label:        3,   // grey text, right-align
-  value:        4,   // dark bold
-  dataCell:     5,   // normal data cell with thin border
-  numCell:      6,   // right-aligned data cell
-  totalLabel:   7,   // dark blue bg, white, right-aligned
-  totalNum:     8,   // dark blue bg, white, right-aligned, numeric
-  groupHeader:  9,   // medium blue bg, white bold – site/order group row
-  prodHeader:   10,  // light blue bg, navy bold – product row
-  subLabel:     11,  // light grey bg, navy bold, right-aligned – subtotal label
-  subNum:       12,  // light grey bg, navy bold, right-aligned – subtotal numeric
+  header:       1,
+  hdrLeft:      2,
+  label:        3,
+  value:        4,
+  dataCell:     5,
+  numCell:      6,
+  totalLabel:   7,
+  totalNum:     8,
+  groupHeader:  9,
+  prodHeader:   10,
+  subLabel:     11,
+  subNum:       12,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -605,11 +495,9 @@ function buildExcelBuffer(
   const h = rows[0] || {};
   const grand = computeGrandTotals(groups);
 
-  // ── Title ────────────────────────────────────────────────────────────────
   xlRows.push([xc(`Outbound Pick List — Job ${jobNo} / Principal ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Doc-info block: two logical columns, each label+value pair ───────────
   const metaRows: [string, unknown, string, unknown][] = [
     ["Job No",        h.job_no || jobNo,        "Stuffing Start",    ""],
     ["Job Date",      dateText(h.job_date),      "Stuffing End",      ""],
@@ -629,7 +517,6 @@ function buildExcelBuffer(
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Column headers ────────────────────────────────────────────────────────
   xlRows.push([
     xc("Mfg. Date",    "hdrLeft"),
     xc("Lot No",       "header"),
@@ -641,7 +528,6 @@ function buildExcelBuffer(
     xc("Net Weight",   "header"),
   ]);
 
-  // ── Helper: a subtotal / grand-total row ─────────────────────────────────
   const totalRowCells = (label: string, t: GroupTotals, lblStyle: StyleKey, numStyle: StyleKey): Row => [
     xc(label, lblStyle), skip, skip,
     xc(numFmt(t.quantity),  numStyle),
@@ -651,7 +537,6 @@ function buildExcelBuffer(
     xc(numFmt(t.netWt),     numStyle),
   ];
 
-  // ── Body: groups -> products -> lines -> subtotal ───────────────────────
   for (const g of groups) {
     const siteLabel = [g.siteCode, g.locationCode].filter(Boolean).join(" ");
     xlRows.push([
@@ -684,13 +569,11 @@ function buildExcelBuffer(
 
   xlRows.push(totalRowCells("Grand Total", grand, "totalLabel", "totalNum"));
 
-  // ── Build XML ─────────────────────────────────────────────────────────────
   const COL_WIDTHS = [13, 11, 13, 11, 16, 16, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Detect spans (consecutive nulls after a non-null cell)
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -738,91 +621,78 @@ function buildExcelBuffer(
   ${mergeXml}
 </worksheet>`;
 
-  // ── Styles ────────────────────────────────────────────────────────────────
+  // ── Styles — recolored to freight palette (#00378c / #eaf0f8) ──
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF3F5E82"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFDBE4EE"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left>
-      <right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top>
-      <bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFCBD5E1"/></left>
+      <right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top>
+      <bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
       <diagonal/>
     </border>
     <border>
-      <left style="medium"><color rgb="FF1E3A5F"/></left>
-      <right style="medium"><color rgb="FF1E3A5F"/></right>
-      <top style="medium"><color rgb="FF1E3A5F"/></top>
-      <bottom style="medium"><color rgb="FF1E3A5F"/></bottom>
+      <left style="medium"><color rgb="FF00378C"/></left>
+      <right style="medium"><color rgb="FF00378C"/></right>
+      <top style="medium"><color rgb="FF00378C"/></top>
+      <bottom style="medium"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="13">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: header – dark bg, white bold, centre -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <!-- 2: hdrLeft – dark bg, white bold, left -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 3: label – grey text, right-align -->
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 4: value – dark bold -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 5: dataCell – normal with border -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="top" wrapText="1"/>
     </xf>
-    <!-- 6: numCell – right-aligned with border -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="top" wrapText="1"/>
     </xf>
-    <!-- 7: totalLabel – dark bg, white, right-aligned -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 8: totalNum – dark bg, white, right-aligned -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
-    <!-- 9: groupHeader – medium blue bg, white bold -->
     <xf numFmtId="0" fontId="5" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 10: prodHeader – light blue bg, navy bold -->
     <xf numFmtId="0" fontId="2" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 11: subLabel – light grey bg, navy bold, right-aligned -->
     <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 12: subNum – light grey bg, navy bold, right-aligned -->
     <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
@@ -898,8 +768,29 @@ export const getPickListHtml = async (
 
     const rows   = await loadPickListData(req, jobNo, prinCode);
     const groups = buildGroups(rows);
+    const companyCode = text(req.user?.company_code);
+    const loginId = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderPickListBody(rows, groups, jobNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_outbound_pick_list",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(jobNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `${reportTitle} - ${jobNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PICK_LIST_EXTRA_CSS,
+      autoPrint,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(rows, groups, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
     console.error("Pick List HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -921,7 +812,27 @@ export const getPickListPdf = async (
 
     const rows   = await loadPickListData(req, jobNo, prinCode);
     const groups = buildGroups(rows);
-    const html   = renderHtml(rows, groups, jobNo, prinCode, "Outbound Pick List", text(req.user?.loginid), true);
+    const companyCode = text(req.user?.company_code);
+    const loginId = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderPickListBody(rows, groups, jobNo, prinCode, "Outbound Pick List");
+    const footerHtml = reportFooter({
+      reportName: "rpt_outbound_pick_list",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(jobNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `Outbound Pick List - ${jobNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PICK_LIST_EXTRA_CSS,
+      autoPrint: true,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="PICKLIST_${jobNo}_${prinCode}.pdf"`);

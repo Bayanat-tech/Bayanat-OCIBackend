@@ -1,11 +1,16 @@
 import { Response } from "express";
-import oracledb = require("oracledb");
+import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
-// ─── Types No group────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
@@ -21,7 +26,12 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
 }
 
 async function closeConn(conn?: oracledb.Connection) {
-  if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+  if (conn)
+    try {
+      await conn.close();
+    } catch (e) {
+      console.warn("Close conn error:", e);
+    }
 }
 
 function normalize(rows: any[] = []): ReportRow[] {
@@ -34,12 +44,13 @@ function normalize(rows: any[] = []): ReportRow[] {
 }
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
+
 function getAdjustmentNo(req: RequestWithUser): string {
   return text(
     req.params.adjNo ||
-    req.params.adj_no ||
-    req.query.adjNo ||
-    req.query.adj_no
+      req.params.adj_no ||
+      req.query.adjNo ||
+      req.query.adj_no
   ).trim();
 }
 
@@ -48,39 +59,49 @@ function text(value: unknown): string {
   return String(value);
 }
 
-function dateTimeText(value: unknown): string {
-  if (value === null || value === undefined || text(value).trim() === "") {
-    return "";
-  }
-
+function dateText(value: unknown): string {
+  if (!value) return "—";
   const d = value instanceof Date ? value : new Date(String(value));
-  if (Number.isNaN(d.getTime())) return text(value).trim();
-
+  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const month = d.toLocaleString("en-GB", { month: "short" });
   const year = d.getFullYear();
-
-  return `${day}/${month}/${year}`;
+  return `${day} ${month} ${year}`;
 }
 
 function escapeHtml(value: unknown): string {
   return text(value)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function escapeXml(value: unknown): string {
   return text(value)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-function quantityText(value: unknown): string {
+function numFmt(value: unknown, decimals = 2): string {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n === 0) return "—";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function qtyDisplay(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -108,23 +129,72 @@ function principalDisplay(row: ReportRow, fallbackPrinCode: string): string {
 function countryDisplay(row: ReportRow): string {
   const countryCode = text(row.country_code).trim();
   const countryName = text(row.country_name).trim();
-
   if (countryCode && countryName) return `${countryCode} - ${countryName}`;
-  return countryName || countryCode || "";
+  return countryName || countryCode || "—";
 }
 
 function manufacturerDisplay(row: ReportRow): string {
-  const manufacturerCode = text(row.manu_code).trim();
-  const manufacturerName = text(row.manu_name).trim();
-
-  if (manufacturerCode && manufacturerName) {
-    return `${manufacturerCode} - ${manufacturerName}`;
-  }
-
-  return manufacturerName || manufacturerCode || "";
+  const manuCode = text(row.manu_code).trim();
+  const manuName = text(row.manu_name).trim();
+  if (manuCode && manuName) return `${manuCode} - ${manuName}`;
+  return manuName || manuCode || "—";
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
+
+const STOCK_ADJ_SQL = `
+SELECT
+  ah.ADJ_NO,
+  ah.PRIN_CODE,
+  mp.PRIN_NAME,
+  ah.ADJ_CODE,
+  ah.COMPANY_CODE,
+  ah.ADJ_DATE,
+  ad.ADJ_SERIALNO,
+  ad.SITE_CODE,
+  ad.LOCATION_CODE,
+  ad.PROD_CODE,
+  ad.JOB_NO,
+  ad.LOT_NO,
+  ad.DOC_REF,
+  ad.ADJ_TYPE,
+  ad.P_UOM,
+  ad.QTY_PUOM,
+  ad.L_UOM,
+  ad.QTY_LUOM,
+  ad.MANU_CODE,
+  mf.MANU_NAME,
+  mf.COUNTRY_CODE,
+  co.COUNTRY_NAME,
+  pr.PROD_NAME,
+  ah.CONFIRMED       AS HEADER_CONFIRMED,
+  ah.CONFIRMED_DATE,
+  ad.POSTED_IND,
+  ad.CONFIRMED       AS DETAIL_CONFIRMED,
+  ah.REMARKS
+FROM TA_ADJHEADER ah
+INNER JOIN TA_ADJDETAIL ad
+   ON ad.COMPANY_CODE = ah.COMPANY_CODE
+  AND ad.PRIN_CODE    = ah.PRIN_CODE
+  AND ad.ADJ_NO       = ah.ADJ_NO
+INNER JOIN MS_PRODUCT pr
+   ON pr.COMPANY_CODE = ad.COMPANY_CODE
+  AND pr.PRIN_CODE    = ad.PRIN_CODE
+  AND pr.PROD_CODE    = ad.PROD_CODE
+LEFT JOIN MS_PRINCIPAL mp
+   ON mp.COMPANY_CODE = ah.COMPANY_CODE
+  AND mp.PRIN_CODE    = ah.PRIN_CODE
+LEFT JOIN MS_MANUFACTURER mf
+   ON mf.COMPANY_CODE = ad.COMPANY_CODE
+  AND mf.PRIN_CODE    = ad.PRIN_CODE
+  AND mf.MANU_CODE    = ad.MANU_CODE
+LEFT JOIN MS_COUNTRY co
+   ON co.COMPANY_CODE = mf.COMPANY_CODE
+  AND co.COUNTRY_CODE = mf.COUNTRY_CODE
+WHERE ah.COMPANY_CODE = :company_code
+  AND ah.PRIN_CODE    = :prin_code
+  AND ah.ADJ_NO       = :adj_no
+ORDER BY ad.ADJ_SERIALNO ASC`;
 
 async function loadAdjustmentData(
   req: RequestWithUser,
@@ -132,771 +202,378 @@ async function loadAdjustmentData(
   adjNo: string | number
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
-
   try {
     const result = await conn.execute(
-      `SELECT
-         ah.ADJ_NO,
-         ah.PRIN_CODE,
-         mp.PRIN_NAME,
-         ah.ADJ_CODE,
-         ah.COMPANY_CODE,
-         ah.ADJ_DATE,
-         ad.ADJ_SERIALNO,
-         ad.SITE_CODE,
-         ad.LOCATION_CODE,
-         ad.PROD_CODE,
-         ad.JOB_NO,
-         ad.LOT_NO,
-         ad.DOC_REF,
-         ad.ADJ_TYPE,
-         ad.P_UOM,
-         ad.QTY_PUOM,
-         ad.L_UOM,
-         ad.QTY_LUOM,
-         ad.MANU_CODE,
-         mf.MANU_NAME,
-         mf.COUNTRY_CODE,
-         co.COUNTRY_NAME,
-         pr.PROD_NAME,
-         ah.CONFIRMED AS HEADER_CONFIRMED,
-         ah.CONFIRMED_DATE,
-         ad.POSTED_IND,
-         ad.CONFIRMED AS DETAIL_CONFIRMED,
-         ah.REMARKS
-       FROM TA_ADJHEADER ah
-       INNER JOIN TA_ADJDETAIL ad
-         ON ad.COMPANY_CODE = ah.COMPANY_CODE
-        AND ad.PRIN_CODE    = ah.PRIN_CODE
-        AND ad.ADJ_NO       = ah.ADJ_NO
-       INNER JOIN MS_PRODUCT pr
-         ON pr.COMPANY_CODE = ad.COMPANY_CODE
-        AND pr.PRIN_CODE    = ad.PRIN_CODE
-        AND pr.PROD_CODE    = ad.PROD_CODE
-       LEFT JOIN MS_PRINCIPAL mp
-         ON mp.COMPANY_CODE = ah.COMPANY_CODE
-        AND mp.PRIN_CODE    = ah.PRIN_CODE
-       LEFT JOIN MS_MANUFACTURER mf
-         ON mf.COMPANY_CODE = ad.COMPANY_CODE
-        AND mf.PRIN_CODE    = ad.PRIN_CODE
-        AND mf.MANU_CODE    = ad.MANU_CODE
-       LEFT JOIN MS_COUNTRY co
-         ON co.COMPANY_CODE = mf.COMPANY_CODE
-        AND co.COUNTRY_CODE = mf.COUNTRY_CODE
-       WHERE ah.COMPANY_CODE = '${req.user.company_code}'
-         AND ah.PRIN_CODE    = :prin_code
-         AND ah.ADJ_NO       = :adj_no
-       ORDER BY ad.ADJ_SERIALNO ASC`,
+      STOCK_ADJ_SQL,
       {
+        company_code: req.user.company_code,
         prin_code: prinCode,
         adj_no: adjNo,
       },
-      {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
     return normalize(result.rows as any[]);
   } finally {
     await closeConn(conn);
   }
 }
 
+// ─── CSS — Stock Adjustment theme (aligned with FREIGHT_COLORS) ───────────────
+//
+//   navy     = #00378c  (title, section labels, table header, item title)
+//   navyDeep = #002a6b  (table header borders)
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+const STOCK_ADJUSTMENT_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
-function renderHtml(
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #00378c;
+  }
+
+  .section-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #00378c;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #00378c;
+  }
+  .field-row {
+    display: flex;
+    align-items: baseline;
+    padding: 3.5px 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .f-label {
+    font-size: 10px;
+    color: #64748b;
+    min-width: 128px;
+    padding-right: 8px;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .f-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .nil { font-weight: 400; color: #94a3b8; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 32px;
+    margin-bottom: 14px;
+  }
+
+  .status-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 8px 14px;
+    border-radius: 4px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .status-banner.pending {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .status-banner .sb-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #166534;
+  }
+  .status-banner.pending .sb-label { color: #991b1b; }
+  .status-banner .sb-date {
+    font-size: 10.5px;
+    color: #4b5563;
+  }
+
+  .items-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #00378c;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 4px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #00378c;
+  }
+
+  /* Dark navy table header — matches Stock Summary */
+  table.adj-items-table thead th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    padding: 7px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: left;
+    border-top: 1px solid #002a6b;
+    border-bottom: 1px solid #002a6b;
+    white-space: nowrap;
+    box-shadow: inset 0 0 0 1000px #00378c;
+  }
+  table.adj-items-table thead th.c-center,
+  table.adj-items-table thead th.c-num { text-align: center; }
+  table.adj-items-table tbody td {
+    padding: 6px;
+    font-size: 10.5px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  table.adj-items-table .item-row td { background: #fff; }
+  .c-num { text-align: center; color: #64748b; width: 26px; }
+  .c-center { text-align: center; }
+  .c-right { text-align: right; font-variant-numeric: tabular-nums; }
+  .c-prod { min-width: 120px; }
+  .prod-code { display: block; font-weight: 700; color: #0f172a; }
+  .prod-name { display: block; font-size: 9.5px; color: #64748b; margin-top: 1px; }
+  .adj-type-pill {
+    display: inline-block;
+    padding: 1.5px 7px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 1.5px 8px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .status-pill.confirmed {
+    background: #f0fdf4;
+    color: #166534;
+  }
+  table.adj-items-table .sub-row td {
+    background: #f8fafc;
+    border-top: none;
+    padding: 4px 6px 6px;
+  }
+  .sub-item {
+    display: inline-block;
+    font-size: 9.5px;
+    color: #334155;
+    margin-right: 26px;
+  }
+  .sub-label {
+    display: block;
+    font-size: 8.5px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  .remarks-box { margin-top: 14px; }
+  .remarks-text {
+    font-size: 10.5px;
+    color: #334155;
+    padding: 8px 0 0;
+    min-height: 18px;
+  }
+
+  .sign-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 24px;
+    margin-top: 28px;
+    page-break-inside: avoid;
+  }
+  .sign-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #00378c;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 22px;
+  }
+  .sign-sub {
+    font-size: 8.5px;
+    color: #94a3b8;
+    margin: 14px 0 2px;
+  }
+  .sign-line {
+    border-bottom: 1px solid #94a3b8;
+    height: 1px;
+  }
+
+  @media print {
+    .sub-row, .item-row { page-break-inside: avoid; }
+  }
+`;
+
+// ─── HTML Body Renderer ───────────────────────────────────────────────────────
+
+function renderAdjustmentBody(
   rows: ReportRow[],
   firstRow: ReportRow | null,
   adjNo: string,
   prinCode: string,
-  reportTitle: string,
-  loginId: string,
-  autoPrint: boolean
+  reportTitle: string
 ): string {
-  const printDate = dateTimeText(new Date());
-
   const r = firstRow || {};
-  const header = r;
-  const documentTitle = autoPrint
-    ? `Stock_Adjusment_${adjNo}`
-    : `${reportTitle} - ${adjNo}`;
-  const headerConfirmed = confirmedYesNo(r.header_confirmed);
-  const headerStatusClass = isConfirmed(r.header_confirmed)
-    ? "confirmed"
-    : headerConfirmed
-      ? "not-confirmed"
-      : "empty";
-
-  let bodyRows = "";
-
-  for (const row of rows) {
-    const serialNo = parseInt(text(row.adj_serialno), 10) || 0;
-    const statusText = detailStatus(row.detail_confirmed);
-    const statusClass = isConfirmed(row.detail_confirmed)
-      ? "confirmed"
-      : statusText
-        ? "not-confirmed"
-        : "empty";
-
-    bodyRows += `
-      <tbody class="item-block">
-        <tr class="main-row">
-          <td class="cell-center serial-cell">${escapeHtml(serialNo || "")}</td>
-          <td class="cell-center">${escapeHtml(text(row.site_code).trim())}</td>
-          <td>${escapeHtml(text(row.location_code).trim())}</td>
-          <td class="product-code">${escapeHtml(text(row.prod_code).trim())}</td>
-          <td>${escapeHtml(text(row.job_no).trim())}</td>
-          <td>${escapeHtml(text(row.lot_no).trim())}</td>
-          <td>${escapeHtml(text(row.doc_ref).trim())}</td>
-          <td class="cell-center adj-type">${escapeHtml(text(row.adj_type).trim())}</td>
-          <td class="cell-center">${escapeHtml(text(row.p_uom).trim())}</td>
-          <td class="cell-number">${escapeHtml(quantityText(row.qty_puom))}</td>
-          <td class="cell-center">${escapeHtml(text(row.l_uom).trim())}</td>
-          <td class="cell-number">${escapeHtml(quantityText(row.qty_luom))}</td>
-        </tr>
-
-        <tr class="description-row">
-          <td></td>
-          <td colspan="2"></td>
-          <td colspan="5" class="product-name">
-            ${escapeHtml(text(row.prod_name).trim())}
-          </td>
-          <td colspan="4" class="status-cell">
-            <span class="detail-label-inline">Status</span>
-            <span class="status-pill ${statusClass}">${escapeHtml(statusText)}</span>
-          </td>
-        </tr>
-
-        <tr class="detail-row">
-          <td></td>
-          <td colspan="2" class="detail-label">Country of Origin</td>
-          <td colspan="9" class="detail-value">${escapeHtml(countryDisplay(row))}</td>
-        </tr>
-
-        <tr class="detail-row item-last-row">
-          <td></td>
-          <td colspan="2" class="detail-label">Manufacturer</td>
-          <td colspan="9" class="detail-value">${escapeHtml(manufacturerDisplay(row))}</td>
-        </tr>
-      </tbody>`;
-  }
-
-  if (!bodyRows) {
-    bodyRows = `
-      <tbody>
-        <tr class="empty-row">
-          <td colspan="12">No adjustment details found.</td>
-        </tr>
-      </tbody>`;
-  }
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${escapeHtml(documentTitle)}</title>
-  <style>
-    :root {
-      --navy: #1f3e64;
-      --navy-dark: #162f4f;
-      --navy-soft: #eef3f8;
-      --ink: #111827;
-      --muted: #64748b;
-      --line: #d7dee8;
-      --line-strong: #b8c4d2;
-      --paper: #ffffff;
-      --canvas: #eef2f7;
-      --success-bg: #e8f5ee;
-      --success-text: #17603a;
-      --danger-bg: #fdecec;
-      --danger-text: #a83232;
-    }
-
-    @page {
-      size: A4 landscape;
-      margin: 8mm 10mm;
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 11px;
-      line-height: 1.35;
-      color: var(--ink);
-      background: var(--canvas);
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 12px auto;
-      padding: 9mm 10mm 8mm;
-      background: var(--paper);
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-    }
-
-    .report-title {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 38px;
-      padding: 8px 16px;
-      color: #ffffff;
-      background: var(--navy);
-      border-radius: 3px;
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .report-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      min-height: 28px;
-      padding: 5px 2px 6px;
-      color: var(--muted);
-      font-size: 9.5px;
-      border-bottom: 1px solid #edf1f5;
-    }
-
-    .report-meta strong {
-      color: var(--ink);
-      font-weight: 700;
-    }
-
-    .header-panel {
-      display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(190px, 0.75fr) minmax(190px, 0.8fr);
-      gap: 18px;
-      margin: 8px 0 10px;
-      padding: 9px 12px;
-      background: #f8fafc;
-      border: 1px solid #e1e7ef;
-      border-left: 4px solid var(--navy);
-      border-radius: 3px;
-    }
-
-    .header-column {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .info-row {
-      display: grid;
-      grid-template-columns: 104px minmax(0, 1fr);
-      align-items: baseline;
-      gap: 7px;
-      min-height: 18px;
-    }
-
-    .header-column.compact .info-row {
-      grid-template-columns: 72px minmax(0, 1fr);
-    }
-
-    .info-label {
-      color: var(--muted);
-      font-size: 10px;
-      white-space: nowrap;
-    }
-
-    .info-label::after {
-      content: ":";
-    }
-
-    .info-value {
-      min-width: 0;
-      color: var(--ink);
-      font-size: 10.5px;
-      font-weight: 700;
-      overflow-wrap: anywhere;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 19px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 9.5px;
-      font-weight: 700;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .status-pill.confirmed {
-      color: var(--success-text);
-      background: var(--success-bg);
-      border: 1px solid #c8e7d5;
-    }
-
-    .status-pill.not-confirmed {
-      color: var(--danger-text);
-      background: var(--danger-bg);
-      border: 1px solid #f1caca;
-    }
-
-    .status-pill.empty {
-      min-width: 0;
-      padding: 0;
-      border: 0;
-      background: transparent;
-    }
-
-    .table-frame {
-      border: 1px solid var(--line-strong);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    table.report-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    thead th {
-      color: #ffffff;
-      font-weight: 700;
-      text-align: center;
-      vertical-align: middle;
-      border-right: 1px solid rgba(255,255,255,0.16);
-    }
-
-    thead th:last-child {
-      border-right: 0;
-    }
-
-    thead tr.header-main th {
-      padding: 6px 5px;
-      background: var(--navy);
-      font-size: 9px;
-      line-height: 1.15;
-    }
-
-    thead tr.header-sub th {
-      padding: 5px;
-      color: #e7edf5;
-      background: var(--navy-dark);
-      font-size: 8.5px;
-      line-height: 1.1;
-    }
-
-    tbody.item-block + tbody.item-block .main-row td {
-      border-top: 2px solid var(--line-strong);
-    }
-
-    tbody td {
-      padding: 5px 6px;
-      color: #263445;
-      font-size: 9.6px;
-      vertical-align: middle;
-      border-right: 1px solid #e3e8ef;
-      border-bottom: 1px solid #e3e8ef;
-      overflow-wrap: anywhere;
-    }
-
-    tbody td:last-child {
-      border-right: 0;
-    }
-
-    .main-row td {
-      min-height: 25px;
-      background: #ffffff;
-    }
-
-    .serial-cell,
-    .product-code,
-    .adj-type,
-    .cell-number {
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .cell-center {
-      text-align: center;
-    }
-
-    .cell-number {
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .description-row td {
-      padding-top: 5px;
-      padding-bottom: 5px;
-      background: #f6f8fb;
-    }
-
-    .product-name {
-      color: #263445;
-      font-weight: 600;
-    }
-
-    .status-cell {
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    .detail-label-inline {
-      margin-right: 7px;
-      color: var(--ink);
-      font-size: 9.5px;
-      font-weight: 700;
-    }
-
-    .detail-label-inline::after {
-      content: ":";
-    }
-
-    .detail-row td {
-      padding-top: 4px;
-      padding-bottom: 4px;
-      background: #fbfcfd;
-      border-right: 0;
-      border-bottom: 0;
-    }
-
-    .detail-label {
-      color: #334155;
-      font-size: 9.3px;
-      font-weight: 700;
-    }
-
-    .detail-label::after {
-      content: ":";
-    }
-
-    .detail-value {
-      color: #475569;
-      font-size: 9.3px;
-    }
-
-    .item-last-row td {
-      border-bottom: 0;
-    }
-
-    .empty-row td {
-      padding: 18px;
-      color: var(--muted);
-      text-align: center;
-      font-style: italic;
-    }
-
-    .report-ending {
-      margin-top: 10px;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .end-title {
-      position: relative;
-      padding: 9px 0 5px;
-      color: var(--ink);
-      font-size: 11px;
-      font-weight: 800;
-      text-align: center;
-      border-top: 1px solid var(--line-strong);
-    }
-
-    .end-title::before {
-      content: "";
-      display: block;
-      margin-bottom: 8px;
-      border-top: 1px solid var(--line-strong);
-    }
-
-    .signature-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 52px;
-      margin-top: 25px;
-    }
-
-    .signature-box {
-      min-height: 72px;
-      font-size: 10px;
-    }
-
-    .signature-role {
-      margin-bottom: 13px;
-      color: var(--ink);
-      font-weight: 700;
-    }
-
-    .signature-line {
-      display: grid;
-      grid-template-columns: 54px minmax(0, 1fr);
-      align-items: end;
-      gap: 6px;
-      margin-top: 7px;
-      color: #334155;
-    }
-
-    .signature-blank {
-      height: 13px;
-      border-bottom: 1px solid #9aa8b8;
-    }
-
-    .rpt-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-top: 24px;
-      padding-top: 7px;
-      border-top: 1px solid var(--line);
-      color: #64748b;
-      font-size: 9px;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .rpt-footer code {
-      color: #334155;
-      font-family: "Courier New", monospace;
-      font-size: 9px;
-      font-weight: 600;
-    }
-
-    @media screen and (max-width: 1100px) {
-      .sheet {
-        width: calc(100% - 20px);
-        min-width: 980px;
-      }
-    }
-
-    @media print {
-      body {
-        background: #ffffff;
-      }
-
-      .sheet {
-        width: auto;
-        min-height: auto;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        box-shadow: none;
-      }
-
-      .report-title,
-      thead tr.header-main th,
-      thead tr.header-sub th {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      thead {
-        display: table-header-group;
-      }
-
-      tbody.item-block {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-
-      .header-panel,
-      .report-ending,
-      .signature-grid {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-    <header>
-      <div class="report-title">${escapeHtml(reportTitle)}</div>
-
-      <div class="report-meta">
-        <div>
-          Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong>
-          &nbsp;&nbsp;&nbsp;
-          Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong>
-        </div>
-        <div>Page&nbsp;<strong>1</strong>&nbsp;of&nbsp;<strong>1</strong></div>
-      </div>
-
-      <section class="header-panel">
-        <div class="header-column">
-          <div class="info-row">
-            <span class="info-label">Principal</span>
-            <span class="info-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Adjustment No.</span>
-            <span class="info-value">${escapeHtml(text(r.adj_no).trim() || adjNo)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Adjustment Reason</span>
-            <span class="info-value">${escapeHtml(text(r.adj_code).trim())}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Remarks</span>
-            <span class="info-value">${escapeHtml(text(r.remarks).trim())}</span>
-          </div>
-        </div>
-
-        <div class="header-column compact">
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
-          </div>
-        </div>
-
-        <div class="header-column compact">
-          <div class="info-row">
-            <span class="info-label">Confirmed</span>
-            <span class="info-value">
-              <span class="status-pill ${headerStatusClass}">${escapeHtml(headerConfirmed)}</span>
-            </span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
-          </div>
-        </div>
-      </section>
-    </header>
-
-    <div class="table-frame">
-      <table class="report-table">
-        <colgroup>
-          <col style="width: 4%" />
-          <col style="width: 5%" />
-          <col style="width: 11%" />
-          <col style="width: 22%" />
-          <col style="width: 9%" />
-          <col style="width: 12%" />
-          <col style="width: 12%" />
-          <col style="width: 5%" />
-          <col style="width: 5%" />
-          <col style="width: 5%" />
-          <col style="width: 5%" />
-          <col style="width: 5%" />
-        </colgroup>
-
-        <thead>
-          <tr class="header-main">
-            <th rowspan="2">No.</th>
-            <th rowspan="2">Site</th>
-            <th rowspan="2">Location</th>
-            <th>Product Code</th>
-            <th rowspan="2">Job No</th>
-            <th rowspan="2">Lot No</th>
-            <th rowspan="2">Doc Ref</th>
-            <th rowspan="2">Adj<br/>Type</th>
-            <th colspan="4">Quantity</th>
-          </tr>
-          <tr class="header-sub">
-            <th>Name</th>
-            <th>UOM</th>
-            <th>Qty1</th>
-            <th>UOM</th>
-            <th>Qty2</th>
-          </tr>
-        </thead>
-
-        ${bodyRows}
-      </table>
+  const headerConfirmed = isConfirmed(r.header_confirmed);
+  const headerConfirmedText = confirmedYesNo(r.header_confirmed);
+
+  const field = (label: string, value: unknown) => `
+    <div class="field-row">
+      <span class="f-label">${escapeHtml(label)}</span>
+      <span class="f-value">${escapeHtml(value) || '<span class="nil">—</span>'}</span>
+    </div>`;
+
+  const detailRows = rows.map((d, i) => {
+    const confirmed = isConfirmed(d.detail_confirmed);
+    const statusText = detailStatus(d.detail_confirmed);
+    const statusClass = confirmed ? "confirmed" : statusText ? "not-confirmed" : "empty";
+
+    return `
+    <tr class="item-row">
+      <td class="c-num">${i + 1}</td>
+      <td>${escapeHtml(text(d.site_code).trim())}</td>
+      <td>${escapeHtml(text(d.location_code).trim())}</td>
+      <td class="c-prod">
+        <span class="prod-code">${escapeHtml(text(d.prod_code).trim())}</span>
+        <span class="prod-name">${escapeHtml(text(d.prod_name).trim())}</span>
+      </td>
+      <td>${escapeHtml(text(d.job_no).trim())}</td>
+      <td>${escapeHtml(text(d.lot_no).trim())}</td>
+      <td>${escapeHtml(text(d.doc_ref).trim())}</td>
+      <td class="c-center"><span class="adj-type-pill">${escapeHtml(text(d.adj_type).trim())}</span></td>
+      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_puom))}</td>
+      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_luom))}</td>
+      <td class="c-center">
+        <span class="status-pill${confirmed ? " confirmed" : ""}">${escapeHtml(statusText)}</span>
+      </td>
+    </tr>
+    <tr class="sub-row">
+      <td></td>
+      <td colspan="10">
+        <span class="sub-item"><span class="sub-label">Country of Origin</span>${escapeHtml(countryDisplay(d))}</span>
+        <span class="sub-item"><span class="sub-label">Manufacturer</span>${escapeHtml(manufacturerDisplay(d))}</span>
+      </td>
+    </tr>`;
+  }).join("");
+
+  const signBlock = (label: string) => `
+    <div class="sign-col">
+      <div class="sign-label">${escapeHtml(label)}</div>
+      <div class="sign-line"></div>
+      <div class="sign-sub">Date</div>
+      <div class="sign-line"></div>
+      <div class="sign-sub">Signature</div>
+      <div class="sign-line"></div>
+    </div>`;
+
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
-    <section class="report-ending">
-      <div class="end-title">End of Report</div>
-
-      <div class="signature-grid">
-        <div class="signature-box">
-          <div class="signature-role">Prepared by</div>
-          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
-        </div>
-
-        <div class="signature-box">
-          <div class="signature-role">Checked by</div>
-          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
-        </div>
-
-        <div class="signature-box">
-          <div class="signature-role">Supervised by</div>
-          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
-          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
-        </div>
+    <div class="section-label">Adjustment Information</div>
+    <div class="two-col">
+      <div>
+        ${field("Principal",          text(r.prin_code).trim() || prinCode)}
+        ${field("Adjustment No",      text(r.adj_no).trim() || adjNo)}
+        ${field("Adjustment Date",    dateText(r.adj_date))}
       </div>
-    </section>
-
-    <div class="rpt-footer">
-      <span>Object: <code>${escapeHtml(header.company_code)}-${escapeHtml(header.adj_no)}</code></span>
-      <span>Powered by Bayanat Technology</span>
+      <div>
+        ${field("Adjustment Reason",  text(r.adj_code).trim())}
+        ${field("Confirmed",          headerConfirmedText)}
+        ${field("Confirmed Date",     r.confirmed_date ? dateText(r.confirmed_date) : "—")}
+      </div>
     </div>
-  </main>
 
-  <script>
-    window.addEventListener("message", (event) => {
-      if (event.data === "print") window.print();
-    });
+    <div class="status-banner${headerConfirmed ? "" : " pending"}">
+      <span class="sb-label">${headerConfirmed ? "Adjustment Confirmed" : "Confirmation Pending"}</span>
+      <span class="sb-date">${headerConfirmed ? escapeHtml(dateText(r.confirmed_date)) : ""}</span>
+    </div>
 
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+    <div class="items-title">Adjustment Items</div>
+    <table class="data-table adj-items-table">
+      <thead>
+        <tr>
+          <th class="c-num">No.</th>
+          <th>Site</th>
+          <th>Location</th>
+          <th>Product</th>
+          <th>Job No</th>
+          <th>Lot No</th>
+          <th>Doc Ref</th>
+          <th class="c-center">Adj Type</th>
+          <th class="c-center">Qty (P.UOM)</th>
+          <th class="c-center">Qty (L.UOM)</th>
+          <th class="c-center">Status</th>
+        </tr>
+      </thead>
+      <tbody>${detailRows}</tbody>
+    </table>
+
+    <div class="remarks-box">
+      <div class="section-label">Remarks</div>
+      <div class="remarks-text">${escapeHtml(text(r.remarks).trim()) || '<span class="nil">—</span>'}</div>
+    </div>
+
+    <div class="sign-block">
+      ${signBlock("Prepared By")}
+      ${signBlock("Checked By")}
+      ${signBlock("Supervised By")}
+    </div>
+
+    <script>
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
+  `;
 }
 
-// ─── Excel builder ─────────────────────────────────────────────────────────────
+// ─── Excel builder (navy theme — matches Stock Summary) ───────────────────────
 
 const STYLE_ID = {
   default:        0,
   header:         1,
-  sectionGroup:   2,
-  sectionProduct: 3,
-  label:          4,
-  value:          5,
-  totalProduct:   6,
-  totalGroup:     7,
-  totalGrand:     8,
-  numValue:       9,
-  numTotal:      10,
-  numGrand:      11,
-  numShort:      12,
-  numExcess:     13,
+  sectionTitle:   2,
+  label:          3,
+  value:          4,
+  tableHeader:    5,
+  tableSubHeader: 6,
+  cellConfirmed:  7,
+  cellPending:    8,
+  cellPlain:      9,
+  subInfo:        10,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
 
-interface XlCell {
-  v: unknown;
-  s: number;
-}
+interface XlCell { v: unknown; s: number }
 
 function xc(v: unknown, style: StyleKey): XlCell {
-  return {
-    v,
-    s: STYLE_ID[style],
-  };
+  return { v, s: STYLE_ID[style] };
 }
 
 function buildExcelBuffer(
@@ -906,132 +583,110 @@ function buildExcelBuffer(
   prinCode: string
 ): Buffer {
   const NCOLS = 12;
-
-  type Row = (XlCell | null)[];
-
   const skip = null;
-  const rows: Row[] = [];
   const r = firstRow || {};
 
-  // ── Title ────────────────────────────────────────────────────────────────
+  type Row = (XlCell | null)[];
+  const rows: Row[] = [];
 
-  rows.push([
-    xc("Entry List", "header"),
-    ...Array(NCOLS - 1).fill(skip),
-  ]);
-
+  // Title
+  rows.push([xc(`Stock Adjustment Report — Adj No ${text(r.adj_no) || adjNo}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Adjustment header ────────────────────────────────────────────────────
+  // Adjustment Information section
+  rows.push([xc("ADJUSTMENT INFORMATION", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
 
-  rows.push([
-    xc("Principal", "label"),
-    xc(principalDisplay(r, prinCode), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Adjustment No.", "label"),
-    xc(text(r.adj_no) || adjNo, "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Date", "label"),
-    xc(dateTimeText(r.adj_date), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Confirmed", "label"),
-    xc(confirmedYesNo(r.header_confirmed), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Confirmed Date", "label"),
-    xc(dateTimeText(r.confirmed_date), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Adjustment Reason", "label"),
-    xc(text(r.adj_code).trim(), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-  rows.push([
-    xc("Remarks", "label"),
-    xc(text(r.remarks).trim(), "value"),
-    ...Array(NCOLS - 2).fill(skip),
-  ]);
-
+  const headerConfirmed = isConfirmed(r.header_confirmed);
+  const leftInfo: [string, unknown][] = [
+    ["Principal",         principalDisplay(r, prinCode)],
+    ["Adjustment No",     text(r.adj_no).trim() || adjNo],
+    ["Adjustment Reason", text(r.adj_code).trim()],
+  ];
+  const rightInfo: [string, unknown][] = [
+    ["Date",            dateText(r.adj_date)],
+    ["Confirmed",       confirmedYesNo(r.header_confirmed)],
+    ["Confirmed Date",  r.confirmed_date ? dateText(r.confirmed_date) : "—"],
+  ];
+  for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
+    const [ll, lv] = leftInfo[i]  ?? ["", ""];
+    const [rl, rv] = rightInfo[i] ?? ["", ""];
+    rows.push([
+      xc(ll, "label"), xc(lv, "value"),
+      xc("", "default"),
+      xc(rl, "label"), xc(rv, "value"),
+      skip, skip, skip, skip, skip, skip, skip,
+    ]);
+  }
+  rows.push([xc("Remarks", "label"), xc(text(r.remarks).trim(), "value"), ...Array(NCOLS - 2).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Column headers ───────────────────────────────────────────────────────
+  // Items section
+  rows.push([xc("ADJUSTMENT ITEMS", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
 
+  // Table header - two rows
   rows.push([
-    xc("No.", "header"),
-    xc("Site", "header"),
-    xc("Location", "header"),
-    xc("Product Code / Name", "header"),
-    xc("Job No", "header"),
-    xc("Lot No", "header"),
-    xc("Doc Ref", "header"),
-    xc("Adj Type", "header"),
-    xc("UOM", "header"),
-    xc("Qty1", "header"),
-    xc("UOM", "header"),
-    xc("Qty2", "header"),
+    xc("No.", "tableHeader"),
+    xc("Site", "tableHeader"),
+    xc("Location", "tableHeader"),
+    xc("Product Code", "tableHeader"),
+    xc("Job No", "tableHeader"),
+    xc("Lot No", "tableHeader"),
+    xc("Doc Ref", "tableHeader"),
+    xc("Adj Type", "tableHeader"),
+    xc("Qty PUOM", "tableHeader"),
+    xc("Qty1", "tableHeader"),
+    xc("Qty LUOM", "tableHeader"),
+    xc("Qty2", "tableHeader"),
   ]);
 
-  // ── Adjustment detail rows ───────────────────────────────────────────────
-
-  for (const row of reportRows) {
-    const productText = text(row.prod_name)
-      ? `${text(row.prod_code)} | ${text(row.prod_name)}`
-      : text(row.prod_code) || "—";
-
+  // Data rows
+  for (const d of reportRows) {
+    const confirmed = isConfirmed(d.detail_confirmed);
+    const cellStyle: StyleKey = confirmed ? "cellConfirmed" : "cellPending";
     rows.push([
-      xc(parseInt(text(row.adj_serialno), 10) || "", "numValue"),
-      xc(text(row.site_code) || "", "value"),
-      xc(text(row.location_code) || "", "value"),
-      xc(productText, "value"),
-      xc(text(row.job_no) || "", "value"),
-      xc(text(row.lot_no) || "", "value"),
-      xc(text(row.doc_ref) || "", "value"),
-      xc(text(row.adj_type) || "", "value"),
-      xc(text(row.p_uom) || "", "value"),
-      xc(Number(row.qty_puom) || 0, "numValue"),
-      xc(text(row.l_uom) || "", "value"),
-      xc(Number(row.qty_luom) || 0, "numValue"),
+      xc(parseInt(text(d.adj_serialno), 10) || "", cellStyle),
+      xc(text(d.site_code).trim(), cellStyle),
+      xc(text(d.location_code).trim(), cellStyle),
+      xc(text(d.prod_code).trim(), cellStyle),
+      xc(text(d.job_no).trim(), cellStyle),
+      xc(text(d.lot_no).trim(), cellStyle),
+      xc(text(d.doc_ref).trim(), cellStyle),
+      xc(text(d.adj_type).trim(), cellStyle),
+      xc(text(d.p_uom).trim(), cellStyle),
+      xc(Number(d.qty_puom) || 0, cellStyle),
+      xc(text(d.l_uom).trim(), cellStyle),
+      xc(Number(d.qty_luom) || 0, cellStyle),
     ]);
-
+    // Sub-row: product name + status
     rows.push([
-      xc("Country Of Origin", "label"),
-      xc(countryDisplay(row), "default"),
-      ...Array(6).fill(skip),
-      xc("Status", "label"),
-      xc(detailStatus(row.detail_confirmed), "default"),
-      skip,
-      skip,
+      xc("", "subInfo"),
+      xc("", "subInfo"),
+      xc("", "subInfo"),
+      xc(text(d.prod_name).trim(), "subInfo"),
+      xc("Status:", "subInfo"),
+      xc(detailStatus(d.detail_confirmed), "subInfo"),
+      skip, skip, skip, skip, skip, skip,
     ]);
-
+    // Country / Manufacturer
     rows.push([
-      xc("Manufacturer", "label"),
-      xc(text(row.manu_code) || "", "default"),
-      xc(text(row.manu_name) || "", "default"),
-      ...Array(NCOLS - 3).fill(skip),
+      xc("", "subInfo"),
+      xc("Country of Origin", "subInfo"),
+      xc(countryDisplay(d), "subInfo"),
+      xc("Manufacturer", "subInfo"),
+      xc(manufacturerDisplay(d), "subInfo"),
+      skip, skip, skip, skip, skip, skip, skip,
     ]);
   }
 
   if (reportRows.length === 0) {
-    rows.push([
-      xc("No adjustment details found.", "value"),
-      ...Array(NCOLS - 1).fill(skip),
-    ]);
+    rows.push([xc("No adjustment details found.", "value"), ...Array(NCOLS - 1).fill(skip)]);
   }
 
-  const COL_WIDTHS = [6, 8, 13, 34, 15, 18, 19, 10, 9, 10, 9, 10];
+  const COL_WIDTHS = [5, 7, 12, 12, 12, 13, 13, 8, 6, 8, 6, 8];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Merge ranges
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -1083,25 +738,23 @@ function buildExcelBuffer(
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="8">
+  <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FF16A34A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8ECF2"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD5DCE8"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF2F2"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
-  <borders count="3">
+  <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
       <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
@@ -1109,27 +762,25 @@ function buildExcelBuffer(
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF1E3A5F"/></left><right style="thin"><color rgb="FF1E3A5F"/></right>
-      <top style="thin"><color rgb="FF1E3A5F"/></top><bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
+      <left style="thin"><color rgb="FF002A6B"/></left><right style="thin"><color rgb="FF002A6B"/></right>
+      <top style="thin"><color rgb="FF002A6B"/></top><bottom style="thin"><color rgb="FF002A6B"/></bottom>
       <diagonal/>
     </border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF00378C"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="14">
+  <cellXfs count="11">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1137,7 +788,7 @@ function buildExcelBuffer(
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Entry List" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="Stock Adjustment" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1171,28 +822,19 @@ function buildExcelBuffer(
 }
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
+
 export const getStockAdjusmentReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-     const adjNo = getAdjustmentNo(req);
+    const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
-    const reportTitle = text(req.query.title) || "Entry List";
+    const reportTitle = text(req.query.title) || "Stock Adjustment Report";
     const autoPrint = req.query.print === "true";
 
-    console.log("Stock Adjustment", {
-      adjNo,
-      prinCode,
-      params: req.params,
-      query: req.query,
-    });
-
     if (!adjNo || !prinCode) {
-      res.status(400).json({
-        success: false,
-        message: "adj_no and prin_code are required",
-      });
+      res.status(400).json({ success: false, message: "adj_no and prin_code are required" });
       return;
     }
 
@@ -1207,23 +849,32 @@ export const getStockAdjusmentReportHtml = async (
     }
 
     const first = rows[0] ?? null;
+    const loginId = text(req.user?.loginid);
+    const companyCode = text(req.user?.company_code);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAdjustmentBody(rows, first, adjNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_stock_adjustment",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(companyCode)}-${escapeHtml(adjNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `${reportTitle} - ${adjNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_ADJUSTMENT_EXTRA_CSS,
+      autoPrint,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-
-    res.send(
-      renderHtml(
-        rows,
-        first,
-        adjNo,
-        prinCode,
-        reportTitle,
-        text(req.user?.loginid),
-        autoPrint
-      )
-    );
+    res.send(html);
   } catch (error: any) {
-    console.error("Adjustment HTML error:", error);
-
+    console.error("Stock Adjustment HTML error:", error);
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate report",
@@ -1239,18 +890,8 @@ export const getStockAdjusmentReportPdf = async (
     const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    console.log("Stock Adjustment PDF parameters:", {
-      adjNo,
-      prinCode,
-      params: req.params,
-      query: req.query,
-    });
-
     if (!adjNo || !prinCode) {
-      res.status(400).json({
-        success: false,
-        message: "adj_no and prin_code are required",
-      });
+      res.status(400).json({ success: false, message: "adj_no and prin_code are required" });
       return;
     }
 
@@ -1265,28 +906,34 @@ export const getStockAdjusmentReportPdf = async (
     }
 
     const first = rows[0] ?? null;
-    const reportTitle = "Entry List";
+    const reportTitle = "Stock Adjustment Report";
+    const loginId = text(req.user?.loginid);
+    const companyCode = text(req.user?.company_code);
 
-    const html = renderHtml(
-      rows,
-      first,
-      adjNo,
-      prinCode,
-      reportTitle,
-      text(req.user?.loginid),
-      true
-    );
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAdjustmentBody(rows, first, adjNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_stock_adjustment",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(companyCode)}-${escapeHtml(adjNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `Stock_Adjusment_${adjNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_ADJUSTMENT_EXTRA_CSS,
+      autoPrint: true,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="Stock_Adjusment_${adjNo}.pdf"`
-    );
-
+    res.setHeader("Content-Disposition", `inline; filename="Stock_Adjusment_${adjNo}.pdf"`);
     res.send(html);
   } catch (error: any) {
-    console.error("Adjustment PDF error:", error);
-
+    console.error("Stock Adjustment PDF error:", error);
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate PDF",
@@ -1302,22 +949,11 @@ export const exportStockAdjusmentReportExcel = async (
     const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    console.log("Stock Adjustment Excel parameters:", {
-      adjNo,
-      prinCode,
-      params: req.params,
-      query: req.query,
-    });
-
     if (!adjNo || !prinCode) {
-      res.status(400).json({
-        success: false,
-        message: "adj_no and prin_code are required",
-      });
+      res.status(400).json({ success: false, message: "adj_no and prin_code are required" });
       return;
     }
 
-  
     const rows = await loadAdjustmentData(req, prinCode, adjNo);
 
     if (!rows.length) {
@@ -1335,20 +971,16 @@ export const exportStockAdjusmentReportExcel = async (
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="Stock_Adjusment_${adjNo}.xlsx"`
     );
-
     res.end(buffer);
   } catch (error: any) {
-    console.error("Adjustment Excel error:", error);
-
+    console.error("Stock Adjustment Excel error:", error);
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate Excel",
     });
   }
 };
-

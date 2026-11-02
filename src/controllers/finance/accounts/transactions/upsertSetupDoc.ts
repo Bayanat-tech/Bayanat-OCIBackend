@@ -44,6 +44,18 @@ export const upsertSetupDoc = async (
 
     connection = await TenantManager.getConnection(tenantId);
 
+    const toStr = (v: any): string | null => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      return s.length > 0 ? s : null;
+    };
+
+    const toNum = (v: any): number | null => {
+      if (v === undefined || v === null || v === "") return null;
+      const n = Number(v);
+      return isNaN(n) ? null : n;
+    };
+
     await connection.execute(
       `
       BEGIN
@@ -54,29 +66,29 @@ export const upsertSetupDoc = async (
         p_data: {
           type: "TR_AC_SETUP_DOC_OBJ",
           val: {
-            COMPANY_CODE: data.company_code,
-            DOC_ID: data.doc_id,
-            DOC_SHORTNAME: data.doc_shortname,
-            DOC_NAME: data.doc_name,
-            DOC_OBJECT: data.doc_object,
-            SEQ_NO: data.seq_no,
-            DEFAULT_H_AC: data.default_h_ac,
-            DEFAULT_D_AC: data.default_d_ac,
-            DEFAULT_SIGN: data.default_sign,
-            SIGN_EDITABLE: data.sign_editable,
-            LAST_DOC_NO: data.last_doc_no,
-            PREPARED: data.prepared,
-            VERIFIED: data.verified,
-            APPROVED: data.approved,
-            RECEIVED: data.received,
-            BACK_DATE: data.back_date,
-            PRIN_ON_SAVE: data.prin_on_save,
-            DEFAULT_DIV_CODE: data.default_div_code,
-            TRANS_TYPE: data.trans_type,
-            DOC_CODE: data.doc_code,
-            DOCNO_PREFIX: data.docno_prefix,
-            DEFAULT_H_CODE_CO: data.default_h_code_co,
-            CURR_CODE: data.curr_code
+            COMPANY_CODE: toStr(data.company_code),
+            DOC_ID: toStr(data.doc_id),
+            DOC_SHORTNAME: toStr(data.doc_shortname),
+            DOC_NAME: toStr(data.doc_name),
+            DOC_OBJECT: toStr(data.doc_object),
+            SEQ_NO: toStr(data.seq_no),
+            DEFAULT_H_AC: toStr(data.default_h_ac),
+            DEFAULT_D_AC: toStr(data.default_d_ac),
+            DEFAULT_SIGN: toNum(data.default_sign) ?? 1,
+            SIGN_EDITABLE: toStr(data.sign_editable) ?? "Y",
+            LAST_DOC_NO: toNum(data.last_doc_no),
+            PREPARED: toStr(data.prepared),
+            VERIFIED: toStr(data.verified),
+            APPROVED: toStr(data.approved),
+            RECEIVED: toStr(data.received),
+            BACK_DATE: toNum(data.back_date) ?? 0,
+            PRIN_ON_SAVE: toStr(data.prin_on_save) ?? "N",
+            DEFAULT_DIV_CODE: toStr(data.default_div_code),
+            TRANS_TYPE: toStr(data.trans_type),
+            DOC_CODE: toStr(data.doc_code),
+            DOCNO_PREFIX: toStr(data.docno_prefix),
+            DEFAULT_H_CODE_CO: toStr(data.default_h_code_co),
+            CURR_CODE: toStr(data.curr_code)
           }
         }
       }

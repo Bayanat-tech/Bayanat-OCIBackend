@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {
   S3Client,
   PutObjectCommand,
@@ -476,3 +477,23 @@ export const amlsUploadToS3 = async (req: any, res: any) => {
     });
   }
 }
+
+/** Upload a report-compatible company logo; company save stores the returned URL. */
+export const uploadCompanyLogo = async (req: any, res: any) => {
+  const file = req.file;
+  const png = file?.buffer?.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+  const jpg = file?.buffer?.[0] === 255 && file?.buffer?.[1] === 216 && file?.buffer?.[2] === 255;
+  if (!file || file.size > 2 * 1024 * 1024 || !(png && file.mimetype === "image/png" || jpg && file.mimetype === "image/jpeg")) {
+    return res.status(400).json({ success: false, message: "Select a PNG or JPEG logo up to 2 MB." });
+  }
+  const key = "CompanyLogos/" + randomUUID() + (png ? ".png" : ".jpg");
+  const url = constants.OCI_S3_COMPATIBILITY.getObjectUrl(key);
+  if (Buffer.byteLength(url, "utf8") > 225) return res.status(400).json({ success: false, message: "Configured logo URL exceeds the company logo column limit." });
+  try {
+    await s3Client.send(new PutObjectCommand({ Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME, Key: key, Body: file.buffer, ContentType: png ? "image/png" : "image/jpeg" }));
+    return res.json({ success: true, data: url });
+  } catch (error) {
+    logger.error("Company logo upload failed", error);
+    return res.status(500).json({ success: false, message: "Unable to upload company logo. Please retry." });
+  }
+};

@@ -376,19 +376,19 @@ export const insUpdTtePGrnBulk = async (
 
 
       TX_COMPNT_1_EXPMT:
-        String(header.tx_compnt_1_expmt ?? "S"),
+        String(header.tx_compnt_1_expmt ?? ""),
 
 
       TX_COMPNT_2_EXPMT:
-        String(header.tx_compnt_2_expmt ?? "S"),
+        String(header.tx_compnt_2_expmt ?? ""),
 
 
       TX_COMPNT_3_EXPMT:
-        String(header.tx_compnt_3_expmt ?? "S"),
+        String(header.tx_compnt_3_expmt ?? ""),
 
 
       TX_COMPNT_4_EXPMT:
-        String(header.tx_compnt_4_expmt ?? "S"),
+        String(header.tx_compnt_4_expmt ?? ""),
 
 
       APPROVAL_LEVEL:
@@ -440,7 +440,10 @@ export const insUpdTtePGrnBulk = async (
 
 
       FLOW_CODE:
-        header.flow_code ?? "NA"
+        header.flow_code ?? "NA",
+        
+        JOB_CARD_NO :
+        header.job_card_no ?? null,
 
 
     };
@@ -729,19 +732,19 @@ export const insUpdTtePGrnBulk = async (
 
 
       TX_COMPNT_1_EXPMT:
-        String(d.tx_compnt_1_expmt ?? "S"),
+        String(d.tx_compnt_1_expmt ?? ""),
 
 
       TX_COMPNT_2_EXPMT:
-        String(d.tx_compnt_2_expmt ?? "S"),
+        String(d.tx_compnt_2_expmt ?? ""),
 
 
       TX_COMPNT_3_EXPMT:
-        String(d.tx_compnt_3_expmt ?? "S"),
+        String(d.tx_compnt_3_expmt ?? ""),
 
 
       TX_COMPNT_4_EXPMT:
-        String(d.tx_compnt_4_expmt ?? "S"),
+        String(d.tx_compnt_4_expmt ?? ""),
 
 
 
@@ -750,7 +753,9 @@ export const insUpdTtePGrnBulk = async (
 
 
       TX_COMPNT_HDISC_LCURAMT_1:
-        d.tx_compnt_hdisc_lcuramt_1 ?? 0
+        d.tx_compnt_hdisc_lcuramt_1 ?? 0,
+
+      
 
 
     }));

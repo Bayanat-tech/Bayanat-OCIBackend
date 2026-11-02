@@ -8,6 +8,7 @@ import transactionsRoutes from "../finance/accounts/transactions_finance.routes"
 import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.middleware";
 import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
+import { updPdcClearDateBulk } from "../../controllers/finance/accounts/transactions/updPdcClearDateBulk";
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import { upsertAssetSaleRegister } from "../../controllers/finance/accounts/transactions/upsertAssetSaleRegister";
 import { insUpdTrAcAssetTransferBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcAssetTransferBulk";
@@ -55,6 +56,12 @@ import { UpdHrEmployeeDetail } from "../../controllers/HR/UpdHrEmpoyeeDetail";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
+
+import { getFinanceDashboardData } from "../../controllers/finance/financeDashboard.controller";
+import { upsertMsAcBankCode } from "../../models/finance/accounts/masters/controller_bank_code";
+
+router.post("/dashboard", getFinanceDashboardData);
+router.post("/workspace/dashboard", getFinanceDashboardData);
 
 router.post(
   "/insUpdTnInvoiceBulk",
@@ -219,6 +226,14 @@ router.post(
   "/insUpdSecPayCompAc",
   insUpdSecPayCompAc)
 
+// finance
+router.post(
+  "/bankcode",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  upsertMsAcBankCode
+);
+
 router.post(
   "/insUpdBTProject",
   insUpdBTProject
@@ -250,6 +265,11 @@ router.post(
 router.post(
   "/updBankReconBulk",
   updBankReconBulk
+);
+
+router.post(
+  "/updPdcClearDateBulk",
+  updPdcClearDateBulk
 );
 
 //Define routes for finance master data

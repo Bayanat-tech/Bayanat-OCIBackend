@@ -104,6 +104,12 @@ import {
 
 // Import partner management controllers
 import {
+  createTransporter,
+  updateTransporter,
+  deleteTransporters,
+  getTransporters
+} from "../../controllers/wms/transporter_wms.controller";
+import {
   createPartner, // For creating partners
   deletePartners, // For deleting partners
   updatePartner, // For updating partners
@@ -477,6 +483,18 @@ router.post(
   "/partner/delete",
   deletePartners as unknown as express.RequestHandler
 ); // Delete partner
+
+// Transporter Routes
+router.get("/transporter", getTransporters as unknown as express.RequestHandler);
+router.post("/transporter", createTransporter as unknown as express.RequestHandler);
+router.put("/transporter", updateTransporter as unknown as express.RequestHandler);
+router.post("/transporter/delete", deleteTransporters as unknown as express.RequestHandler);
+
+// Support freight/transporter subpath
+router.get("/freight/transporter", getTransporters as unknown as express.RequestHandler);
+router.post("/freight/transporter", createTransporter as unknown as express.RequestHandler);
+router.put("/freight/transporter", updateTransporter as unknown as express.RequestHandler);
+router.post("/freight/transporter/delete", deleteTransporters as unknown as express.RequestHandler);
 
 // Billing Activity Routes
 router.post(

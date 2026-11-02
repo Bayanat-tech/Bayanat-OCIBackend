@@ -664,6 +664,16 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
         break;
       }
 
+      case "grademaster":
+      case "grade": {
+        const repo = TypeORMService.getRepository(HrGrade);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          grade_code: In(ids)
+        });
+        break;
+      }
+
       case "formaldesignation": {
         const repo = TypeORMService.getRepository(HrLabourDesignation);
         await repo.delete({
@@ -761,7 +771,8 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
     });
     return;
   } catch (error: any) {
-    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    console.error("DELETE FORMAL DESIGNATION ERROR:", error);
+    res.status(400).json({
       success: false,
       message: error.message
     });

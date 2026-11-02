@@ -83,13 +83,14 @@ export const secmoduleSchema = (data: ISecmodule) => {
 
 export const companySchema = (data: ICompanymaster) => {
   const schema = Joi.object().keys({
-    company_code: Joi.string().required(),
-    company_name: Joi.string(),
-    address1: Joi.string(),
-    address2: Joi.string(),
-    address3: Joi.string(),
-    city: Joi.string(),
-    country: Joi.string(),
+    company_code: Joi.string().max(7).required(),
+    company_name: Joi.string().max(30).allow("", null),
+    address1: Joi.string().max(50).allow("", null),
+    address2: Joi.string().max(20).allow("", null),
+    address3: Joi.string().max(20).allow("", null),
+    city: Joi.string().max(20).allow("", null),
+    company_logo: Joi.string().uri({ scheme: ["https", "http"] }).max(225).allow("", null),
+    country: Joi.string().max(5).allow("", null),
   });
   return schema.validate(data);
 };

@@ -92,13 +92,15 @@ async function withTenantTransaction<T>(
 }
 
 export async function upsertLeaveApproval(
-  data: TLeaveApproval
+  data: TLeaveApproval,
+  workflowGuard?: (connection: oracledb.Connection) => Promise<void>,
 ): Promise<{ requestNumber: string; uuid: string }> {
   // Generate UUID if not provided (for new records)
   const uuid = data.UUID || generateUUID();
   
   const { requestNumber, finalApproved } = await withTenantTransaction(
     async (connection: oracledb.Connection) => {
+      if (workflowGuard) await workflowGuard(connection);
       // For SAVEASDRAFT, try to find existing draft by UUID first
       let finalReq = data.REQUEST_NUMBER;
       

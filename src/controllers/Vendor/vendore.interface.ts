@@ -78,6 +78,7 @@ export interface HeaderTVendor {
   // ✅ New fields
   INVOICE_NUMBER?: string | null;
   INVOICE_DATE?: string | null; // or Date | string | null, depending on how you handle dates
+  ACCOUNT_DATE?: string | null; 
 }
 export interface DetailsTVendor {
   ITEM_REMARK:string;

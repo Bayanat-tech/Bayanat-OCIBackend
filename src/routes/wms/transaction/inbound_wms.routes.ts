@@ -90,7 +90,7 @@ import { getWmsInboundServiceActivityReportExcel, getWmsInboundServiceActivityRe
 import { getWmsAdjConfirmReportExcel, getWmsAdjConfirmReportHtml } from "../../../controllers/wms/reports/Adjustmentconfirmreport.controller";
 import { getWmsInvoiceDetailReportExcel, getWmsInvoiceDetailReportHtml } from "../../../controllers/wms/reports/Wmsinvoicedetailreport.controller";
 import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
-import invoice_report from "../../../controllers/wms/reports/invoice_reports/invoice_report";
+import {invoice_report_standard, invoice_report } from "../../../controllers/wms/reports/invoice_reports/invoice_report";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -293,12 +293,12 @@ router.post(
 // );
 
 // Quality Clearance routes - Handle quality clearance operations
-// router.put(
-//   "/quality_clearance",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   updateQualityclearance
-// );
+router.put(
+  "/quality_clearance",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  // updateQualityclearance
+);
 
 // Putway routes - Handle putway operations
 router.get("/putway_details/export", exportPutwayPackingItem);
@@ -359,6 +359,8 @@ router.get("/reports/AdjConfirmation_report/:adj_no/excel", getWmsAdjConfirmRepo
 // router.get("/reports/invoice-detail/html", getWmsInvoiceDetailReportHtml);
 router.get("/reports/invoice-detail/html", invoice_report);
 router.get("/reports/invoice-detail/excel", getWmsInvoiceDetailReportExcel);
+router.get("/reports/invoice-report-standard", invoice_report_standard);
+
 
 // inbound Grn Summary report
 // router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);

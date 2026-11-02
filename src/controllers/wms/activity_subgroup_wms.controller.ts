@@ -19,7 +19,9 @@ export const createActivitysubgroup = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { activity_subgroup_code, company_code, act_subgroup_name } = req.body;
+    const activity_subgroup_code = req.body.activity_subgroup_code;
+    const company_code = req.body.company_code;
+    const act_subgroup_name = req.body.act_subgroup_name || req.body.activity_subgroup_desc || activity_subgroup_code;
 
     // Check if activity subgroup already exists
     const activitySubgroupExists = await ActivitySubgroupService.findByNameAndCompany(

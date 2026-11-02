@@ -5,48 +5,35 @@ import fs from "fs";
 import path from "path";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
+import { readGstLines } from './financeGst.controller';
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../../common/report_common";
 
 type ReportRow = Record<string, any>;
 
-const REPORT_FONT_FAMILY = '"Liberation Mono", "Courier New", Consolas, monospace';
-
-function reportFontPath(fileName: string): string {
-  const srcPath = path.join(process.cwd(), "src", "assets", "report-fonts", fileName);
-  if (fs.existsSync(srcPath)) return srcPath;
-  return path.join(process.cwd(), "build", "assets", "report-fonts", fileName);
-}
-
-function fontFace(name: string, fileName: string, weight: number, style = "normal"): string {
-  const fontPath = reportFontPath(fileName);
-  if (!fs.existsSync(fontPath)) return "";
-  const data = fs.readFileSync(fontPath).toString("base64");
-  return `
-    @font-face {
-      font-family: ${name};
-      src: url("data:font/ttf;base64,${data}") format("truetype");
-      font-weight: ${weight};
-      font-style: ${style};
-      font-display: swap;
-    }`;
-}
-
-const REPORT_FONT_FACE_CSS = [
-  fontFace('"Liberation Mono"', "CAAAAA_LiberationMono.ttf", 400),
-  fontFace('"Liberation Mono"', "AAAAAA_LiberationMono-Bold.ttf", 700),
-  fontFace('"Liberation Mono"', "BAAAAA_LiberationMono-BoldItalic.ttf", 700, "italic"),
-].join("\n");
-
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
-  if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
-  if (!tenantId) throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+  if (!tenantId && req.user?.loginid)
+    tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+  if (!tenantId)
+    throw Object.assign(new Error("Unable to determine tenant database"), {
+      status: 400,
+    });
   return TenantManager.getConnection(tenantId);
 }
 
 async function closeConn(conn?: oracledb.Connection) {
-  if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+  if (conn)
+    try {
+      await conn.close();
+    } catch (e) {
+      console.warn("Close conn error:", e);
+    }
 }
 
 function normalize(rows: any[] = []): ReportRow[] {
@@ -69,18 +56,28 @@ function amount(value: unknown): number {
 }
 
 function money(value: unknown): string {
-  return amount(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return amount(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function qty(value: unknown): string {
-  return amount(value).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return amount(value).toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 }
 
 function dateText(value: unknown): string {
   if (!value) return "";
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return String(value).substring(0, 10);
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function escapeHtml(value: unknown): string {
@@ -122,94 +119,399 @@ function isPayment(docType: string): boolean {
   return ["BP", "BR", "CP", "CR"].includes(docType);
 }
 
-async function loadReportData(req: RequestWithUser, docType: string, docNo: string) {
+function resolveCompanyCode(req: RequestWithUser): string {
+  const code = text(req.user?.company_code || req.query.company_code).trim();
+  if (!code)
+    throw Object.assign(new Error("company_code is required"), {
+      status: 400,
+    });
+  return code;
+}
+
+async function loadReportData(
+  req: RequestWithUser,
+  docType: string,
+  docNo: string
+) {
   const conn = await getConn(req);
   try {
-    const companyCode = req.user?.company_code || text(req.query.company_code) || "BSG";
+    const companyCode = resolveCompanyCode(req);
+    console.log("[FinanceReport] company_code", companyCode);
+
+    // Choose the correct tables based on docType
+    const isPO = docType === "PO";
+    const headerTable = isPO ? "TR_AC_LPO_HEADER" : "TR_AC_HEADER";
+    const detailTable = isPO ? "TR_AC_LPO_DETAIL" : "TR_AC_DETAIL";
+
+    const headerSql = `
+      SELECT h.*,
+             a.ac_name
+      FROM ${headerTable} h
+      LEFT JOIN MS_ACCODES a
+             ON a.company_code = h.company_code
+            AND a.ac_code = h.ac_code
+      WHERE h.company_code = :companyCode
+        AND h.doc_type     = :docType
+        AND h.doc_no       = :docNo
+    `;
+
     const headerResult = await conn.execute(
-      `SELECT h.*,
-              a.ac_name
-       FROM TR_AC_HEADER h
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = h.company_code
-             AND a.ac_code = h.ac_code
-       WHERE h.company_code = :company_code
-         AND h.doc_type = :doc_type
-         AND h.doc_no = :doc_no`,
-      { company_code: companyCode, doc_type: docType, doc_no: docNo },
+      headerSql,
+      { companyCode, docType, docNo },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const header = normalize(headerResult.rows as any[])[0];
-    if (!header) throw Object.assign(new Error("Document not found"), { status: 404 });
+    console.log("headerSql", headerSql);
+    const foundHeader = normalize(headerResult.rows as any[])[0];
+    const found = !!foundHeader;
+    console.log(`[FinanceReport] header rows: ${found ? 1 : 0}`);
 
-    const detailResult = await conn.execute(
-      `SELECT d.*,
-              a.ac_name
-       FROM TR_AC_DETAIL d
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = d.company_code
-             AND a.ac_code = d.ac_code
-       WHERE d.company_code = :company_code
-         AND d.doc_type = :doc_type
-         AND d.doc_no = :doc_no
-         AND NVL(d.cancelled, 'N') = 'N'
-       ORDER BY d.serial_no`,
-      { company_code: companyCode, doc_type: docType, doc_no: docNo },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    // No row in the database → keep going with an empty document
+    const header: ReportRow = foundHeader || {
+      company_code: companyCode,
+      doc_type: docType,
+      doc_no: docNo,
+    };
+
+    let detailRows: ReportRow[] = [];
+    if (found) {
+      const detailSql = `
+        SELECT d.*,
+               a.ac_name
+        FROM ${detailTable} d
+        LEFT JOIN MS_ACCODES a
+               ON a.company_code = d.company_code
+              AND a.ac_code = d.ac_code
+        WHERE d.company_code = :companyCode
+          AND d.doc_type     = :docType
+          AND d.doc_no       = :docNo
+          AND NVL(d.cancelled, 'N') = 'N'
+        ORDER BY d.serial_no
+      `;
+
+      const detailResult = await conn.execute(
+        detailSql,
+        { companyCode, docType, docNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      console.log("detailSql", detailSql);
+      detailRows = normalize(detailResult.rows as any[]);
+      console.log(`[FinanceReport] detail rows: ${detailRows.length}`);
+    }
 
     let company: ReportRow = { company_code: companyCode };
     try {
+      const companySql = `
+        SELECT *
+        FROM MS_COMPANYINFO
+        WHERE company_code = :companyCode
+      `;
+
       const companyResult = await conn.execute(
-        `SELECT *
-         FROM VW_COMPANY_INFO
-         WHERE company_code = :company_code`,
-        { company_code: companyCode },
+        companySql,
+        { companyCode },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
+
       company = normalize(companyResult.rows as any[])[0] || company;
+      company.address = [company.address1, company.address2, company.address3].filter(Boolean).join(', ');
+      company.trn_no = company.tax_num || company.trn_no;
     } catch (companyError) {
-      console.warn("Company information lookup failed for finance report:", companyError);
+      console.warn(
+        "Company information lookup failed for finance report:",
+        companyError
+      );
     }
 
     return {
+      found,
       company,
       header,
-      details: normalize(detailResult.rows as any[]),
+      details: detailRows,
+      gstLines: isPO ? [] : await readGstLines(conn, companyCode, docType, docNo),
       invoiceDetails: [],
     };
   } finally {
     await closeConn(conn);
   }
 }
+/**
+ * Finance-specific LAYOUT only.
+ * Fonts, title, section strip and data-table styling come from
+ * report_common.ts so every report looks the same as the Enquiry List PDF.
+ */
+const FINANCE_EXTRA_CSS = `
+  .doc-shell { max-width: 210mm; margin: 0 auto; }
 
-function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: string, autoPrint: boolean) {
+  /* Anything too long wraps to the next line instead of leaving its block */
+  .doc-shell,
+  .doc-shell * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    margin: 0 0 4px 0;
+  }
+  .doc-heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .doc-heading h1 { margin: 0; }
+  .doc-title-row .doc-sub {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #0f172a;
+  }
+  .doc-badge {
+    flex-shrink: 0;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: #e8f0fa;
+    border: 1px solid #b8d0ea;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #0b4ca1;
+  }
+  .doc-badge.cancelled {
+    background: #fde8e8;
+    border-color: #f0b4b4;
+    color: #b91c1c;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    margin: 0 0 14px 0;
+  }
+  /* No overflow:hidden here – text must wrap, never get clipped */
+  .box {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    min-width: 0;
+    width: 100%;
+  }
+  .box h2 {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0b4ca1;
+    background: #e8f0fa;
+    border-radius: 5px 5px 0 0;
+  }
+  .box-body {
+    padding: 10px;
+    min-width: 0;
+    width: 100%;
+  }
+  .party-name,
+  .party-line,
+  .meta .value {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .party-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+  }
+  .party-line { font-size: 11px; color: #64748b; line-height: 1.5; }
+  .meta {
+    display: grid;
+    grid-template-columns: 26mm minmax(0, 1fr);
+    gap: 4px 8px;
+    font-size: 11px;
+  }
+  .label { color: #64748b; }
+  .value { color: #1e293b; font-weight: 600; }
+
+  table.data-table td.desc strong {
+    display: block;
+    font-weight: 700;
+    color: #0b4ca1;
+  }
+  table.data-table td.desc span {
+    display: block;
+    margin-top: 1px;
+    color: #64748b;
+  }
+
+  .totals-wrap { display: flex; justify-content: flex-end; margin-top: 12px; }
+  .totals {
+    width: 250px;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .totals td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+    color: #334155;
+  }
+  .totals tr:last-child td { border-bottom: 0; }
+  .totals .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .totals .grand td {
+    background: #e8f0fa;
+    color: #0b4ca1;
+    font-weight: 700;
+  }
+
+  .remarks {
+    margin-top: 14px;
+    padding: 8px 10px;
+    width: 100%;
+    max-width: 100%;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #334155;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .sign {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 40px;
+    page-break-inside: avoid;
+  }
+  .sign .line {
+    border-top: 1px solid #94a3b8;
+    padding-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  /* ===== Screen-only compact layout (print unaffected) ===== */
+  @media screen {
+    .doc-title-row { margin: 0 0 3px 0; gap: 8px; }
+    .doc-heading { gap: 4px; }
+    .doc-title-row .doc-sub { font-size: 12px; }
+    .doc-badge { padding: 2px 8px; font-size: 9px; border-radius: 4px; }
+
+    .summary { gap: 6px; margin: 0 0 6px 0; }
+    .box { border-radius: 4px; }
+    .box h2 { padding: 3px 6px; font-size: 9px; border-radius: 3px 3px 0 0; }
+    .box-body { padding: 5px 6px; }
+    .party-name { font-size: 9px; margin-bottom: 2px; }
+    .party-line { font-size: 9px; line-height: 1.3; }
+    .meta { grid-template-columns: 20mm minmax(0, 1fr); gap: 2px 6px; font-size: 9px; }
+
+    .totals-wrap { margin-top: 6px; }
+    .totals { width: 200px; border-radius: 4px; }
+    .totals td { padding: 3px 7px; font-size: 9px; }
+
+    .remarks { margin-top: 6px; padding: 4px 6px; font-size: 9px; line-height: 1.3; border-radius: 4px; }
+
+    .sign { margin-top: 18px; gap: 32px; }
+    .sign .line { padding-top: 3px; font-size: 9px; }
+  }
+
+  @media print {
+    .box, .totals, .remarks { break-inside: avoid; }
+  }
+`;
+
+/** Body only – no <html>/<head>/<body> */
+function gstBreakdownHtml(lines: ReportRow[], currency: string, localCurrency: string) {
+  if (!lines.length) return '';
+  const rows = lines.map(g => {
+    const sameState = g.supplier_state === g.place_of_supply;
+    const stateRate = sameState ? amount(g.tax_rate) / 2 : 0;
+    const integratedRate = sameState ? 0 : amount(g.tax_rate);
+    return '<tr><td>'+escapeHtml(g.serial_no)+'</td><td>'+escapeHtml(g.tax_direction)+' / '+escapeHtml(g.treatment_label || g.tax_treatment || '')+'</td><td>'+escapeHtml(g.supplier_state)+'</td><td>'+escapeHtml(g.place_of_supply)+'</td><td>'+escapeHtml(g.hsn_sac)+'</td><td class="num">'+money(stateRate)+'% / '+money(g.cgst_amt)+'</td><td class="num">'+money(stateRate)+'% / '+money(g.sgst_amt)+'</td><td class="num">'+money(integratedRate)+'% / '+money(g.igst_amt)+'</td></tr>';
+  }).join('');
+  return '<h3>GST breakdown</h3><table class="data-table"><thead><tr><th>Line</th><th>Input / Output / Treatment</th><th>Supplier state</th><th>Place of supply</th><th>HSN / SAC</th><th>CGST % / '+escapeHtml(currency)+'</th><th>SGST / UTGST % / '+escapeHtml(currency)+'</th><th>IGST % / '+escapeHtml(currency)+'</th></tr></thead><tbody>'+rows+'</tbody></table><p>GST in '+escapeHtml(localCurrency)+': CGST '+money(lines.reduce((n,g)=>n+amount(g.cgst_lcur),0))+'; SGST / UTGST '+money(lines.reduce((n,g)=>n+amount(g.sgst_lcur),0))+'; IGST '+money(lines.reduce((n,g)=>n+amount(g.igst_lcur),0))+'.</p>';
+}
+
+function journalFigures(data: Awaited<ReturnType<typeof loadReportData>>) {
+  const dr = data.details.reduce((n,d)=>n+(Number(d.sign_ind)>0?amount(d.lcur_amount):0),0);
+  const cr = data.details.reduce((n,d)=>n+(Number(d.sign_ind)<0?amount(d.lcur_amount):0),0);
+  return { dr, cr, currency: text(data.company.currency || data.header.curr_code) };
+}
+function renderJournalBody(data: Awaited<ReturnType<typeof loadReportData>>, docType: string) {
+  const t=journalFigures(data);
+  return '<h2>'+escapeHtml(titleFor(docType))+' | '+escapeHtml(data.header.doc_no)+'</h2><p>'+escapeHtml(dateText(data.header.doc_date))+' | '+escapeHtml(t.currency)+(data.header.canceled==='Y'?' ? CANCELLED':'')+'</p><table class="data-table"><thead><tr><th>Line</th><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>'+data.details.map(d=>'<tr><td>'+escapeHtml(d.serial_no)+'</td><td>'+escapeHtml(d.ac_code)+'</td><td>'+escapeHtml(d.ac_name || d.remarks)+'</td><td class="num">'+money(Number(d.sign_ind)>0?d.lcur_amount:0)+'</td><td class="num">'+money(Number(d.sign_ind)<0?d.lcur_amount:0)+'</td></tr>').join('')+'</tbody><tfoot><tr><th colspan="3">Total</th><th>'+money(t.dr)+'</th><th>'+money(t.cr)+'</th></tr></tfoot></table><p>Difference: '+money(t.dr-t.cr)+'</p>'+gstBreakdownHtml(data.gstLines,data.header.curr_code,t.currency);
+}
+
+function renderFinanceBody(
+  data: Awaited<ReturnType<typeof loadReportData>>,
+  docType: string,
+  printUser = ""
+): string {
+  if (['JV','RJV'].includes(docType)) return renderJournalBody(data,docType);
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
-  const subtotal = visibleDetails.reduce((sum, row) => sum + amount(row.amount), 0);
-  const taxTotal = visibleDetails.reduce((sum, row) => sum + amount(row.tx_compnt_amt_1), 0);
+  const baseSign = -Number(details.find(d=>Number(d.serial_no)===9001)?.sign_ind || (['BP','CP','PI','PO','CN'].includes(docType)?-1:1));
+  const subtotal = visibleDetails.reduce(
+    (sum, row) => sum + amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign,
+    0
+  );
+  const taxTotal = visibleDetails.reduce(
+    (sum, row) => sum + amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign,
+    0
+  );
   const total = subtotal + taxTotal;
-  const currency = text(header.curr_code || "QAR");
-  const partyName = text(header.party_name || header.ac_name || header.ac_payee);
+  const currency = text(header.curr_code || company.currency || "");
+  const partyName = text(
+    header.party_name || header.ac_name || header.ac_payee
+  );
   const partyAddress = text(header.party_address);
   const partyPhone = text(header.party_phone);
   const partyFax = text(header.party_fax);
-  const documentNo = text(header.invoice_no || header.inv_no || header.ref_no || header.doc_no);
-  const companyName = text(company.company_name || company.name || company.company_code || header.company_code);
-  const companyAddress = text(company.address || company.company_address || company.addr1 || company.addr2);
-  const companyTrn = text(company.trn_no || company.trn || company.vat_no || header.trn_no);
+  const documentNo = text(
+    header.invoice_no || header.inv_no || header.ref_no || header.doc_no
+  );
   const isPurchase = ["PI", "PO"].includes(docType);
-  const partyLabel = isPayment(docType) ? "Payee / Account" : isPurchase ? "Supplier Details" : "Customer Details";
+  const partyLabel = isPayment(docType)
+    ? "Payee / Account"
+    : isPurchase
+      ? "Supplier Details"
+      : "Customer Details";
+  const isCancelled =
+    text(header.canceled).toUpperCase() === "Y" ||
+    text(header.cancelled).toUpperCase() === "Y";
 
-  const detailRows = visibleDetails.map((row, index) => {
-    const lineAmount = amount(row.amount);
-    const tax = amount(row.tx_compnt_amt_1);
-    const rate = amount(row.price) || lineAmount;
-    return `
+  const detailRows = visibleDetails
+    .map((row, index) => {
+      const lineAmount = amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign;
+      const tax = amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign;
+      const rate = amount(row.price) || lineAmount;
+      return `
       <tr>
         <td class="center">${index + 1}</td>
-        <td class="code">${escapeHtml(row.ac_code)}</td>
         <td class="desc">
           <strong>${escapeHtml(row.ac_code)}</strong>
           <span>${escapeHtml(row.ac_name || row.remarks)}</span>
@@ -221,130 +523,102 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
         <td class="num">${money(tax)}</td>
         <td class="num strong">${money(lineAmount + tax)}</td>
       </tr>`;
-  }).join("");
+    })
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(titleFor(docType))} - ${escapeHtml(header.doc_no)}</title>
-  <style>
-    ${REPORT_FONT_FACE_CSS}
-    @page { size: A4; margin: 8mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: #111; font-family: ${REPORT_FONT_FAMILY}; font-size: 10px; line-height: 1.18; background: #f4f4f4; }
-    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 8mm; border: 1px solid #777; }
-    .top { display: grid; grid-template-columns: 1fr 58mm; gap: 10px; align-items: start; border-bottom: 1px solid #777; padding-bottom: 6px; }
-    .brand { display: grid; gap: 3px; }
-    .company { font-size: 14px; line-height: 1.08; font-weight: 800; letter-spacing: 0; color: #111; text-transform: uppercase; }
-    .muted { color: #333; }
-    .title { border: 1px solid #777; text-align: center; }
-    .title h1 { margin: 0; padding: 6px 7px; color: #111; background: #fff; font-size: 12px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0; border-bottom: 1px solid #777; }
-    .title .pill { display: block; padding: 4px 7px; color: #111; font-size: 9.5px; font-weight: 800; background: #fff; }
-    .summary { display: grid; grid-template-columns: 1.15fr .85fr; gap: 6px; margin-top: 6px; }
-    .box { border: 1px solid #999; overflow: hidden; }
-    .box h2 { margin: 0; padding: 4px 6px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0; color: #111; background: #fff; border-bottom: 1px solid #aaa; }
-    .box-body { padding: 6px; min-height: 28mm; }
-    .party-name { font-size: 10.8px; font-weight: 800; color: #111; margin-bottom: 4px; }
-    .meta { display: grid; grid-template-columns: 28mm 1fr; gap: 3px 8px; }
-    .label { color: #333; font-weight: 700; }
-    .value { color: #111; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; margin-top: 7px; table-layout: fixed; }
-    th { background: #f5f7fa; color: #111; padding: 4px 4px; text-align: left; font-size: 9px; font-weight: 800; border: 1px solid #888; }
-    td { border: 1px solid #999; padding: 4px 4px; vertical-align: top; font-size: 9.4px; }
-    td span { display: block; color: #111; margin-top: 1px; }
-    .code { width: 22mm; color: #111; }
-    .desc { width: auto; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .center { text-align: center; }
-    .strong { font-weight: 800; }
-    .totals-wrap { display: grid; grid-template-columns: 1fr 62mm; gap: 8px; margin-top: 6px; align-items: start; }
-    .remarks { min-height: 23mm; border: 1px solid #999; padding: 6px; color: #111; }
-    .totals { width: 100%; margin: 0; border: 1px solid #777; }
-    .totals td { border: 0; border-bottom: 1px solid #aaa; padding: 4px 6px; }
-    .totals tr:last-child td { border-bottom: 0; }
-    .grand { color: #111; background: #fff; font-size: 11px; font-weight: 800; }
-    .section-caption { margin-top: 7px; padding: 4px 6px; border: 1px solid #888; border-bottom: 0; color: #111; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #f5f7fa; }
-    .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 23mm; }
-    .line { border-top: 1px solid #777; padding-top: 5px; text-align: center; font-weight: 800; }
-    .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
-    .actions button { border: 1px solid #cbd5e1; background: white; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
-    @media print { body { background: white; } .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; } .actions { display: none; } }
-  </style>
-</head>
-<body>
-  <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
-  <main class="sheet">
-    <section class="top">
-      <div class="brand">
-        <div class="company">${escapeHtml(companyName)}</div>
-        <div>${escapeHtml(companyAddress)}</div>
-        <div class="muted">TRN: ${escapeHtml(companyTrn || "-")}</div>
-      </div>
-      <div class="title">
-        <h1>${escapeHtml(titleFor(docType))}</h1>
-        <div class="pill">${escapeHtml(header.canceled === "Y" ? "CANCELLED" : "ORIGINAL")}</div>
-      </div>
-    </section>
-
-    <section class="summary">
-      <div class="box">
-        <h2>${partyLabel}</h2>
-        <div class="box-body">
-          <div class="party-name">${escapeHtml(partyName || "Cash Sale")}</div>
-          <div>${escapeHtml(partyAddress)}</div>
-          <div>${partyPhone ? `Contact: ${escapeHtml(partyPhone)}` : ""}</div>
-          <div>${partyFax ? `Fax: ${escapeHtml(partyFax)}` : ""}</div>
-          <div>${header.payment_terms ? `Payment Terms: ${escapeHtml(header.payment_terms)}` : ""}</div>
+  return `
+    <div class="doc-shell">
+      <div class="doc-title-row">
+        <div class="doc-heading">
+          <h1 style="margin: 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${escapeHtml(titleFor(docType))}${header.doc_no ? " :" : ""}</h1>
+          ${header.doc_no ? `<h2 class="doc-sub">${escapeHtml(header.doc_no)}</h2>` : ""}
+        </div>
+        <div class="doc-badge${isCancelled ? " cancelled" : ""}">
+          ${isCancelled ? "Cancelled" : "Original"}
         </div>
       </div>
-      <div class="box">
-        <h2>Document Details</h2>
-        <div class="box-body meta">
-          <span class="label">Doc No</span><span class="value">${escapeHtml(header.doc_no)}</span>
-          <span class="label">Invoice No</span><span class="value">${escapeHtml(documentNo)}</span>
-          <span class="label">Doc Date</span><span class="value">${escapeHtml(dateText(header.doc_date))}</span>
-          <span class="label">Invoice Date</span><span class="value">${escapeHtml(dateText(header.inv_date || header.ref_date || header.doc_date))}</span>
-          <span class="label">Account</span><span class="value">${escapeHtml(header.ac_code)}</span>
-          <span class="label">Currency</span><span class="value">${escapeHtml(currency)}</span>
+
+
+      <section class="summary">
+        <div class="box">
+          <h2>${partyLabel}</h2>
+          <div class="box-body">
+            <div class="party-name">${escapeHtml(partyName || (data.found ? "Cash Sale" : "—"))}</div>
+            ${partyAddress ? `<div class="party-line">${escapeHtml(partyAddress)}</div>` : ""}
+            <div class="party-line">${partyPhone ? `Tel: ${escapeHtml(partyPhone)}` : "Tel: —"}</div>
+            ${partyFax ? `<div class="party-line">Fax: ${escapeHtml(partyFax)}</div>` : ""}
+          </div>
         </div>
-      </div>
-    </section>
+        <div class="box">
+          <h2>Document Details</h2>
+          <div class="box-body meta">
+            <span class="label">Doc No</span>
+            <span class="value">${escapeHtml(header.doc_no)}</span>
+            <span class="label">Invoice No</span>
+            <span class="value">${escapeHtml(documentNo)}</span>
+            <span class="label">Doc Date</span>
+            <span class="value">${escapeHtml(dateText(header.doc_date))}</span>
+            <span class="label">Account</span>
+            <span class="value">${escapeHtml(header.ac_code)}</span>
+            <span class="label">Currency</span>
+            <span class="value">${escapeHtml(currency)}</span>
+            <span class="label">Payment</span>
+            <span class="value">${escapeHtml(header.payment_terms || "—")}</span>
+          </div>
+        </div>
+      </section>
 
-    <table>
-      <thead>
-        <tr>
-          <th class="center">SN</th>
-          <th>Code</th>
-          <th>Description</th>
-          <th class="num">Qty</th>
-          <th class="num">Rate</th>
-          <th class="num">Excl. VAT</th>
-          <th class="num">VAT %</th>
-          <th class="num">VAT Value</th>
-          <th class="num">Incl. VAT</th>
-        </tr>
-      </thead>
-      <tbody>${detailRows || `<tr><td colspan="9" class="center muted">No lines found</td></tr>`}</tbody>
-    </table>
-
-    <section class="totals-wrap">
-      <div class="remarks"><strong>Remarks:</strong> ${escapeHtml(header.remarks || "")}</div>
-      <table class="totals">
-        <tr><td>Sub Total ${escapeHtml(currency)}</td><td class="num">${money(subtotal)}</td></tr>
-        <tr><td>Tax Total ${escapeHtml(currency)}</td><td class="num">${money(taxTotal)}</td></tr>
-        <tr><td class="grand">Grand Total ${escapeHtml(currency)}</td><td class="num grand">${money(total)}</td></tr>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="center" style="width:7%">S.No.</th>
+            <th class="left" style="width:34%">Description</th>
+            <th class="num" style="width:10%">Qty</th>
+            <th class="num" style="width:12%">Rate</th>
+            <th class="num" style="width:12%">Excl. Tax</th>
+            <th class="num" style="width:8%">Tax %</th>
+            <th class="num" style="width:12%">Tax</th>
+            <th class="num" style="width:12%">Incl. Tax</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            detailRows ||
+            `<tr><td colspan="8" class="muted">No lines found</td></tr>`
+          }
+        </tbody>
       </table>
-    </section>
 
-    <section class="sign">
-      <div class="line">Customer's Signature</div>
-      <div class="line">For ${escapeHtml(companyName)}</div>
-    </section>
-  </main>
-  ${autoPrint ? "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>" : ""}
-</body>
-</html>`;
+      ${
+        header.remarks
+          ? `<div class="remarks"><strong>Remarks:</strong> ${escapeHtml(header.remarks)}</div>`
+          : ""
+      }
+
+      ${gstBreakdownHtml(data.gstLines, header.curr_code, company.currency || header.curr_code)}
+      <div class="totals-wrap">
+        <table class="totals">
+          <tr>
+            <td>Sub Total</td>
+            <td class="num">${money(subtotal)}</td>
+          </tr>
+          <tr>
+            <td>Tax Total</td>
+            <td class="num">${money(taxTotal)}</td>
+          </tr>
+          <tr class="grand">
+            <td>Grand Total ${escapeHtml(currency)}</td>
+            <td class="num">${money(total)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="sign">
+        <div class="line">Customer's Signature</div>
+        <div class="line">Authorised Signature</div>
+      </div>
+    </div>
+  `;
 }
 
 const excelStyles = {
@@ -352,7 +626,12 @@ const excelStyles = {
     font: { bold: true, sz: 14, color: { rgb: "111111" } },
     fill: { fgColor: { rgb: "FFFFFF" } },
     alignment: { horizontal: "center", vertical: "center" },
-    border: { top: { style: "thin", color: { rgb: "777777" } }, bottom: { style: "thin", color: { rgb: "777777" } }, left: { style: "thin", color: { rgb: "777777" } }, right: { style: "thin", color: { rgb: "777777" } } },
+    border: {
+      top: { style: "thin", color: { rgb: "777777" } },
+      bottom: { style: "thin", color: { rgb: "777777" } },
+      left: { style: "thin", color: { rgb: "777777" } },
+      right: { style: "thin", color: { rgb: "777777" } },
+    },
   },
   company: {
     font: { bold: true, sz: 13, color: { rgb: "111111" } },
@@ -361,13 +640,23 @@ const excelStyles = {
   section: {
     font: { bold: true, color: { rgb: "111111" } },
     fill: { fgColor: { rgb: "FFFFFF" } },
-    border: { top: { style: "thin", color: { rgb: "999999" } }, bottom: { style: "thin", color: { rgb: "999999" } }, left: { style: "thin", color: { rgb: "999999" } }, right: { style: "thin", color: { rgb: "999999" } } },
+    border: {
+      top: { style: "thin", color: { rgb: "999999" } },
+      bottom: { style: "thin", color: { rgb: "999999" } },
+      left: { style: "thin", color: { rgb: "999999" } },
+      right: { style: "thin", color: { rgb: "999999" } },
+    },
   },
   tableHead: {
     font: { bold: true, color: { rgb: "111111" } },
     fill: { fgColor: { rgb: "FFFFFF" } },
     alignment: { horizontal: "center", vertical: "center" },
-    border: { top: { style: "thin", color: { rgb: "777777" } }, bottom: { style: "thin", color: { rgb: "777777" } }, left: { style: "thin", color: { rgb: "777777" } }, right: { style: "thin", color: { rgb: "777777" } } },
+    border: {
+      top: { style: "thin", color: { rgb: "777777" } },
+      bottom: { style: "thin", color: { rgb: "777777" } },
+      left: { style: "thin", color: { rgb: "777777" } },
+      right: { style: "thin", color: { rgb: "777777" } },
+    },
   },
   label: {
     font: { bold: true, color: { rgb: "333333" } },
@@ -390,7 +679,10 @@ const excelStyles = {
   totalLabel: {
     font: { bold: true, color: { rgb: "111111" } },
     fill: { fgColor: { rgb: "FFFFFF" } },
-    border: { top: { style: "thin", color: { rgb: "999999" } }, bottom: { style: "thin", color: { rgb: "999999" } } },
+    border: {
+      top: { style: "thin", color: { rgb: "999999" } },
+      bottom: { style: "thin", color: { rgb: "999999" } },
+    },
   },
   grand: {
     font: { bold: true, color: { rgb: "111111" } },
@@ -404,14 +696,26 @@ function cellRef(row: number, col: number) {
   return XLSX.utils.encode_cell({ r: row - 1, c: col - 1 });
 }
 
-function applyStyle(ws: XLSX.WorkSheet, row: number, col: number, style: Record<string, unknown>) {
+function applyStyle(
+  ws: XLSX.WorkSheet,
+  row: number,
+  col: number,
+  style: Record<string, unknown>
+) {
   const ref = cellRef(row, col);
   if (!ws[ref]) ws[ref] = { t: "s", v: "" };
   (ws[ref] as any).s = style;
 }
 
-function styleRange(ws: XLSX.WorkSheet, row: number, startCol: number, endCol: number, style: Record<string, unknown>) {
-  for (let col = startCol; col <= endCol; col += 1) applyStyle(ws, row, col, style);
+function styleRange(
+  ws: XLSX.WorkSheet,
+  row: number,
+  startCol: number,
+  endCol: number,
+  style: Record<string, unknown>
+) {
+  for (let col = startCol; col <= endCol; col += 1)
+    applyStyle(ws, row, col, style);
 }
 
 function valueLength(value: unknown): number {
@@ -424,23 +728,37 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function applyExcelLayout(ws: XLSX.WorkSheet, rows: any[][], lineStartRow: number, lineCount: number) {
+function applyExcelLayout(
+  ws: XLSX.WorkSheet,
+  rows: any[][],
+  lineStartRow: number,
+  lineCount: number
+) {
   const minWidths = [7, 16, 34, 11, 13, 15, 10, 15, 15];
   const maxWidths = [12, 26, 58, 13, 16, 18, 12, 18, 18];
   const computedWidths = minWidths.map((minWidth, index) => {
-    const longest = rows.reduce((max, row) => Math.max(max, valueLength(row[index])), 0);
+    const longest = rows.reduce(
+      (max, row) => Math.max(max, valueLength(row[index])),
+      0
+    );
     return clamp(Math.ceil(longest * 1.08) + 2, minWidth, maxWidths[index]);
   });
 
   ws["!cols"] = computedWidths.map((wch) => ({ wch }));
   ws["!rows"] = rows.map((row, index) => {
     const rowNo = index + 1;
-    const longest = row.reduce((max, cell) => Math.max(max, valueLength(cell)), 0);
+    const longest = row.reduce(
+      (max, cell) => Math.max(max, valueLength(cell)),
+      0
+    );
     if (rowNo === 1) return { hpt: 24 };
     if (rowNo === 11) return { hpt: 24 };
     if (rowNo >= lineStartRow && rowNo < lineStartRow + lineCount) {
       const descriptionLength = valueLength(row[2]);
-      return { hpt: descriptionLength > 48 ? 34 : descriptionLength > 28 ? 27 : 22 };
+      return {
+        hpt:
+          descriptionLength > 48 ? 34 : descriptionLength > 28 ? 27 : 22,
+      };
     }
     if (longest > 70) return { hpt: 36 };
     if (longest > 42) return { hpt: 28 };
@@ -448,40 +766,132 @@ function applyExcelLayout(ws: XLSX.WorkSheet, rows: any[][], lineStartRow: numbe
   });
 }
 
-function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docType: string) {
+function buildReportSheet(
+  data: Awaited<ReturnType<typeof loadReportData>>,
+  docType: string
+) {
+  if (['JV','RJV'].includes(docType)) {
+    const t=journalFigures(data);
+    const rows:any[][]=[[data.company.company_name || '',titleFor(docType),data.header.doc_no,t.currency],[],['Line','Account','Description','Debit','Credit'],...data.details.map(d=>[d.serial_no,d.ac_code,d.ac_name || d.remarks,Number(d.sign_ind)>0?amount(d.lcur_amount):0,Number(d.sign_ind)<0?amount(d.lcur_amount):0]),['','','Total',t.dr,t.cr],['','','Difference',t.dr-t.cr],[],['GST line','Direction','Supplier state','Place of supply','HSN / SAC','CGST','SGST / UTGST','IGST'],...data.gstLines.map(g=>[g.serial_no,String(g.tax_direction)+' / '+String(g.treatment_label || g.tax_treatment || ''),g.supplier_state,g.place_of_supply,g.hsn_sac,g.cgst_amt,g.sgst_amt,g.igst_amt])];
+    const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:10},{wch:18},{wch:40},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18}];return ws;
+  }
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
-  const subtotal = visibleDetails.reduce((sum, row) => sum + amount(row.amount), 0);
-  const taxTotal = visibleDetails.reduce((sum, row) => sum + amount(row.tx_compnt_amt_1), 0);
+  const baseSign = -Number(details.find(d=>Number(d.serial_no)===9001)?.sign_ind || (['BP','CP','PI','PO','CN'].includes(docType)?-1:1));
+  const subtotal = visibleDetails.reduce(
+    (sum, row) => sum + amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign,
+    0
+  );
+  const taxTotal = visibleDetails.reduce(
+    (sum, row) => sum + amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign,
+    0
+  );
   const total = subtotal + taxTotal;
-  const currency = text(header.curr_code || "QAR");
-  const partyName = text(header.party_name || header.ac_name || header.ac_payee);
+  const currency = text(header.curr_code || company.currency || "");
+  const partyName = text(
+    header.party_name || header.ac_name || header.ac_payee
+  );
   const partyAddress = text(header.party_address);
   const partyPhone = text(header.party_phone);
   const partyFax = text(header.party_fax);
-  const documentNo = text(header.invoice_no || header.inv_no || header.ref_no || header.doc_no);
-  const companyName = text(company.company_name || company.name || company.company_code || header.company_code);
-  const companyAddress = text(company.address || company.company_address || company.addr1 || company.addr2);
-  const companyTrn = text(company.trn_no || company.trn || company.vat_no || header.trn_no || "-");
-  const partyLabel = isPayment(docType) ? "PAYEE / ACCOUNT" : ["PI", "PO"].includes(docType) ? "SUPPLIER DETAILS" : "CUSTOMER DETAILS";
+  const documentNo = text(
+    header.invoice_no || header.inv_no || header.ref_no || header.doc_no
+  );
+  const companyName = text(
+    company.company_name ||
+      company.name ||
+      company.company_code ||
+      header.company_code
+  );
+  const companyAddress = text(
+    company.address || company.company_address || company.addr1 || company.addr2
+  );
+  const companyTrn = text(
+    company.trn_no || company.trn || company.vat_no || header.trn_no || "-"
+  );
+  const partyLabel = isPayment(docType)
+    ? "PAYEE / ACCOUNT"
+    : ["PI", "PO"].includes(docType)
+      ? "SUPPLIER DETAILS"
+      : "CUSTOMER DETAILS";
 
   const rows: any[][] = [
     [companyName, "", "", "", "", "", titleFor(docType), "", ""],
-    [companyAddress, "", "", "", "", "", header.canceled === "Y" ? "CANCELLED" : "ORIGINAL", "", ""],
-    [`TRN: ${companyTrn}`, "", "", "", "", "", "", "", ""],
+    [
+      companyAddress,
+      "",
+      "",
+      "",
+      "",
+      "",
+      header.canceled === "Y" ? "CANCELLED" : "ORIGINAL",
+      "",
+      "",
+    ],
+    [`${String(company.country || '').toUpperCase() === 'INDIA' ? 'GSTIN' : 'TRN'}: ${companyTrn}`, "", "", "", "", "", "", "", ""],
     [],
     [partyLabel, "", "", "", "", "DOCUMENT DETAILS", "", "", ""],
-    [partyName, "", "", "", "", "Doc No", header.doc_no, "Invoice No", documentNo],
-    [partyAddress, "", "", "", "", "Doc Date", dateText(header.doc_date), "Invoice Date", dateText(header.inv_date || header.ref_date || header.doc_date)],
-    [partyPhone ? `Contact: ${partyPhone}` : "", "", "", "", "", "Account", header.ac_code, "Currency", currency],
-    [partyFax ? `Fax: ${partyFax}` : "", "", "", "", "", "Payment Terms", header.payment_terms || "", "", ""],
+    [
+      partyName,
+      "",
+      "",
+      "",
+      "",
+      "Doc No",
+      header.doc_no,
+      "Invoice No",
+      documentNo,
+    ],
+    [
+      partyAddress,
+      "",
+      "",
+      "",
+      "",
+      "Doc Date",
+      dateText(header.doc_date),
+      "Invoice Date",
+      dateText(header.inv_date || header.ref_date || header.doc_date),
+    ],
+    [
+      partyPhone ? `Contact: ${partyPhone}` : "",
+      "",
+      "",
+      "",
+      "",
+      "Account",
+      header.ac_code,
+      "Currency",
+      currency,
+    ],
+    [
+      partyFax ? `Fax: ${partyFax}` : "",
+      "",
+      "",
+      "",
+      "",
+      "Payment Terms",
+      header.payment_terms || "",
+      "",
+      "",
+    ],
     [],
-    ["SN", "Code", "Description", "Qty", "Rate", "Excl. VAT", "VAT %", "VAT Value", "Incl. VAT"],
+    [
+      "SN",
+      "Code",
+      "Description",
+      "Qty",
+      "Rate",
+      "Excl. Tax",
+      "Tax %",
+      "VAT Value",
+      "Incl. Tax",
+    ],
   ];
 
   visibleDetails.forEach((row, index) => {
-    const lineAmount = amount(row.amount);
-    const tax = amount(row.tx_compnt_amt_1);
+    const lineAmount = amount(row.amount)*Number(row.sign_ind || baseSign)*baseSign;
+    const tax = amount(row.tx_compnt_amt_1)*Number(row.sign_ind || baseSign)*baseSign;
     const rate = amount(row.price) || lineAmount;
     rows.push([
       index + 1,
@@ -496,16 +906,30 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
     ]);
   });
 
-  if (!visibleDetails.length) rows.push(["", "", "No lines found", "", "", "", "", "", ""]);
+  if (!visibleDetails.length)
+    rows.push(["", "", "No lines found", "", "", "", "", "", ""]);
 
   rows.push(
     [],
-    ["Remarks", header.remarks || "", "", "", "", "Sub Total", "", "", subtotal],
+    [
+      "Remarks",
+      header.remarks || "",
+      "",
+      "",
+      "",
+      "Sub Total",
+      "",
+      "",
+      subtotal,
+    ],
     ["", "", "", "", "", "Tax Total", "", "", taxTotal],
-    ["", "", "", "", "", `Grand Total ${currency}`, "", "", total],
+    ["", "", "", "", "", `Grand Total ${currency}`, "", "", total]
   );
 
-  rows.push([], ["Customer's Signature", "", "", "", "", `For ${companyName}`, "", "", ""]);
+  rows.push(
+    [],
+    ["Customer's Signature", "", "", "", "", `For ${companyName}`, "", "", ""]
+  );
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   applyExcelLayout(ws, rows, 12, Math.max(visibleDetails.length, 1));
@@ -519,7 +943,9 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
     { s: { r: 4, c: 5 }, e: { r: 4, c: 8 } },
   ];
   ws["!freeze"] = { xSplit: 0, ySplit: 11 };
-  ws["!autofilter"] = { ref: `A11:I${11 + Math.max(visibleDetails.length, 1)}` };
+  ws["!autofilter"] = {
+    ref: `A11:I${11 + Math.max(visibleDetails.length, 1)}`,
+  };
 
   applyStyle(ws, 1, 1, excelStyles.company);
   styleRange(ws, 1, 7, 9, excelStyles.title);
@@ -527,7 +953,11 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
   styleRange(ws, 5, 1, 9, excelStyles.section);
   styleRange(ws, 11, 1, 9, excelStyles.tableHead);
 
-  for (let row = 12; row < 12 + Math.max(visibleDetails.length, 1); row += 1) {
+  for (
+    let row = 12;
+    row < 12 + Math.max(visibleDetails.length, 1);
+    row += 1
+  ) {
     styleRange(ws, row, 1, 3, excelStyles.normal);
     applyStyle(ws, row, 4, excelStyles.qty);
     styleRange(ws, row, 5, 9, excelStyles.number);
@@ -560,7 +990,6 @@ const styleIdBySignature = new Map<string, number>([
 
 function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-  const colLetter = (col: number) => XLSX.utils.encode_col(col);
   const getStyleId = (cell: XLSX.CellObject | undefined) => {
     const style = (cell as any)?.s;
     if (!style) return 0;
@@ -568,7 +997,10 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   };
 
   const colXml = (ws["!cols"] || [])
-    .map((col: any, index: number) => `<col min="${index + 1}" max="${index + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`)
+    .map(
+      (col: any, index: number) =>
+        `<col min="${index + 1}" max="${index + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`
+    )
     .join("");
 
   let sheetData = "";
@@ -584,22 +1016,34 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
       if (typeof value === "number") {
         cells.push(`<c ${attrs}><v>${value}</v></c>`);
       } else {
-        cells.push(`<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`);
+        cells.push(
+          `<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`
+        );
       }
     }
     if (cells.length) {
-      const rowInfo = (ws["!rows"] || [])[r] as { hpt?: number; hpx?: number } | undefined;
-      const rowHeight = rowInfo?.hpt || (rowInfo?.hpx ? rowInfo.hpx * 0.75 : undefined);
+      const rowInfo = (ws["!rows"] || [])[r] as
+        | { hpt?: number; hpx?: number }
+        | undefined;
+      const rowHeight =
+        rowInfo?.hpt || (rowInfo?.hpx ? rowInfo.hpx * 0.75 : undefined);
       const rowAttrs = `r="${r + 1}"${rowHeight ? ` ht="${Number(rowHeight).toFixed(2)}" customHeight="1"` : ""}`;
       sheetData += `<row ${rowAttrs}>${cells.join("")}</row>`;
     }
   }
 
   const merges = (ws["!merges"] || [])
-    .map((merge) => `<mergeCell ref="${XLSX.utils.encode_range(merge)}"/>`)
+    .map(
+      (merge) =>
+        `<mergeCell ref="${XLSX.utils.encode_range(merge)}"/>`
+    )
     .join("");
-  const mergeXml = merges ? `<mergeCells count="${(ws["!merges"] || []).length}">${merges}</mergeCells>` : "";
-  const autoFilter = (ws["!autofilter"] as any)?.ref ? `<autoFilter ref="${escapeXml((ws["!autofilter"] as any).ref)}"/>` : "";
+  const mergeXml = merges
+    ? `<mergeCells count="${(ws["!merges"] || []).length}">${merges}</mergeCells>`
+    : "";
+  const autoFilter = (ws["!autofilter"] as any)?.ref
+    ? `<autoFilter ref="${escapeXml((ws["!autofilter"] as any).ref)}"/>`
+    : "";
 
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -615,13 +1059,13 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="7">
-    <font><sz val="10"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="14"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="13"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="10"/><color rgb="FF333333"/><name val="Liberation Mono"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
+    <font><sz val="10"/><name val="Arial"/></font>
+    <font><b/><sz val="14"/><color rgb="FF111111"/><name val="Arial"/></font>
+    <font><b/><sz val="13"/><color rgb="FF111111"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF333333"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Arial"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
@@ -673,38 +1117,95 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   return zip.toBuffer();
 }
 
-export const getFinanceDocumentReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getFinanceDocumentReportHtml = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
   try {
-    const docType = text(req.params.doc_type || req.query.doc_type).toUpperCase();
+    const docType = text(
+      req.params.doc_type || req.query.doc_type
+    ).toUpperCase();
     const docNo = text(req.params.doc_no || req.query.doc_no);
     if (!docType || !docNo) {
-      res.status(400).json({ success: false, message: "doc_type and doc_no are required" });
+      res
+        .status(400)
+        .json({ success: false, message: "doc_type and doc_no are required" });
       return;
     }
+
     const data = await loadReportData(req, docType, docNo);
+    const companyCode =
+      text(data.header.company_code) || resolveCompanyCode(req);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const userName = text(
+      req.user?.loginid || (req.user as any)?.username || ""
+    );
+    const registration = text(data.company.tax_num || data.company.trn_no);
+    const registrationLabel = String(data.company.country || '').toUpperCase() === 'INDIA' ? 'GSTIN' : 'TRN';
+    const bodyHtml = (registration ? `<p>${registrationLabel}: ${escapeHtml(registration)}</p>` : '')
+      + renderFinanceBody(data, docType, userName);
+
+    const html = buildReportDocument({
+      title: `${titleFor(docType)} - ${text(data.header.doc_no)}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml: reportFooter({
+        reportName: titleFor(docType),
+        userName,
+        endLabel: "Powered by Bayanat Technology",
+      }),
+      extraCss: FINANCE_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: false,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(data, docType, req.query.print !== "false"));
+    res.send(html);
   } catch (error: any) {
     console.error(error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+    res
+      .status(error.status || 500)
+      .json({
+        success: false,
+        message: error.message || "Unable to generate report",
+      });
   }
 };
 
-export const exportFinanceDocumentReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const exportFinanceDocumentReportExcel = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
   try {
-    const docType = text(req.params.doc_type || req.query.doc_type).toUpperCase();
+    const docType = text(
+      req.params.doc_type || req.query.doc_type
+    ).toUpperCase();
     const docNo = text(req.params.doc_no || req.query.doc_no);
     if (!docType || !docNo) {
-      res.status(400).json({ success: false, message: "doc_type and doc_no are required" });
+      res
+        .status(400)
+        .json({ success: false, message: "doc_type and doc_no are required" });
       return;
     }
     const data = await loadReportData(req, docType, docNo);
     const buffer = workbookBufferFromSheet(buildReportSheet(data, docType));
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="${docType}_${docNo}_report.xlsx"`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${docType}_${docNo}_report.xlsx"`
+    );
     res.end(buffer);
   } catch (error: any) {
     console.error(error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to export report" });
+    res
+      .status(error.status || 500)
+      .json({
+        success: false,
+        message: error.message || "Unable to export report",
+      });
   }
 };

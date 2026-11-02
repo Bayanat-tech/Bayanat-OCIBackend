@@ -7,8 +7,8 @@ export class SupplierMaster {
   @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
   company_code!: string;
 
-  @PrimaryColumn({ name: "PRIN_CODE", type: "varchar2", length: 5 })
-  prin_code!: string;
+  // @PrimaryColumn({ name: "PRIN_CODE", type: "varchar2", length: 5 })
+  // prin_code!: string;
 
   @PrimaryColumn({ name: "SUPP_CODE", type: "varchar2", length: 5 })
   supp_code!: string;

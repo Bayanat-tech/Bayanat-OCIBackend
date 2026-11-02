@@ -43,6 +43,11 @@ router.post(
 );
 
 router.post(
+  "/proc_build_common_procedure_wms",
+  procBuildCommonProcedurewmc
+);
+
+router.post(
   "/proc_build_dynamic_ins_upd_column90",
   proc_build_dynamic_ins_upd_column90
 );

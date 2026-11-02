@@ -11,29 +11,6 @@ type DocAccodeRow = {
   div_code?: string;
 };
 
-async function resolveL4Code(
-  connection: oracledb.Connection,
-  companyCode: string,
-  accountCode: string
-) {
-  const result = await connection.execute<{ L4_CODE: string }>(
-    `
-      SELECT
-        COALESCE(
-          MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
-          MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
-        ) AS L4_CODE
-      FROM MS_ACCODES
-      WHERE COMPANY_CODE = :companyCode
-        AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
-    `,
-    { companyCode, accountCode },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
-
-  return result.rows?.[0]?.L4_CODE || accountCode;
-}
-
 export const delDocAccodeBulk = async (
   req: Request,
   res: Response
@@ -52,7 +29,11 @@ export const delDocAccodeBulk = async (
       return;
     }
 
-    const tenantId = getCurrentTenantId();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginId) {
+      tenantId = await TenantManager.getTenantForUser(loginId);
+    }
+
     if (!tenantId) {
       res.status(400).json({
         success: false,
@@ -62,47 +43,38 @@ export const delDocAccodeBulk = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
-    let deleted = 0;
 
-    for (const row of rows as DocAccodeRow[]) {
-      const companyCode = String(row.company_code || "").trim();
-      const docId = String(row.doc_id || "").trim();
-      const hdrDtl = String(row.hdr_dtl || "").trim().toUpperCase().slice(0, 1);
-      const accountCode = String(row.ac_code || "").trim();
-      const divCode = String(row.div_code || "").trim() || null;
+    const docAccodeTab = (rows as DocAccodeRow[]).map((row) => ({
+      COMPANY_CODE: String(row.company_code || "").trim(),
+      DOC_ID: String(row.doc_id || "").trim(),
+      HDR_DTL: String(row.hdr_dtl || "").trim().toUpperCase().slice(0, 1),
+      AC_CODE: String(row.ac_code || "").trim(),
+      DIV_CODE: String(row.div_code || "").trim() || null,
+    }));
 
-      if (!companyCode || !docId || !hdrDtl || !accountCode) {
-        throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
+    // Call native stored procedure
+    await connection.execute(
+      `
+      BEGIN
+        PROC_DEL_DOC_ACCODE(:p_loginid, :p_tab);
+      END;
+      `,
+      {
+        p_loginid: loginId,
+        p_tab: {
+          type: "TAB_DOC_ACCODE",
+          val: docAccodeTab,
+        },
       }
-
-      const l4Code = await resolveL4Code(connection, companyCode, accountCode);
-
-      const result = await connection.execute(
-        `
-          DELETE FROM MS_AC_SETUP_DOC_ACCODE
-          WHERE COMPANY_CODE = :companyCode
-            AND DOC_ID = :docId
-            AND HDR_DTL = :hdrDtl
-            AND AC_CODE = :l4Code
-            AND NVL(DIV_CODE, 'X') = NVL(:divCode, 'X')
-        `,
-        { companyCode, docId, hdrDtl, l4Code, divCode }
-      );
-
-      deleted += result.rowsAffected || 0;
-    }
-
-    await connection.commit();
+    );
 
     res.json({
       success: true,
-      message: deleted ? "Document account mapping deleted" : "No matching document account mapping found",
-      deleted
+      message: `${rows.length} Document account mapping deleted successfully`,
+      deleted: rows.length
     });
   } catch (err: any) {
-    console.error("Oracle Error:", err);
-
-    if (connection) await connection.rollback();
+    console.error("Oracle Error in delDocAccodeBulk:", err);
 
     res.status(500).json({
       success: false,
@@ -110,6 +82,6 @@ export const delDocAccodeBulk = async (
       details: err?.message || "Unknown error"
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) await connection.close().catch(() => {});
   }
 };

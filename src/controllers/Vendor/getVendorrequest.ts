@@ -55,58 +55,111 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const queryHeader = `
+    // const queryHeader = `
+    //   SELECT 
+    //     COMPANY_CODE,
+    //     DOC_TYPE,
+    //     DOC_NO,
+    //     TO_CHAR(DOC_DATE, 'DD-MM-YYYY') as DOC_DATE,
+    //     TO_CHAR(INVOICE_DATE, 'DD-MM-YYYY') as INVOICE_DATE,
+    //     TO_CHAR(CREATE_DATE, 'DD-MM-YYYY') as CREATE_DATE,
+    //     TO_CHAR(EDIT_DATE, 'DD-MM-YYYY') as EDIT_DATE,
+    //     TO_CHAR(REF_DATE, 'DD-MM-YYYY') as REF_DATE,
+    //     TO_CHAR(DUE_DATE, 'DD-MM-YYYY') as DUE_DATE,
+    //     AC_CODE,
+    //     REF_NO,
+    //     REMARKS,
+    //     CURR_CODE,
+    //     EX_RATE,
+    //     CANCELED,
+    //     CREATE_USER,
+    //     EDIT_USER,
+    //     LAST_SERIAL_NO,
+    //     PAYMENT_TERMS,
+    //     CREDIT_PERIOD,
+    //     REF_DOC_NO,
+    //     REF_DOC_TYPE,
+    //     PARTY_NAME,
+    //     PARTY_ADDRESS,
+    //     PARTY_PHONE,
+    //     PARTY_FAX,
+    //     INV_GENERATED,
+    //     DELIVERY_TO,
+    //     DLVR_CONTACT,
+    //     DLVR_EMAIL,
+    //     DLVR_MOBILE,
+    //     DLVR_TERM,
+    //     DIV_CODE,
+    //     CASH_IND,
+    //     APP_REF_NO,
+    //     LAST_ACTION,
+    //     INVOICE_NUMBER,
+    //     PDO_TYPE,
+    //     REF_DOC1,
+    //     REF_DOC2,
+    //     REF_DOC3
+    //   FROM VMS_FLOW_HDR
+    //   WHERE COMPANY_CODE = :companyCode
+    //     AND DOC_NO = :new_doc_no
+    //           AND ROWNUM = 1
+    // `;
+
+        const queryHeader = `
       SELECT 
-        COMPANY_CODE,
-        DOC_TYPE,
-        DOC_NO,
-        TO_CHAR(DOC_DATE, 'DD-MM-YYYY') as DOC_DATE,
-        TO_CHAR(INVOICE_DATE, 'DD-MM-YYYY') as INVOICE_DATE,
-        TO_CHAR(CREATE_DATE, 'DD-MM-YYYY') as CREATE_DATE,
-        TO_CHAR(EDIT_DATE, 'DD-MM-YYYY') as EDIT_DATE,
-        TO_CHAR(REF_DATE, 'DD-MM-YYYY') as REF_DATE,
-        TO_CHAR(DUE_DATE, 'DD-MM-YYYY') as DUE_DATE,
-        AC_CODE,
-        REF_NO,
-        REMARKS,
-        CURR_CODE,
-        EX_RATE,
-        CANCELED,
-        CREATE_USER,
-        EDIT_USER,
-        LAST_SERIAL_NO,
-        PAYMENT_TERMS,
-        CREDIT_PERIOD,
-        REF_DOC_NO,
-        REF_DOC_TYPE,
-        PARTY_NAME,
-        PARTY_ADDRESS,
-        PARTY_PHONE,
-        PARTY_FAX,
-        INV_GENERATED,
-        DELIVERY_TO,
-        DLVR_CONTACT,
-        DLVR_EMAIL,
-        DLVR_MOBILE,
-        DLVR_TERM,
-        DIV_CODE,
-        CASH_IND,
-        APP_REF_NO,
-        LAST_ACTION,
-        INVOICE_NUMBER,
-        PDO_TYPE,
-        REF_DOC1,
-        REF_DOC2,
-        REF_DOC3
-      FROM VMS_FLOW_HDR
-      WHERE COMPANY_CODE = :companyCode
-        AND DOC_NO = :new_doc_no
+        h.COMPANY_CODE,
+        h.DOC_TYPE,
+        h.DOC_NO,
+        TO_CHAR(h.DOC_DATE, 'DD-MM-YYYY') as DOC_DATE,
+        TO_CHAR(h.INVOICE_DATE, 'DD-MM-YYYY') as INVOICE_DATE,
+        TO_CHAR(h.CREATE_DATE, 'DD-MM-YYYY') as CREATE_DATE,
+        TO_CHAR(h.EDIT_DATE, 'DD-MM-YYYY') as EDIT_DATE,
+        TO_CHAR(h.REF_DATE, 'DD-MM-YYYY') as REF_DATE,
+        TO_CHAR(h.DUE_DATE, 'DD-MM-YYYY') as DUE_DATE,
+        h.AC_CODE,
+        h.REF_NO,
+        h.REMARKS,
+        h.CURR_CODE,
+        h.EX_RATE,
+        h.CANCELED,
+        h.CREATE_USER,
+        h.EDIT_USER,
+        h.LAST_SERIAL_NO,
+        h.PAYMENT_TERMS,
+        h.CREDIT_PERIOD,
+        h.REF_DOC_NO,
+        h.REF_DOC_TYPE,
+        h.PARTY_NAME,
+        h.PARTY_ADDRESS,
+        h.PARTY_PHONE,
+        h.PARTY_FAX,
+        h.INV_GENERATED,
+        h.DELIVERY_TO,
+        h.DLVR_CONTACT,
+        h.DLVR_EMAIL,
+        h.DLVR_MOBILE,
+        h.DLVR_TERM,
+        h.DIV_CODE,
+        d.DIV_NAME,
+        h.CASH_IND,
+        h.APP_REF_NO,
+        h.LAST_ACTION,
+        h.INVOICE_NUMBER,
+        h.PDO_TYPE,
+        h.REF_DOC1,
+        h.REF_DOC2,
+        h.REF_DOC3
+      FROM VMS_FLOW_HDR h
+      LEFT JOIN MS_HR_DIVISION d
+        ON d.DIV_CODE = h.DIV_CODE
+        AND d.COMPANY_CODE = h.COMPANY_CODE
+      WHERE h.COMPANY_CODE = :companyCode
+        AND h.DOC_NO = :new_doc_no
               AND ROWNUM = 1
     `;
 
     const queryDetail = `
       SELECT 
-      ITEM_REMARK,
+        ITEM_REMARK,
         COMPANY_CODE,
         DOC_TYPE,
         DOC_NO,

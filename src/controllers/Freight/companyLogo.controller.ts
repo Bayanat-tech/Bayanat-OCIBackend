@@ -30,16 +30,18 @@ export async function getCompanyLogoDirect(req: RequestWithUser, res: Response, 
             return;
         }
 
-        let tenantId = getCurrentTenantId();
-        if (!tenantId) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+        let tenantId = getCurrentTenantId() || (req as any)?.tenantId;
+        if (!tenantId && req.user?.loginid) {
+            tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+        }
         if (!tenantId) {
-            throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+            tenantId = 'WMSDEV_TENANT';
         }
 
         conn = await TenantManager.getConnection(tenantId);
 
         const result = await conn.execute(
-            `SELECT COMPANY_LOGO_AWSURL, COMPANY_LOGO 
+            `SELECT COMPANY_LOGO_AWSURL, COMPANY_LOGO, COMPANY_NAME, ADDRESS1, ADDRESS2, ADDRESS3, CITY, COUNTRY 
              FROM MS_COMPANY 
              WHERE COMPANY_CODE = :company_code`,
             { company_code: company_code },

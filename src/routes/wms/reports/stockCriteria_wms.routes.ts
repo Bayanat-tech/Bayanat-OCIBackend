@@ -1,57 +1,93 @@
-import * as express from "express"; // Importing the Express framework for building web applications.
-import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Importing middleware to check user authorization.
-import passport from "passport"; // Importing Passport for authentication.
-import { exportStockDetailReportExcel, getStockDetailReportHtml } from "../../../controllers/wms/reports/stockDetailReportController";
-import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
+import * as express from "express";
+import { checkUserAuthorization } from "../../../middleware/checkUserAthorization";
+import passport from "passport";
+import {
+  exportStockDetailReportExcel,
+  getStockDetailReportHtml,
+} from "../../../controllers/wms/reports/stockDetailReportController";
+import {
+  getStockSummaryReportHtml,
+  exportStockSummaryReportExcel,
+} from "../../../controllers/wms/reports/StockSummaryReport.controller";
 import {
   getStockAgeingQuantityReportHtml,
   exportStockAgeingQuantityReportExcel,
   getStockAgeingVolumeReportHtml,
   exportStockAgeingVolumeReportExcel,
 } from "../../../controllers/wms/reports/Stockageingcontroller";
-import { stockConfirmationReportExcel, stockConfirmationReportHtml, stockTransferReportExcel, stockTransferReportHtml } from "../../../controllers/wms/reports/stockTransferReportController";
-// import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
-// import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
-// import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
-const 
-router = express.Router(); // Creating a new router instance.
+import {
+  getStockConfirmationReportHtml,
+  exportStockConfirmationReportExcel,
+  getStockTransferReportHtml,
+  exportStockTransferReportExcel,
+} from "../../../controllers/wms/reports/stockTransferReportController";
+import { getSalaryAdvDedReportHtml } from "../../../controllers/wms/reports/SalaryAdvDedReport.controller";
+import { getAbsentMemoReportHtml } from "../../../controllers/wms/reports/AbsentMemoReport.controller";
+import { getRetirementReportHtml } from "../../../controllers/wms/reports/RetirementReportController";
+import { getAbsenceReportHtml } from "../../../controllers/wms/reports/AbsenceReport.controller";
+import { getDocumentReportHtml } from "../../../controllers/wms/reports/HrDocumentReport.controller";
+import { getLabourCardExpiryReportHtml } from "../../../controllers/wms/reports/HrLabourExpiryCard.controller";
+import { getEmployeeHeadCountReportHtml } from "../../../controllers/wms/reports/HrEmployeeHeadCountList.controller";
+import { getSalaryRegisterHtml } from "../../../controllers/wms/reports/SalaryRegister.controller";
+import { getHrVarianceReportHtml } from "../../../controllers/wms/reports/VarianceReport.controller";
+import { getHrEmployeeDetailsHtml } from "../../../controllers/wms/reports/EmployeeDetails.controller";
+import { getHrEmployeeWiseCostHtml } from "../../../controllers/wms/reports/EmployeeWiseCostReport.controller";
+
+import { getSectionMasterReportHtml } from "../../../controllers/wms/reports/HrSectionMasterReport.controller";
+import { getFormalDesignationReportHtml } from "../../../controllers/wms/reports/HrFormalDesignationReport.controller";
+import { getCategoryReportHtml } from "../../../controllers/wms/reports/HrCategoryReport.controller";
+
+const router = express.Router();
+
+// ─── Stock Transfer ───────────────────────────────────────────────────────────
 
 router.get(
   "/stocktransfer-report/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  stockTransferReportHtml
+  getStockTransferReportHtml
 );
+
 router.get(
   "/stocktransfer-report/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  stockTransferReportExcel
+  exportStockTransferReportExcel
 );
+
+// ─── Stock Confirmation ───────────────────────────────────────────────────────
+
 router.get(
   "/stockconfirmation-report/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  stockConfirmationReportHtml
+  getStockConfirmationReportHtml
 );
+
 router.get(
   "/stockconfirmation-report/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  stockConfirmationReportExcel
-)
+  exportStockConfirmationReportExcel
+);
+
+// ─── Stock Details ────────────────────────────────────────────────────────────
+
 router.post(
   "/stockdetails/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getStockDetailReportHtml
 );
+
 router.post(
   "/stockdetails/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockDetailReportExcel
 );
+
+// ─── Stock Summary ────────────────────────────────────────────────────────────
 
 router.post(
   "/stocksummary/html",
@@ -67,6 +103,8 @@ router.post(
   exportStockSummaryReportExcel
 );
 
+// ─── Stock Ageing (Quantity) ──────────────────────────────────────────────────
+
 router.post(
   "/stockageing/quantity/html",
   passport.authenticate("jwt", { session: false }),
@@ -80,6 +118,8 @@ router.post(
   checkUserAuthorization,
   exportStockAgeingQuantityReportExcel
 );
+
+// ─── Stock Ageing (Volume) ────────────────────────────────────────────────────
 
 router.post(
   "/stockageing/volume/html",
@@ -95,30 +135,193 @@ router.post(
   exportStockAgeingVolumeReportExcel
 );
 
-// ----------- stock details report ------------
-// Route to get stock details report
-// router.get(
-//   "/stock-criteria/detailstock",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   checkUserAuthorization, // Middleware to check if the user is authorized
-//   getStockDetailsReport // Controller function to handle the request
-// );
+// ─── Salary Addition / Deduction ──────────────────────────────────────────────
 
-// ---------- summary report ------------
-// Route to get summary stock report
-// router.get(
-//   "/stock-criteria/summarystock",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   checkUserAuthorization, // Middleware to check if the user is authorized
-//   getSummaryStockReport // Controller function to handle the request
-// );
+router.post(
+  "/salary-adv-ded/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryAdvDedReportHtml
+);
 
-// ---------- Ageing Report ---------
-// Route to get ageing stock report
-// router.get(
-//   "/stock-criteria/aging",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   getAgeingStockReport // Controller function to handle the request
-// );
+// ─── Absent Memo ──────────────────────────────────────────────────────────────
 
-export default router; // Exporting the router to be used in other parts of the application.
+router.post(
+  "/absent-memo/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsentMemoReportHtml
+);
+
+// ─── Section Master ───────────────────────────────────────────────────────────
+
+router.post(
+  "/section-master/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSectionMasterReportHtml
+);
+
+// ─── Retirement Report ────────────────────────────────────────────────────────
+
+router.get(
+  "/hr/retirement/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getRetirementReportHtml
+);
+
+router.post(
+  "/hr/retirement/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getRetirementReportHtml
+);
+
+// ─── Salary Register Report ───────────────────────────────────────────────────
+
+router.get(
+  "/hr/salary-register/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryRegisterHtml
+);
+
+router.post(
+  "/hr/salary-register/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryRegisterHtml
+);
+
+// ─── HR Variance Report ───────────────────────────────────────────────────────
+
+router.get(
+  "/hr/variance-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrVarianceReportHtml
+);
+
+router.post(
+  "/hr/variance-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrVarianceReportHtml
+);
+
+// ─── HR Employee Details Report ───────────────────────────────────────────────
+
+router.get(
+  "/hr/employee-details/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeDetailsHtml
+);
+
+router.post(
+  "/hr/employee-details/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeDetailsHtml
+);
+
+// ─── Employee Wise Cost Report ────────────────────────────────────────────────
+
+router.get(
+  "/hr/employee-wise-cost/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeWiseCostHtml
+);
+
+router.post(
+  "/hr/employee-wise-cost/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrEmployeeWiseCostHtml
+);
+
+// ─── Absence Report ───────────────────────────────────────────────────────────
+
+router.get(
+  "/hr/absence/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsenceReportHtml
+);
+
+router.post(
+  "/hr/absence/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsenceReportHtml
+);
+
+// ─── HR Document Report ───────────────────────────────────────────────────────
+
+router.get(
+  "/hr/document/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getDocumentReportHtml
+);
+
+router.post(
+  "/hr/document/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getDocumentReportHtml
+);
+
+// ─── Labour Card Expiry Listing Report ────────────────────────────────────────
+
+router.get(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
+);
+
+router.post(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
+);
+
+// ─── Employee Head Count List Report ──────────────────────────────────────────
+
+router.get(
+  "/hr/employee-head-count/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getEmployeeHeadCountReportHtml
+);
+
+router.post(
+  "/hr/employee-head-count/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getEmployeeHeadCountReportHtml
+);
+
+// ─── Formal Designation ───────────────────────────────────────────────────────
+
+router.post(
+  "/formal-designation/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFormalDesignationReportHtml
+);
+
+// ─── Category ─────────────────────────────────────────────────────────────────
+
+router.post(
+  "/category/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getCategoryReportHtml
+);
+
+export default router;

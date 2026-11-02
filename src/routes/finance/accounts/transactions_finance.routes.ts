@@ -5,6 +5,7 @@
  */
 
 import * as express from "express";
+import { getFinanceGstSetup, getFinanceGstDocument, getFinanceGstRegister } from '../../../controllers/finance/accounts/transactions/financeGst.controller';
 import passport from "passport";
 // Update the import path if the middleware is located elsewhere, for example:
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
@@ -22,6 +23,10 @@ import {
   getChequePaymentHeader,
   getChildTableName,
   getCompanyInfo,
+  getCompanyFinanceSetup,
+  saveCompanyFinanceSetup,
+  saveFyPeriod,
+  initializeCompanyFinance,
   getDefaultTransactionDetails,
   getPurchaseHeader,
   getTransactionChildren,
@@ -39,6 +44,7 @@ import {
   createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts,
+  getAccountLiveBalance,
   getLpoDoc,
   getLPOHeader,
   getLPOPrint,
@@ -101,9 +107,23 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 //import { getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisteOld_Summary";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
-import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+// import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
+import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
+import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNReport";
+import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransactionReportExcel, getStockTransactionReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/StockReportPS";
+import { exportEmployeeAssessmentReportExcel, getEmployeeAssessmentReport } from "../../../controllers/HR/Hr-Reports/Employeeassessmentreport";
+import { exportEmployeeTicketEligibilityReportExcel, getEmployeeTicketEligibilityReport } from "../../../controllers/HR/Hr-Reports/Employeeticketeligibility";
+import { exportEmployeeAddressListRepotExcel, getEmployeeAddressListReport } from "../../../controllers/HR/Hr-Reports/Employeeaddresslist";
+import { exportVacationSeparationReportExcel, getVacationSeparationReport } from "../../../controllers/HR/Hr-Reports/Vacationseparationreport";
+import { exportMonthlySalarySummaryReportExcel, getMonthlySalarySummaryReport } from "../../../controllers/HR/Hr-Reports/Monthlysalarysummary";
+import { exportEmployeeSalaryNotProcessedReportExcel, getEmployeeSalaryNotProcessedReport } from "../../../controllers/HR/Hr-Reports/Employeesalarynotprocessed";
+import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from "../../../controllers/HR/Hr-Reports/Yearlyleavebalance";
+import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
+import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../../controllers/ALMS/PurchaseRequestReports";
+import { getPrRegisterFormReportExcel, getPrRegisterFormReportHtml } from "../../../controllers/ALMS/PRFormReport";
 
 
 
@@ -113,8 +133,13 @@ const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+
+
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
+router.get('/gst/setup', getFinanceGstSetup);
+router.get('/gst/document', getFinanceGstDocument);
+router.post('/reports/gst-register/:format', getFinanceGstRegister);
 router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
 router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
 
@@ -198,6 +223,32 @@ router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryRepo
 router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
 router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
 
+
+// purchase reqest register report routes (ALMS) BTFlow Reports --->
+//Purchase Request Register Summary and Details Report Routes
+router.post('/reports/PR_Register_Summary/html', getPrRegisterSummaryReportHtml);
+router.post('/reports/PR_Register_Summary/excel', getPrRegisterSummaryReportExcel);
+
+router.post('/reports/PR_Register_Details/html', getPrRegisterDetailReportHtml);
+router.post('/reports/PR_Register_Details/excel', getPrRegisterDetailReportExcel);
+
+//Purchase request form Report Routes
+router.post('/reports/PR_FormReport/html', getPrRegisterFormReportHtml);
+router.post('/reports/PR_FormReport/excel', getPrRegisterFormReportExcel);
+
+
+
+
+// Purchase Sales Stock Summary/Transaction Report Routes
+
+router.post('/reports/PSStockSummary/html', getStockSummaryReportHtml);
+router.post('/reports/PSStockSummary/excel', getStockSummaryReportExcel);
+
+
+
+router.post('/reports/PSStockTransaction/html', getStockTransactionReportHtml);
+router.post('/reports/PSStockTransaction/excel', getStockTransactionReportExcel);
+
 // ---------------Purchase Invoice 3 reports Routes----------------------
 
 
@@ -208,6 +259,17 @@ router.post('/reports/PurchaseInvoiceAccountDetails/html', getPurchaseInvoiceAcc
 router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
 router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
 router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
+
+//purchase 
+
+router.post('/reports/PurchaseQuotation/html', getPurchaseQuotationReportHtml);
+router.post('/reports/PurchaseQuotation/excel', getPurchaseQuotationReportExcel);
+
+router.post('/reports/PurchaseQuotationWithRates/html',getPurchaseQuotationWithRatesReportHtml);
+router.post('/reports/PurchaseQuotationWithRates/excel',getPurchaseQuotationWithRatesReportExcel);
+
+router.post('/reports/PurchaseQuotationCompare/html',getPurchaseQuotationCompareReportHtml);
+router.post('/reports/PurchaseQuotationCompare/excel',getPurchaseQuotationCompareReportExcel);
 
 
 
@@ -222,6 +284,9 @@ router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsRepo
 router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
 
 
+
+
+
 // sales order report routes
 
 router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
@@ -234,11 +299,17 @@ router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
 router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 
+// sales delivery note report routes
+router.post('/reports/SalesDNReport/html', getSalesDNReportHtml);
+router.post('/reports/SalesDNReport/excel', getSalesDNReportExcel);
+
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
-router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   // 👈 नया route
+router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   
 
+router.post('/reports/getEmployeeAssessmentReport/html',  getEmployeeAssessmentReport);
+router.post('/reports/getEmployeeAssessmentReport/excel', exportEmployeeAssessmentReportExcel);
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
@@ -247,6 +318,38 @@ router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
 router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
+router.post('/reports/getEmployeeTicketEligibilityReport/html',  getEmployeeTicketEligibilityReport);
+router.post('/reports/getEmployeeTicketEligibilityReport/excel', exportEmployeeTicketEligibilityReportExcel);
+
+
+router.post('/reports/getVacationSeparationReportHtml/html',  getVacationSeparationReport);
+router.post('/reports/getVacationSeparationReportExcel/excel', exportVacationSeparationReportExcel);
+
+
+
+router.post('/reports/getYearlyLeaveBalanceReportHtml/html',   getYearlyLeaveBalanceReport);
+router.post('/reports/exportYearlyLeaveBalanceReportExcel/excel', exportYearlyLeaveBalanceReportExcel);
+
+
+// router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
+// router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+
+router.post("/reports/getMonthlySalarySummaryReportHtml/html", getMonthlySalarySummaryReport);
+router.post("/reports/getMonthlySalarySummaryReportExcel/excel", exportMonthlySalarySummaryReportExcel);
+
+
+router.post('/reports/getEmployeeSalaryNotProcessedReportHtml/html',   getEmployeeSalaryNotProcessedReport);
+router.post('/reports/getEmployeeSalaryNotProcessedReportExcel/excel', exportEmployeeSalaryNotProcessedReportExcel);
+
+router.post('/reports/getEmployeeAddressListReportHtml/html', getEmployeeAddressListReport);
+router.post('/reports/getEmployeeAddressListReportExcel/excel', exportEmployeeAddressListRepotExcel); 
+
+
+
+
+
+router.post('/reports/getLeaveResumptionReportHtml/html', getLeaveResumptionReport);
+router.post('/reports/exportLeaveResumptionReportExcel/excel', exportLeaveResumptionReportExcel); 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
@@ -301,7 +404,11 @@ router.post('/reports/PrRegisterReport/excel', exportPRRegisterReportExcel);
 
 
 // GET Routes - Information Retrieval
-router.get("/company_info", getCompanyInfo);             
+router.get("/company_info", getCompanyInfo);
+router.get("/company-setup", getCompanyFinanceSetup);
+router.post("/company-setup", saveCompanyFinanceSetup);
+router.post("/company-setup/fy-period", saveFyPeriod);             
+router.post("/initialize_company_finance", initializeCompanyFinance);
 router.get("/default_details", getDefaultTransactionDetails);  
 router.get("/cheque_detail", getChequeDetail);                 
 router.get("/header/:doc_no", getChequePaymentHeader);   
@@ -309,7 +416,8 @@ router.get("/purchaseheader/:doc_no", getPurchaseHeader);
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
 router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
 router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
-router.get("/doc_accounts", getDocAccounts);                    // Get doc accounts
+router.get("/doc_accounts", getDocAccounts);
+router.get("/account_balance", getAccountLiveBalance);                    // Get doc accounts
 router.get("/invoice_outstanding", getInvoiceOutstandingBalances); // Get outstanding balances for invoices
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data

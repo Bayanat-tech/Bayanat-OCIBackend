@@ -302,7 +302,7 @@ INV_NO:
 
 
       TX_COMPNT_1_EXPMT:
-        String(header.tx_compnt_1_expmt ?? "S"),
+        String(header.tx_compnt_1_expmt ?? ""),
 
 
 
@@ -808,22 +808,22 @@ INV_NO:
 
 
       TX_COMPNT_1_EXPMT:
-        String(d.tx_compnt_1_expmt ?? "S"),
+        String(d.tx_compnt_1_expmt ?? ""),
 
 
 
       TX_COMPNT_2_EXPMT:
-        String(d.tx_compnt_2_expmt ?? "S"),
+        String(d.tx_compnt_2_expmt ?? ""),
 
 
 
       TX_COMPNT_3_EXPMT:
-        String(d.tx_compnt_3_expmt ?? "S"),
+        String(d.tx_compnt_3_expmt ?? ""),
 
 
 
       TX_COMPNT_4_EXPMT:
-        String(d.tx_compnt_4_expmt ?? "S"),
+        String(d.tx_compnt_4_expmt ?? ""),
 
 
 

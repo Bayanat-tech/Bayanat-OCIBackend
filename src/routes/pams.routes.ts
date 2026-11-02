@@ -2,6 +2,7 @@
 import * as express from "express";
 import passport from "passport";
 import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
+import { requirePamsTenantContext } from "../controllers/PAMS/pamsTenantSafety";
 
 
 import gmPamsRouter from "./Pams/pams.routes";
@@ -13,6 +14,7 @@ router.use(
   "/:transaction",
   passport.authenticate("jwt", { session: false }),
   tenantContextMiddleware,
+  requirePamsTenantContext,
   checkUserAuthorization,
   gmPamsRouter    
 );

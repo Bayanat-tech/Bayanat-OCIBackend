@@ -349,6 +349,9 @@ interface ITreeItem {
   parent_code?: string | null;
   level: number;
   children: ITreeItem[];
+  ac_active?: string;
+  ac_status?: string;
+  approved_by?: string;
 }
 
 export function buildHierarchy(data: any[]): ITreeItem[] {
@@ -366,6 +369,9 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
       l4_description,
       ac_code,
       ac_name,
+      ac_active,
+      ac_status,
+      approved_by,
     } = eachData;
 
     /* ---------- LEVEL 1 ---------- */
@@ -461,6 +467,9 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
           level: 5,
           parent_code: l4_code,
           children: [],
+          ac_active,
+          ac_status,
+          approved_by,
         });
       }
     }

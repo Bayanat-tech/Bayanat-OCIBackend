@@ -4,8 +4,14 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../../controllers/common/report_common";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
@@ -32,14 +38,20 @@ interface PrinSection {
   totalVolume: number;
 }
 
-// ─── DB helpers ───────────────────────────────────────────────────────────────
+interface DnParams {
+  loginid:      string;
+  company_code: string;
+  prinCode:     string;
+  fromdate:     string;
+  todate:       string;
+}
+
+// ─── DB helpers ─────────────────────────────────────────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
-  if (!tenantId && req.user?.loginid)
-    tenantId = await TenantManager.getTenantForUser(req.user.loginid);
-  if (!tenantId)
-    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+  if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+  if (!tenantId) throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
   return TenantManager.getConnection(tenantId);
 }
 
@@ -56,11 +68,16 @@ function normalize(rows: any[] = []): ReportRow[] {
   );
 }
 
-// ─── Formatting helpers ───────────────────────────────────────────────────────
+// ─── Formatting helpers ─────────────────────────────────────────────────────
 
 function text(value: unknown): string {
   if (value == null) return "";
   return String(value);
+}
+
+function num(v: unknown): number {
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) ? n : 0;
 }
 
 function dateText(value: unknown): string {
@@ -71,85 +88,88 @@ function dateText(value: unknown): string {
 }
 
 function escapeHtml(value: unknown): string {
-  return text(value)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function escapeXml(value: unknown): string {
-  return text(value)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
-function numFmt(value: unknown, decimals = 0): string {
+function qtyFmt(value: unknown): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "\u2014";
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  if (!Number.isFinite(n)) return "0";
+  return n.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
 
-// Normalizes an incoming filter value to what the SQL-builder proc expects:
-// undefined / "" / "all" (any case) all collapse to the literal "All" string,
-// which is what the proc's `UPPER(TRIM(P_CODEx)) <> 'ALL'` checks skip on.
-// Any other non-empty string passes through trimmed.
+function volFmt(value: unknown): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.000";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
+// undefined / "" / "all" (any case) → "All"
 function normalizeFilter(value: unknown): string {
   const v = text(value).trim();
   if (!v || v.toUpperCase() === "ALL") return "All";
   return v;
 }
 
-// ★ NEW — splits a comma-joined filter value ("P001,P002,P003") into a clean
-//   list of individual codes. Returns null for "All" or a single code, since
-//   those two cases are handled fine by the proc itself via equality match.
+// "P001,P002" → ["P001","P002"]; null for "All" or a single code (proc handles those natively)
 function parseMultiCodeFilter(value: string): string[] | null {
   if (value === "All") return null;
-  if (!value.includes(",")) return null; // single code — proc handles it natively
+  if (!value.includes(",")) return null;
   const list = value.split(",").map((c) => c.trim()).filter(Boolean);
   return list.length > 1 ? list : null;
 }
 
-// ─── Data loader ──────────────────────────────────────────────────────────────
+function periodText(p: DnParams): string {
+  if (p.fromdate === "All" && p.todate === "All") return "All Dates";
+  return `${p.fromdate} to ${p.todate}`;
+}
 
-async function loadDnData(
-  req: RequestWithUser,
-  params: {
-    loginid?:  string;
-    prinCode?: string;   // "All", a single PRIN_CODE, or "P1,P2,P3"
-    fromdate?: string;   // "All" or "DD/MM/YYYY"
-    todate?:   string;   // "All" or "DD/MM/YYYY"
-  } = {}
-): Promise<ReportRow[]> {
+// ─── Param extraction ───────────────────────────────────────────────────────
+
+function extractParams(req: RequestWithUser): DnParams {
+  const src = { ...(req.query as any), ...(req.body || {}) };
+  return {
+    loginid:      text(req.user?.loginid) || text(src.loginid) || "ADMIN",
+    company_code: text(src.company_code),
+    prinCode:     normalizeFilter(src.code2),
+    fromdate:     normalizeFilter(src.code3),
+    todate:       normalizeFilter(src.code4),
+  };
+}
+
+function resolveCompanyCode(req: RequestWithUser, params: DnParams): string {
+  return (
+    params.company_code ||
+    text(req.user?.company_code) ||
+    text((req.query as any).company_code) ||
+    "BSG"
+  );
+}
+
+// ─── Data loader ────────────────────────────────────────────────────────────
+
+async function loadDnData(req: RequestWithUser, params: DnParams): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
-    const requestedPrin = normalizeFilter(params.prinCode);
-
-    // ★ FIX: PROC_BUILD_DYNAMIC_SQL_COMMON20 only supports a single-value
-    //   equality match on PRIN_CODE (or the literal "All" to skip the filter
-    //   altogether) — it does NOT understand a comma-joined list. Passing a
-    //   list straight through used to silently return zero rows.
-    //
-    //   When the user picks 2+ specific principals, we ask the proc for the
-    //   full unfiltered dataset instead (same as "All") and then narrow the
-    //   result down to just the requested principals ourselves, in JS, below.
-    const multiCodes  = parseMultiCodeFilter(requestedPrin);
-    const procPrinCode = multiCodes ? "All" : requestedPrin;
+    // The proc only supports single-value equality on PRIN_CODE (or "All").
+    // For 2+ principals we ask for everything and narrow down in JS below.
+    const multiCodes   = parseMultiCodeFilter(params.prinCode);
+    const procPrinCode = multiCodes ? "All" : params.prinCode;
 
     const binds: Record<string, any> = {
       parameter: "WMS_Stock_DN_Summary_Report",
-      loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
+      loginid:   params.loginid,
 
-      code1:  req.body.code1 || null,
+      code1:  (req.body || {}).code1 || null,
       code2:  procPrinCode,
-      code3:  normalizeFilter(params.fromdate),
-      code4:  normalizeFilter(params.todate),
+      code3:  params.fromdate,
+      code4:  params.todate,
       code5:  null, code6: null, code7: null, code8: null, code9: null,
 
-      ...Object.fromEntries(
-        Array.from({ length: 11 }, (_, i) => [`code${i + 10}`, null])
-      ),
+      ...Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`code${i + 10}`, null])),
 
       number1: null, number2: null, number3: null, number4: null,
       date1:   null, date2:   null, date3:   null, date4:   null,
@@ -175,48 +195,40 @@ async function loadDnData(
     );
 
     const rawSql = (procResult.outBinds as any).out_sql as string | null;
-    console.log("[DnSummaryReport] Generated SQL:", rawSql);
-    if (multiCodes) {
-      console.log("[DnSummaryReport] Multi-principal filter requested, narrowing client-side to:", multiCodes);
-    }
-
     if (!rawSql) {
       throw new Error(
         "PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL. " +
         "Ensure the WHEN 'WMS_Stock_DN_Summary_Report' branch exists in the procedure."
       );
     }
+    console.log("=== GENERATED SQL (DN Summary) ===\n", rawSql, "\n=== END ===");
+    if (multiCodes) console.log("[DnSummaryReport] Multi-principal filter, narrowing client-side to:", multiCodes);
 
-    const dataResult = await conn.execute(rawSql, [], {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
-
+    const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     let rows = normalize(dataResult.rows as any[]);
 
-    // ★ FIX: narrow down to just the selected principals when multiple were
-    //   requested. Case/whitespace-insensitive compare to be safe.
     if (multiCodes) {
       const wanted = new Set(multiCodes.map((c) => c.toUpperCase()));
       rows = rows.filter((r) => wanted.has(text(r.prin_code).trim().toUpperCase()));
     }
-
     return rows;
   } finally {
     await closeConn(conn);
   }
 }
 
-// ─── Grouping ─────────────────────────────────────────────────────────────────
+// ─── Grouping ───────────────────────────────────────────────────────────────
+
+function rowQty(r: ReportRow): number {
+  return num(r.qty ?? r.quantity ?? r.qty_puom);
+}
 
 function groupRows(rows: ReportRow[]): PrinSection[] {
   const prinMap: Record<string, {
     prinCode: string; prinName: string;
     groups: Record<string, {
       groupName: string;
-      prods: Record<string, {
-        prodCode: string; prodName: string;
-        rows: ReportRow[]; totalQty: number; totalVolume: number;
-      }>;
+      prods: Record<string, ProdSection>;
       totalQty: number; totalVolume: number;
     }>;
     totalQty: number; totalVolume: number;
@@ -226,8 +238,8 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
     const prinKey  = text(r.prin_code)  || "\u2014";
     const groupKey = text(r.group_name) || "Ungrouped";
     const prodKey  = text(r.prod_code)  || "\u2014";
-    const qty      = parseFloat(String(r.qty ?? r.quantity ?? r.qty_puom)) || 0;
-    const volume   = parseFloat(String(r.volume)) || 0;
+    const qty      = rowQty(r);
+    const volume   = num(r.volume);
 
     if (!prinMap[prinKey])
       prinMap[prinKey] = { prinCode: text(r.prin_code), prinName: text(r.prin_name), groups: {}, totalQty: 0, totalVolume: 0 };
@@ -251,460 +263,602 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
-// NOTE: No action-bar rendered here — Print & Excel buttons live on the React
-//       parent page and communicate with this iframe via postMessage / API call.
+// ─── Column model (ONE alignment per column, used by header + every data cell) ─
 
-function renderHtml(
-  prins:       PrinSection[],
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
-): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+type ColAlign = "left" | "center" | "right";
 
-  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
-  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-
-  const autoPrintScript = autoPrint
-    ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
-    : "";
-
-  let bodyRows = "";
-
-  for (const ps of prins) {
-    bodyRows += "<tr class=\"prin-row\"><td colspan=\"8\">" +
-      escapeHtml(ps.prinCode) + (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") +
-      "</td></tr>";
-
-    for (const gs of ps.groups) {
-      bodyRows += "<tr class=\"group-row\"><td colspan=\"8\">Group : " +
-        escapeHtml(gs.groupName) + "</td></tr>";
-
-      for (const prd of gs.prods) {
-        bodyRows += "<tr class=\"prod-row\"><td colspan=\"8\">" +
-          escapeHtml(prd.prodCode) + (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") +
-          "</td></tr>";
-
-        for (const dr of prd.rows) {
-          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
-          const volume = parseFloat(String(dr.volume)) || 0;
-          bodyRows +=
-            "<tr class=\"data-row\">" +
-            "<td>" + escapeHtml(dr.dn_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.dn_date ?? dr.receipt_date)) + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date)) + "</td>" +
-            "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.customer || dr.cust_code || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
-            "</tr>";
-        }
-
-        bodyRows +=
-          "<tr class=\"prod-total\">" +
-          "<td colspan=\"6\">Total For " + escapeHtml(prd.prodCode) +
-          (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalQty)) + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalVolume, 3)) + "</td>" +
-          "</tr>";
-      }
-
-      bodyRows +=
-        "<tr class=\"group-total\">" +
-        "<td colspan=\"6\">Total For " + escapeHtml(gs.groupName) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalQty)) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalVolume, 3)) + "</td>" +
-        "</tr>";
-    }
-
-    bodyRows +=
-      "<tr class=\"prin-total\">" +
-      "<td colspan=\"6\">Total For " + escapeHtml(ps.prinCode) +
-      (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalQty)) + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalVolume, 3)) + "</td>" +
-      "</tr>";
-  }
-
-  const grandRow =
-    "<tr class=\"grand-total\">" +
-    "<td colspan=\"6\">Grand Total</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandQty)) + "</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandVolume, 3)) + "</td>" +
-    "</tr>";
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm; min-height: 190mm;
-      margin: 18px auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-      border-radius: 4px;
-    }
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 8px;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 10px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    col.c0 { width: 9%;  } col.c1 { width: 10%; } col.c2 { width: 10%; }
-    col.c3 { width: 14%; } col.c4 { width: 13%; } col.c5 { width: 15%; }
-    col.c6 { width: 15%; } col.c7 { width: 14%; }
-    thead tr.th-main th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 7px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-    }
-    thead tr.th-main th:last-child { border-right: none; }
-    thead tr.th-main th.left { text-align: left; }
-    thead tr.th-main th.num  { text-align: right; }
-    tr.prin-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    tr.group-row td {
-      background: #dce4ef; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 20px;
-      border-bottom: 1px solid #c8d4e4;
-    }
-    tr.prod-row td {
-      background: #fef3c7; color: #92400e; font-weight: 700;
-      font-size: 10px; padding: 3px 10px 3px 32px;
-      border-bottom: 1px solid #fde68a;
-    }
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; vertical-align: top;
-    }
-    tbody tr.data-row td:first-child { padding-left: 40px; }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    tr.prod-total td {
-      background: #fde68a; padding: 3px 10px; font-size: 10px;
-      font-weight: 700; color: #78350f; white-space: nowrap;
-    }
-    tr.group-total td {
-      background: #c8d4e4; padding: 4px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.prin-total td {
-      background: #a8b8d0; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #0f2040; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-    @media print {
-      body   { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
-      thead  { display: table-header-group; }
-      tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-      tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="sheet">
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;
-            Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-
-    <table class="rpt-table" id="dnTable">
-      <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/>
-      </colgroup>
-      <thead>
-        <tr class="th-main">
-          <th class="left">DN No</th>
-          <th>DN Date</th>
-          <th>Confirm Date</th>
-          <th class="left">Job No</th>
-          <th class="left">Customer</th>
-          <th class="left">Container No</th>
-          <th class="num">Qty</th>
-          <th class="num">Volume</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${bodyRows}
-        ${grandRow}
-      </tbody>
-    </table>
-
-    <div class="rpt-footer">
-      <span>Report Name : <code>Delivery Note Summary</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-
-  <script>
-    // Listen for print trigger from parent React page via postMessage
-    window.addEventListener("message", function(e) {
-      if (e.data === "print") window.print();
-    });
-
-    ${autoPrintScript}
-  </script>
-</body>
-</html>`;
+interface DnColumn {
+  label: string;
+  align: ColAlign;
+  width: number; // % — must add up to 100
 }
 
-// ─── Excel builder ────────────────────────────────────────────────────────────
+const DN_COLUMNS: DnColumn[] = [
+  { label: "DN No",        align: "left",   width: 10 },
+  { label: "DN Date",      align: "center", width: 9  },
+  { label: "Confirm Date", align: "center", width: 10 },
+  { label: "Job No",       align: "left",   width: 14 },
+  { label: "Customer",     align: "left",   width: 14 },
+  { label: "Container No", align: "left",   width: 14 },
+  { label: "Qty",          align: "right",  width: 8  },
+  { label: "Volume",       align: "right",  width: 12 },
+];
 
-const STYLE_ID = {
-  default:       0,
-  header:        1,
-  sectionPrin:   2,
-  sectionGroup:  3,
-  sectionProd:   4,
-  value:         5,
-  totalProd:     6,
-  totalGroup:    7,
-  totalPrin:     8,
-  totalGrand:    9,
-  numValue:      10,
-  numTotalProd:  11,
-  numTotalGroup: 12,
-  numTotalPrin:  13,
-  numGrand:      14,
-} as const;
+const DN_COL_COUNT = DN_COLUMNS.length;
+const LABEL_SPAN   = DN_COL_COUNT - 2; // total-row label spans everything before Qty
 
-type StyleKey = keyof typeof STYLE_ID;
-interface XlCell { v: unknown; s: number }
-function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
+// ─── Layout CSS – same look as the Quotation List PDF ───────────────────────
+// Used together with fontMode: "native", so the sizes below are the real sizes.
+// Letterhead / footer come from report_common; this only styles the body.
+// NOTE: row selectors include "tbody" so they out-rank the zebra rule
+// (tbody tr:nth-child(even) td) in report_common.
 
-function buildExcelBuffer(prins: PrinSection[]): Buffer {
-  const NCOLS = 8;
-  type Row = (XlCell | null)[];
-  const skip = null;
-  const rows: Row[] = [];
+const DN_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  rows.push([xc("Delivery Note Report (Summary)", "header"), ...Array(NCOLS - 1).fill(skip)]);
-  rows.push(Array(NCOLS).fill(skip));
-  rows.push([
-    xc("DN No",       "header"), xc("DN Date",      "header"), xc("Confirm Date", "header"),
-    xc("Job No",      "header"), xc("Customer",     "header"), xc("Container No", "header"),
-    xc("Qty",         "header"), xc("Volume",       "header"),
-  ]);
-
-  for (const ps of prins) {
-    rows.push([xc(ps.prinCode + (ps.prinName ? " | " + ps.prinName : ""), "sectionPrin"), ...Array(NCOLS - 1).fill(skip)]);
-
-    for (const gs of ps.groups) {
-      rows.push([xc("Group : " + gs.groupName, "sectionGroup"), ...Array(NCOLS - 1).fill(skip)]);
-
-      for (const prd of gs.prods) {
-        rows.push([xc(prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
-
-        for (const dr of prd.rows) {
-          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
-          const volume = parseFloat(String(dr.volume)) || 0;
-          rows.push([
-            xc(text(dr.dn_no)                                        || "\u2014", "value"),
-            xc(dateText(dr.dn_date ?? dr.receipt_date),                           "value"),
-            xc(dateText(dr.principal_confirm_date ?? dr.confirm_date),            "value"),
-            xc(text(dr.job_no)                                       || "\u2014", "value"),
-            xc(text(dr.customer ?? dr.cust_code)                     || "\u2014", "value"),
-            xc(text(dr.container_no)                                 || "\u2014", "value"),
-            xc(numFmt(qty),                                                       "numValue"),
-            xc(numFmt(volume, 3),                                                 "numValue"),
-          ]);
-        }
-
-        rows.push([
-          xc("Total For " + prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "totalProd"),
-          skip, skip, skip, skip, skip,
-          xc(numFmt(prd.totalQty), "numTotalProd"),
-          xc(numFmt(prd.totalVolume, 3), "numTotalProd"),
-        ]);
-      }
-
-      rows.push([
-        xc("Total For " + gs.groupName, "totalGroup"),
-        skip, skip, skip, skip, skip,
-        xc(numFmt(gs.totalQty), "numTotalGroup"),
-        xc(numFmt(gs.totalVolume, 3), "numTotalGroup"),
-      ]);
-    }
-
-    rows.push([
-      xc("Total For " + ps.prinCode + (ps.prinName ? " | " + ps.prinName : ""), "totalPrin"),
-      skip, skip, skip, skip, skip,
-      xc(numFmt(ps.totalQty), "numTotalPrin"),
-      xc(numFmt(ps.totalVolume, 3), "numTotalPrin"),
-    ]);
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  /* Letterhead – same as Enquiry List */
+  .company-name       { font-size: 18px; font-weight: 700; }
+  .company-address    { font-size: 11px; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 28px 0 14px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #00378c;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 28px; }
+
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid blue bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0;
+    text-transform: none;
+  }
+
+  /* Section banners: Principal / Group / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
+  table.data-table tbody tr.prin-row  td { background: #eaf0f8; font-size: 13px; font-weight: 700; padding: 11px 8px; }
+  table.data-table tbody tr.group-row td { background: #f4f7fc; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+  table.data-table tbody tr.prod-row  td { background: #fafbfd; font-size: 10.5px; padding: 7px 8px 7px 28px; color: #334155; }
+
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+  }
+  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
+
+  /* Totals */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0; color: #00378c; font-weight: 700; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0; color: #00378c; font-weight: 700; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1;
+  }
+
+  @media print {
+    body::before { display: none !important; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.subtotal-row,
+    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+  }
+`;
+
+// Lets the React parent page trigger printing through postMessage.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
+// ─── Body pieces ────────────────────────────────────────────────────────────
+
+function renderDnBody(prins: PrinSection[], params: DnParams, reportTitle: string): string {
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-  rows.push([
-    xc("Grand Total", "totalGrand"),
-    skip, skip, skip, skip, skip,
-    xc(numFmt(grandQty), "numGrand"),
-    xc(numFmt(grandVolume, 3), "numGrand"),
+  const C = DN_COLUMNS;
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Period",    value: periodText(params) },
+    { label: "Principal", value: params.prinCode },
   ]);
 
-  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 14, 14];
-  const colXml = COL_WIDTHS.map((w, i) =>
-    "<col min=\"" + (i + 1) + "\" max=\"" + (i + 1) + "\" width=\"" + w + "\" customWidth=\"1\"/>"
+  const totalRow = (cls: string, label: string, qty: number, vol: number) =>
+    `<tr class="${cls}">` +
+    `<td class="right" colspan="${LABEL_SPAN}">${label}</td>` +
+    `<td class="right num">${escapeHtml(qtyFmt(qty))}</td>` +
+    `<td class="right num">${escapeHtml(volFmt(vol))}</td>` +
+    `</tr>`;
+
+    let bodyRows = "";
+
+if (!prins.length) {
+  bodyRows = `
+    <tr>
+      <td colspan="${DN_COL_COUNT}"
+          class="center muted"
+          style="padding: 20px; text-align: center;">
+        No records found for the selected criteria.
+      </td>
+    </tr>
+  `;
+} else {
+
+  for (const ps of prins) {
+    const prinLabel =
+      `${escapeHtml(ps.prinCode)}${
+        ps.prinName ? " - " + escapeHtml(ps.prinName) : ""
+      }`;
+
+    bodyRows +=
+      `<tr class="group-header-row prin-row">` +
+      `<td colspan="${DN_COL_COUNT}">${prinLabel}</td>` +
+      `</tr>`;
+
+    for (const gs of ps.groups) {
+
+      bodyRows +=
+        `<tr class="group-header-row group-row">` +
+        `<td colspan="${DN_COL_COUNT}">` +
+        `Group : ${escapeHtml(gs.groupName)}` +
+        `</td>` +
+        `</tr>`;
+
+      for (const prd of gs.prods) {
+
+        const prodLabel =
+          `${escapeHtml(prd.prodCode)}${
+            prd.prodName ? " - " + escapeHtml(prd.prodName) : ""
+          }`;
+
+        bodyRows +=
+          `<tr class="group-header-row prod-row">` +
+          `<td colspan="${DN_COL_COUNT}">${prodLabel}</td>` +
+          `</tr>`;
+
+        for (const dr of prd.rows) {
+
+          bodyRows +=
+            `<tr class="data-row">` +
+            `<td class="${C[0].align} primary-text">${escapeHtml(dr.dn_no || "—")}</td>` +
+            `<td class="${C[1].align}">${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
+            `<td class="${C[2].align}">${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
+            `<td class="${C[3].align}">${escapeHtml(dr.job_no || "—")}</td>` +
+            `<td class="${C[4].align}">${escapeHtml(dr.customer || dr.cust_code || "—")}</td>` +
+            `<td class="${C[5].align}">${escapeHtml(dr.container_no || "—")}</td>` +
+            `<td class="${C[6].align} num">${escapeHtml(qtyFmt(rowQty(dr)))}</td>` +
+            `<td class="${C[7].align} num">${escapeHtml(volFmt(num(dr.volume)))}</td>` +
+            `</tr>`;
+        }
+
+        bodyRows += totalRow(
+          "subtotal-row",
+          `Sub Total (${prodLabel}):`,
+          prd.totalQty,
+          prd.totalVolume
+        );
+      }
+
+      bodyRows += totalRow(
+        "subtotal-row",
+        `Sub Total (${escapeHtml(gs.groupName)}):`,
+        gs.totalQty,
+        gs.totalVolume
+      );
+    }
+
+    bodyRows += totalRow(
+      "subtotal-row",
+      `Sub Total (${prinLabel}):`,
+      ps.totalQty,
+      ps.totalVolume
+    );
+  }
+
+  const recordCount = prins.reduce(
+    (s, p) =>
+      s +
+      p.groups.reduce(
+        (gs, g) =>
+          gs +
+          g.prods.reduce(
+            (ps, pr) => ps + pr.rows.length,
+            0
+          ),
+        0
+      ),
+    0
+  );
+
+  bodyRows += totalRow(
+    "grand-total-row",
+    `GRAND TOTAL (${recordCount} Records):`,
+    grandQty,
+    grandVolume
+  );
+}
+
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+
+  return `
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
+    <table class="data-table">
+      <colgroup>${colgroup}</colgroup>
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+    ${PRINT_LISTENER_SCRIPT}`;
+}
+
+// ─── HTML document (shared report_common builders) ──────────────────────────
+
+async function buildDnHtml(
+  req: RequestWithUser,
+  params: DnParams,
+  prins: PrinSection[],
+  reportTitle: string,
+  autoPrint: boolean
+): Promise<string> {
+  const printed = new Date().toLocaleString("en-US");
+  const companyCode = resolveCompanyCode(req, params);
+  const headerHtml  = await reportHeader({ company_code: companyCode, req });
+ const footerHtml = reportFooter({
+  reportName: "Delivery Note Summary",
+  userName:   params.loginid,
+  endLabel:   "Powered by Bayanat Technology",
+  extraLeft:  `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
+});
+  const bodyHtml = renderDnBody(prins, params, reportTitle);
+
+  return buildReportDocument({
+    title: reportTitle,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: DN_EXTRA_CSS,
+    autoPrint,
+    showPrintButton: true,
+    fontMode: "native",
+  });
+}
+
+// ─── Route handlers (HTML / PDF) ────────────────────────────────────────────
+
+export const getDnSummaryReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const reportTitle = text(req.query.title as string) || "Delivery Note Report (Summary)";
+    const autoPrint   = req.query.print === "true";
+    const params      = extractParams(req);
+
+    // const rows = await loadDnData(req, params);
+    // if (!rows.length) {
+    //   res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+    //   return;
+    // }
+
+    // const html = await buildDnHtml(req, params, groupRows(rows), reportTitle, autoPrint);
+
+    const rows = await loadDnData(req, params);
+
+const html = await buildDnHtml(
+  req,
+  params,
+  groupRows(rows),
+  reportTitle,
+  autoPrint
+);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (error: any) {
+    console.error("DN Summary HTML error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+  }
+};
+
+export const getDnSummaryReportPdf = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+const params = extractParams(req);
+const rows = await loadDnData(req, params);
+
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
+    }
+
+   const html = await buildDnHtml(
+  req,
+  params,
+  groupRows(rows),
+  "Delivery Note Report (Summary)",
+  true
+);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Content-Disposition", 'inline; filename="DN_Summary.pdf"');
+    res.send(html);
+  } catch (error: any) {
+    console.error("DN Summary PDF error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
+  }
+};
+
+// ─── Generic OOXML Excel builder engine ─────────────────────────────────────
+
+interface XlCell { v: unknown; styleKey: string }
+type XlRow = (XlCell | null)[];
+interface XlMerge { s: { r: number; c: number }; e: { r: number; c: number } }
+
+const XL_BLUE  = "FF00378C";
+const XL_WHITE = "FFFFFFFF";
+
+function xlCell(v: unknown, styleKey: string): XlCell {
+  return { v, styleKey };
+}
+
+function defaultXlStyleDefs(): Record<string, any> {
+  const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
+  const rowBorder  = { bottom: borderThin("FFE2E8F0") };
+
+  const defs: Record<string, any> = {
+    title: {
+      font: { bold: true, sz: 14, color: { rgb: XL_BLUE } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    meta: {
+      font: { sz: 9, color: { rgb: "FF475569" } },
+      fill: { fgColor: { rgb: "FFF8FAFC" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    header: {
+      font: { bold: true, sz: 10, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: { top: borderThin(XL_BLUE), bottom: borderThin(XL_BLUE), left: borderThin(XL_BLUE), right: borderThin(XL_BLUE) },
+    },
+    data:       { font: { sz: 10 }, alignment: { horizontal: "left",   vertical: "center" }, border: rowBorder },
+    dataCenter: { font: { sz: 10 }, alignment: { horizontal: "center", vertical: "center" }, border: rowBorder },
+    dataNum:    { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0.00",  border: rowBorder },
+    dataNumInt: { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0",     border: rowBorder },
+    dataNum3:   { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0.000", border: rowBorder },
+    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
+
+    // section heading rows (Principal / Group / Product)
+    secPrin:  { font: { bold: true, sz: 11, color: { rgb: XL_BLUE } },   fill: { fgColor: { rgb: "FFEAF0F8" } }, alignment: { horizontal: "left", vertical: "center" } },
+    secGroup: { font: { bold: true, sz: 10, color: { rgb: XL_BLUE } },   fill: { fgColor: { rgb: "FFF4F7FC" } }, alignment: { horizontal: "left", vertical: "center" } },
+    secProd:  { font: { bold: true, sz: 10, color: { rgb: "FF334155" } }, fill: { fgColor: { rgb: "FFFAFBFD" } }, alignment: { horizontal: "left", vertical: "center" } },
+  };
+
+  // per-level total rows: label / qty / volume
+  const totalLevel = (name: string, fill: string, color: string, topColor: string) => {
+    const base = { font: { bold: true, sz: 10, color: { rgb: color } }, fill: { fgColor: { rgb: fill } }, border: { top: borderThin(topColor) } };
+    defs[name]         = { ...base, alignment: { horizontal: "right", vertical: "center" } };
+    defs[`${name}Qty`] = { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0" };
+    defs[`${name}Vol`] = { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0.000" };
+  };
+  totalLevel("subTotal",   "FFF1F5F9", XL_BLUE, "FFCBD5E1");
+  totalLevel("grandTotal", "FFE2E8F0", XL_BLUE, XL_BLUE);
+
+  return defs;
+}
+
+function buildXlsxBuffer(
+  sheetName: string,
+  colCount: number,
+  colWidth: number | number[],
+  rows_: XlRow[],
+  merges: XlMerge[],
+  styleDefs: Record<string, any>
+): Buffer {
+  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
+  interface FillDef { color?: string; }
+  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
+  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
+
+  const fonts: FontDef[] = [{}];
+  const fills: FillDef[] = [{}, {}];
+  const borders: BorderDef[] = [{}];
+  const numFmts: Array<{ id: number; code: string }> = [];
+  const cellXfs: XfDef[] = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
+  const sigCache = new Map<string, number>();
+  let nextCustomNumFmtId = 164;
+
+  const registerFont = (f: any): number => {
+    const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 10, color: f?.color?.rgb };
+    const key = `font:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fonts.push(def);
+    const idx = fonts.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerFill = (f: any): number => {
+    if (!f?.fgColor?.rgb) return 0;
+    const def: FillDef = { color: f.fgColor.rgb };
+    const key = `fill:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fills.push(def);
+    const idx = fills.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerBorder = (b: any): number => {
+    if (!b) return 0;
+    const def: BorderDef = {
+      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb, left: b.left?.color?.rgb, right: b.right?.color?.rgb,
+    };
+    if (!def.top && !def.bottom && !def.left && !def.right) return 0;
+    const key = `border:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    borders.push(def);
+    const idx = borders.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerNumFmt = (code?: string): number => {
+    if (!code) return 0;
+    const existing = numFmts.find((n) => n.code === code);
+    if (existing) return existing.id;
+    const id = nextCustomNumFmtId++;
+    numFmts.push({ id, code });
+    return id;
+  };
+
+  const registerXf = (styleObj: any): number => {
+    if (!styleObj) return 0;
+    const fontId = registerFont(styleObj.font);
+    const fillId = registerFill(styleObj.fill);
+    const borderId = registerBorder(styleObj.border);
+    const numFmtId = registerNumFmt(styleObj.numFmt);
+    const align = styleObj.alignment?.horizontal;
+    const wrap = !!styleObj.alignment?.wrapText;
+    const key = `xf:${JSON.stringify({ fontId, fillId, borderId, numFmtId, align, wrap })}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    cellXfs.push({ fontId, fillId, borderId, numFmtId, align, wrap });
+    const idx = cellXfs.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
+
+  const widthAt = (i: number) => (Array.isArray(colWidth) ? colWidth[i] ?? 15 : colWidth);
+  const colXml = Array.from({ length: colCount }, (_, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${widthAt(i)}" customWidth="1"/>`
   ).join("");
 
-  const merges: string[] = [];
-  rows.forEach((row, ri) => {
-    const rn = ri + 1;
-    let ci = 0;
-    while (ci < row.length) {
-      if (row[ci] !== null) {
-        let end = ci + 1;
-        while (end < row.length && row[end] === null) end++;
-        if (end - 1 > ci) {
-          const startCol = String.fromCharCode(65 + ci);
-          const endCol   = String.fromCharCode(65 + end - 1);
-          merges.push(startCol + rn + ":" + endCol + rn);
-        }
-        ci = end;
-      } else {
-        ci++;
-      }
-    }
-  });
-
   let sheetDataXml = "";
-  rows.forEach((row, ri) => {
+  rows_.forEach((row, ri) => {
     const rn = ri + 1;
-    const ht = rn === 1 ? " ht=\"22\" customHeight=\"1\"" : "";
-    let rowXml = "<row r=\"" + rn + "\"" + ht + ">";
-    row.forEach((cell, ci) => {
-      if (cell === null) return;
+    let rowXml = `<row r="${rn}">`;
+    row.forEach((c, ci) => {
+      if (c === null) return;
       const ref = String.fromCharCode(65 + ci) + rn;
-      if (typeof cell.v === "number") {
-        rowXml += "<c r=\"" + ref + "\" s=\"" + cell.s + "\"><v>" + cell.v + "</v></c>";
+      const s = styleIndexFor(c.styleKey);
+      if (typeof c.v === "number") {
+        rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
       } else {
-        rowXml += "<c r=\"" + ref + "\" s=\"" + cell.s + "\" t=\"inlineStr\"><is><t>" +
-          escapeXml(cell.v ?? "") + "</t></is></c>";
+        rowXml += `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${escapeXml(c.v ?? "")}</t></is></c>`;
       }
     });
     rowXml += "</row>";
     sheetDataXml += rowXml;
   });
 
-  const mergeXml = merges.length
-    ? "<mergeCells count=\"" + merges.length + "\">" +
-      merges.map((m) => "<mergeCell ref=\"" + m + "\"/>").join("") +
-      "</mergeCells>"
+  const mergesXml = merges.map((m) =>
+    `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
+  ).join("");
+  const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeFinal}
+</worksheet>`;
+
+  const numFmtsXml = numFmts.length
+    ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
     : "";
 
-  const sheetXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-    "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"" +
-    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
-    "<sheetFormatPr defaultRowHeight=\"15\"/>" +
-    "<cols>" + colXml + "</cols>" +
-    "<sheetData>" + sheetDataXml + "</sheetData>" +
-    mergeXml +
-    "</worksheet>";
+  const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
+    <font>
+        ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+        ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+        <name val="Arial"/>
+        ${f.bold ? "<b/>" : ""}
+        ${f.italic ? "<i/>" : ""}
+    </font>`).join("")}
+</fonts>`;
+
+  const fillsXml = `<fills count="${fills.length}">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    ${fills.slice(2).map((f) => `
+    <fill>
+        <patternFill patternType="solid">
+            <fgColor rgb="${f.color}"/>
+            <bgColor rgb="${f.color}"/>
+        </patternFill>
+    </fill>`).join("")}
+</fills>`;
+
+  const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
+  const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
+    <border>
+        <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+        <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+        <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+        <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+        <diagonal/>
+    </border>`).join("")}
+</borders>`;
+
+  const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
+    const applyAlign = xf.align || xf.wrap;
+    return `
+    <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
+        applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
+        applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
+        ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+    </xf>`;
+  }).join("")}
+</cellXfs>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="8">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF92400E"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F2040"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-  </fonts>
-  <fills count="7">
-    <fill><patternFill patternType="none"/></fill>
-    <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFDCE4EF"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFC8D4E4"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFDE68A"/><bgColor indexed="64"/></patternFill></fill>
-  </fills>
-  <borders count="3">
-    <border><left/><right/><top/><bottom/><diagonal/></border>
-    <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
-      <diagonal/>
-    </border>
-    <border>
-      <left style="thin"><color rgb="FF1E3A5F"/></left><right style="thin"><color rgb="FF1E3A5F"/></right>
-      <top style="thin"><color rgb="FF1E3A5F"/></top><bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
-      <diagonal/>
-    </border>
-  </borders>
-  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="15">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="6"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-  </cellXfs>
-  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+    ${numFmtsXml}
+    ${fontsXml}
+    ${fillsXml}
+    ${bordersXml}
+    <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+    ${cellXfsXml}
+    <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="DN Summary" sheetId="1" r:id="rId1"/></sheets>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -728,103 +882,109 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 </Types>`;
 
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
-  zip.addFile("_rels/.rels",                Buffer.from(rels));
-  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
+  zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels", Buffer.from(rels));
+  zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
   zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
-  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
-  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+  zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
   return zip.toBuffer();
 }
 
-// ─── Route helpers ────────────────────────────────────────────────────────────
+// ─── Excel builder: DN Summary ──────────────────────────────────────────────
 
-// Pulls filter params from query (GET) or body (POST). Every field defaults
-// to "All" so a request with no filters at all — i.e. the very first load
-// when the page mounts — asks the SQL-builder proc for the entire dataset.
-// The proc already treats the literal "All" (case-insensitive) as "skip this
-// filter," so this is the single source of truth for that contract.
-function extractParams(req: RequestWithUser) {
-  const src = { ...req.query, ...req.body };
-  return {
-    loginid:  text(req.user?.loginid),
-    prinCode: normalizeFilter(src.code2),
-    fromdate: normalizeFilter(src.code3),
-    todate:   normalizeFilter(src.code4),
+function buildDnSummaryExcelBuffer(prins: PrinSection[], params: DnParams): Buffer {
+  const COL_COUNT = DN_COL_COUNT; // 8
+  const LAST = COL_COUNT - 1;
+  const rows_: XlRow[] = [];
+  const merges: XlMerge[] = [];
+  const blank = (): XlRow => new Array(COL_COUNT).fill(null);
+
+  // full-width merged row with one styled cell (title / filters / section headings)
+  const spanRow = (label: string, styleKey: string) => {
+    const r = rows_.length;
+    const row = blank();
+    row[0] = xlCell(label, styleKey);
+    rows_.push(row);
+    merges.push({ s: { r, c: 0 }, e: { r, c: LAST } });
   };
+
+  // total row: label merged across first 6 cols, qty + volume in their own cells
+  const totalRow = (label: string, qty: number, vol: number, level: "subTotal" | "grandTotal") => {
+    const r = rows_.length;
+    const row = blank();
+    row[0] = xlCell(label, level);
+    row[6] = xlCell(qty, `${level}Qty`);
+    row[7] = xlCell(vol, `${level}Vol`);
+    rows_.push(row);
+    merges.push({ s: { r, c: 0 }, e: { r, c: LABEL_SPAN - 1 } });
+  };
+
+  spanRow("Delivery Note Report (Summary)", "title");
+  spanRow(`Applied Filters: Period: ${periodText(params)} | Principal: ${params.prinCode}`, "meta");
+  rows_.push(DN_COLUMNS.map((c) => xlCell(c.label, "header")));
+
+  let recordCount = 0;
+
+  for (const ps of prins) {
+    const prinLabel = ps.prinCode + (ps.prinName ? " - " + ps.prinName : "");
+    spanRow(prinLabel, "secPrin");
+
+    for (const gs of ps.groups) {
+      spanRow("Group : " + gs.groupName, "secGroup");
+
+      for (const prd of gs.prods) {
+        const prodLabel = prd.prodCode + (prd.prodName ? " - " + prd.prodName : "");
+        spanRow(prodLabel, "secProd");
+
+        for (const dr of prd.rows) {
+          recordCount++;
+          rows_.push([
+            xlCell(text(dr.dn_no) || "\u2014", "data"),
+            xlCell(dateText(dr.dn_date ?? dr.receipt_date), "dataCenter"),
+            xlCell(dateText(dr.principal_confirm_date ?? dr.confirm_date), "dataCenter"),
+            xlCell(text(dr.job_no) || "\u2014", "data"),
+            xlCell(text(dr.customer || dr.cust_code) || "\u2014", "data"),
+            xlCell(text(dr.container_no) || "\u2014", "data"),
+            xlCell(rowQty(dr), "dataNumInt"),
+            xlCell(num(dr.volume), "dataNum3"),
+          ]);
+        }
+        totalRow(`Sub Total (${prodLabel}):`, prd.totalQty, prd.totalVolume, "subTotal");
+      }
+      totalRow(`Sub Total (${gs.groupName}):`, gs.totalQty, gs.totalVolume, "subTotal");
+    }
+    totalRow(`Sub Total (${prinLabel}):`, ps.totalQty, ps.totalVolume, "subTotal");
+  }
+
+  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
+  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
+  totalRow(`GRAND TOTAL (${recordCount} Records):`, grandQty, grandVolume, "grandTotal");
+
+  {
+    const row = blank();
+    row[LAST] = xlCell("Powered by Bayanat Technology", "footer");
+    rows_.push(row);
+  }
+
+  const COL_WIDTHS = [14, 13, 14, 18, 26, 18, 10, 13];
+  return buildXlsxBuffer("DN Summary", COL_COUNT, COL_WIDTHS, rows_, merges, defaultXlStyleDefs());
 }
 
-// ─── Route handlers ───────────────────────────────────────────────────────────
+// ─── Route handler (Excel) ──────────────────────────────────────────────────
 
-export const getDnSummaryReportHtml = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
-  try {
-    const reportTitle = text(req.query.title as string) || "Delivery Note Report (Summary)";
-    const autoPrint   = req.query.print === "true";
-    const params      = extractParams(req);
-    console.log("DN Summary HTML params:", params);
-    console.log("DN summary req", req.body)
-
-    const rows = await loadDnData(req, params);
-    if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
-
-    const prins = groupRows(rows);
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
-  } catch (error: any) {
-    console.error("DN Summary HTML error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
-  }
-};
-
-export const getDnSummaryReportPdf = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
+export const getDnSummaryReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
     const rows   = await loadDnData(req, params);
-
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
     }
 
-    const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
-
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");
-    res.send(html);
-  } catch (error: any) {
-    console.error("DN Summary PDF error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
-  }
-};
-
-export const getDnSummaryReportExcel = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
-  try {
-    const params = extractParams(req);
-    const rows   = await loadDnData(req, params);
-
-    if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
-
-    const prins  = groupRows(rows);
-    const buffer = buildExcelBuffer(prins);
-
+    const buffer = buildDnSummaryExcelBuffer(groupRows(rows), params);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=\"DN_Summary.xlsx\"");
+    res.setHeader("Content-Disposition", 'attachment; filename="DN_Summary.xlsx"');
     res.end(buffer);
   } catch (error: any) {
     console.error("DN Summary Excel error:", error);

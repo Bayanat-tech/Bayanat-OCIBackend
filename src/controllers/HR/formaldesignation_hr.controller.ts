@@ -31,10 +31,15 @@ export const createFormaldesignation = async (req: RequestWithUser, res: Respons
       return;
     }
 
-    const newRecord = repo.create({
-      ...req.body,
-      user_id: requestUser.loginid,
-    });
+    const cleanPayload = {
+      labour_desg_code: req.body.labour_desg_code,
+      labour_desg_name: req.body.labour_desg_name,
+      labour_desg_short_name: req.body.labour_desg_short_name,
+      status: req.body.status,
+      remarks: req.body.remarks,
+      company_code: req.body.company_code,
+    };
+    const newRecord = repo.create(cleanPayload);
 
     const saved = await repo.save(newRecord);
     if (!saved) {
@@ -72,10 +77,15 @@ export const updateFormaldesignation = async (req: RequestWithUser, res: Respons
       return;
     }
 
-    const updateResult = await repo.update(
-      { company_code, labour_desg_code },
-      { ...req.body, user_id: requestUser.loginid }
-    );
+    const cleanPayload = {
+      labour_desg_code: req.body.labour_desg_code,
+      labour_desg_name: req.body.labour_desg_name,
+      labour_desg_short_name: req.body.labour_desg_short_name,
+      status: req.body.status,
+      remarks: req.body.remarks,
+      company_code: req.body.company_code,
+    };
+    const updateResult = await repo.update({ company_code, labour_desg_code }, cleanPayload);
 
     if (updateResult.affected === 0) {
       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: "Error while updating formal designation" });

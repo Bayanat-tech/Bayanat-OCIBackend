@@ -4,6 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,7 +56,7 @@ function text(value: unknown): string {
 }
 
 function dateText(value: unknown): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -71,7 +77,7 @@ function escapeXml(value: unknown): string {
 /** Quantities in this report are plain integers (no UOM split like the GRN report). */
 function qtyFmt(value: unknown): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "\u2014";
   return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
@@ -135,24 +141,187 @@ function groupRows(rows: ReportRow[]): ProductGroup[] {
   return Object.values(map);
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── Table columns (single header row; ONE alignment per column) ─────────────
 
-function renderHtml(
+type ColAlign = "left" | "center" | "right";
+
+interface TallyColumn { label: string; align: ColAlign; width: number } // width in %, sums to 100
+
+const TALLY_COLUMNS: TallyColumn[] = [
+  { label: "Product",   align: "left",   width: 22 },
+  { label: "Pallet Id", align: "left",   width: 13 },
+  { label: "Batch No",  align: "left",   width: 13 },
+  { label: "Lot No",    align: "left",   width: 12 },
+  { label: "Mfg Date",  align: "center", width: 11 },
+  { label: "Exp Date",  align: "center", width: 11 },
+  { label: "ASN Qty",   align: "right",  width: 9  },
+  { label: "Tally Qty", align: "right",  width: 9  },
+];
+
+const COL_COUNT  = TALLY_COLUMNS.length; // 8
+const LABEL_SPAN = 5;                    // total-row label spans everything before the pallet count
+
+// ─── Layout CSS – same look as the Quotation List PDF ────────────────────────
+// Used together with fontMode: "native", so the sizes below are the real sizes.
+// Letterhead / footer come from report_common; this only styles the body.
+// NOTE: row selectors include "tbody" so they out-rank the zebra rule
+// (tbody tr:nth-child(even) td) in report_common.
+
+const TALLY_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
+
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 24px 0 14px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 18px; }
+
+  /* Section strip (Sign-off) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 16px 0 4px 0;
+  }
+
+  /* Label / value grid (3 columns) */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 28px;
+    margin: 0 0 14px 0;
+  }
+  .field {
+    display: flex;
+    align-items: baseline;
+    min-height: 24px;
+    padding: 4px 6px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 110px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00378c;
+  }
+
+  /* Data table */
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid navy bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0 !important;
+    text-transform: none;
+  }
+
+  /* Section banners: User / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left; }
+  table.data-table tbody tr.user-row td { background: #eaf0f8 !important; font-size: 13px; padding: 11px 8px; }
+  table.data-table tbody tr.prod-row td { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe !important;
+    font-size: 10.5px;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+  }
+
+  /* Totals – shaded, bold navy, right aligned */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  @media print {
+    body::before { display: none !important; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.subtotal-row,
+    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
+  }
+`;
+// Lets the React parent page trigger printing through postMessage.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
+// ─── HTML body renderer ───────────────────────────────────────────────────────
+
+function renderBodyHtml(
   groups:      ProductGroup[],
   firstRow:    ReportRow | null,
   jobNo:       string,
   prinCode:    string,
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+  reportTitle: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
   const r = firstRow || {};
 
-  // ── Grand totals ───────────────────────────────────────────────────────────
   let grandPalletCount = 0, grandAsn = 0, grandTally = 0;
   for (const pg of groups) {
     grandPalletCount += pg.palletCount;
@@ -160,287 +329,146 @@ function renderHtml(
     grandTally       += pg.tallyTotal;
   }
 
-  // ── Build body rows ────────────────────────────────────────────────────────
+  const jobNoText    = text(r.job_no) || jobNo;
+  const prinCodeText = text(r.prin_code) || prinCode;
+  const prinText     = prinCodeText + (r.prin_name ? " - " + text(r.prin_name) : "");
+
+  const field = (label: string, value: unknown) =>
+    `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
+
+  const emptyField = `<div class="field field--empty"><span class="label"></span><span class="value"></span></div>`;
+  const col = (items: string[], n: number) =>
+    items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Job No",    value: jobNoText },
+    { label: "Principal", value: prinCodeText },
+    { label: "Job Date",  value: dateText(r.job_date) },
+  ]);
+
+  const infoLeft = [
+    field("Job No",    jobNoText),
+    field("Job Date",  dateText(r.job_date)),
+    field("Principal", prinText),
+  ];
+  const infoMid = [
+    field("Department",   r.dept_code),
+    field("Document Ref", r.doc_ref),
+  ];
+  const infoRight = [
+    field("Prin. Reference", r.prin_ref1),
+  ];
+
+  const C = TALLY_COLUMNS;
+
+  // total row: label spans the first 5 cols, then pallet count / ASN qty / Tally qty
+  const totalRow = (cls: string, label: string, pallets: number, asn: number, tally: number) =>
+    `<tr class="${cls}">` +
+    `<td class="right" colspan="${LABEL_SPAN}">${label}</td>` +
+    `<td class="right num">${escapeHtml(qtyFmt(pallets))}</td>` +
+    `<td class="right num">${escapeHtml(qtyFmt(asn))}</td>` +
+    `<td class="right num">${escapeHtml(qtyFmt(tally))}</td>` +
+    `</tr>`;
+
   let bodyRows = "";
 
   for (const pg of groups) {
-    bodyRows += `
-      <tr class="prod-row">
-        <td colspan="8">${escapeHtml(pg.prodCode)} | ${escapeHtml(pg.prodName)}</td>
-      </tr>`;
+    const prodLabel = `${escapeHtml(pg.prodCode)}${pg.prodName ? " - " + escapeHtml(pg.prodName) : ""}`;
+    bodyRows += `<tr class="group-header-row"><td colspan="${COL_COUNT}">${prodLabel}</td></tr>`;
 
     for (const dr of pg.rows) {
-      bodyRows += `
-        <tr class="data-row">
-          <td></td>
-          <td>${escapeHtml(dr.pallet_id || "—")}</td>
-          <td>${escapeHtml(dr.batch_no  || "—")}</td>
-          <td>${escapeHtml(dr.lot_no    || "—")}</td>
-          <td>${escapeHtml(dateText(dr.prod_mfg_date))}</td>
-          <td>${escapeHtml(dateText(dr.prod_exp_date))}</td>
-          <td class="num">${escapeHtml(qtyFmt(dr.asn_qty))}</td>
-          <td class="num">${escapeHtml(qtyFmt(dr.tally_qty))}</td>
-        </tr>`;
+      bodyRows +=
+        `<tr class="data-row">` +
+        `<td class="${C[0].align}">${escapeHtml(pg.prodCode || "\u2014")}</td>` +
+        `<td class="${C[1].align}">${escapeHtml(dr.pallet_id || "\u2014")}</td>` +
+        `<td class="${C[2].align}">${escapeHtml(dr.batch_no || "\u2014")}</td>` +
+        `<td class="${C[3].align}">${escapeHtml(dr.lot_no || "\u2014")}</td>` +
+        `<td class="${C[4].align}">${escapeHtml(dateText(dr.prod_mfg_date))}</td>` +
+        `<td class="${C[5].align}">${escapeHtml(dateText(dr.prod_exp_date))}</td>` +
+        `<td class="${C[6].align} num">${escapeHtml(qtyFmt(dr.asn_qty))}</td>` +
+        `<td class="${C[7].align} num">${escapeHtml(qtyFmt(dr.tally_qty))}</td>` +
+        `</tr>`;
     }
 
-    // Sub Total row — colspan 5 (Product..Mfg Date), count under Exp Date col,
-    // sums under ASN Qty / Tally Qty cols (matches reference layout)
-    bodyRows += `
-      <tr class="sub-total">
-        <td colspan="5">Sub Total :</td>
-        <td class="num">${escapeHtml(qtyFmt(pg.palletCount))}</td>
-        <td class="num">${escapeHtml(qtyFmt(pg.asnTotal))}</td>
-        <td class="num">${escapeHtml(qtyFmt(pg.tallyTotal))}</td>
-      </tr>`;
+    bodyRows += totalRow("subtotal-row", `Sub Total (${escapeHtml(pg.prodCode)}) &mdash; Pallets / ASN Qty / Tally Qty:`, pg.palletCount, pg.asnTotal, pg.tallyTotal);
   }
 
-  // Grand total row
-  const grandRow = `
-    <tr class="grand-total">
-      <td colspan="5">Total :</td>
-      <td class="num">${escapeHtml(qtyFmt(grandPalletCount))}</td>
-      <td class="num">${escapeHtml(qtyFmt(grandAsn))}</td>
-      <td class="num">${escapeHtml(qtyFmt(grandTally))}</td>
-    </tr>`;
+  bodyRows += totalRow(
+    "grand-total-row",
+    `GRAND TOTAL (${grandPalletCount} Records) &mdash; Pallets / ASN Qty / Tally Qty:`,
+    grandPalletCount, grandAsn, grandTally
+  );
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 0 auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
 
-    /* ── Report header banner ── */
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 6px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
+  return `
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
 
-    /* ── Job header block (flat label : value, no box) ── */
-    .job-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0 16px;
-      margin-bottom: 10px;
-      padding: 8px 0 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 11px;
-    }
-    .job-col { display: flex; flex-direction: column; gap: 3px; }
-    .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
-    .job-label {
-      font-size: 10.5px;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-    .job-label::after { content: ":"; }
-    .job-value {
-      font-size: 11px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .job-value.nil { font-weight: 400; color: #9ca3af; }
-
-    /* ── Data table ── */
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    col.c0 { width: 26%; } col.c1 { width: 12%; } col.c2 { width: 13%; }
-    col.c3 { width: 13%; } col.c4 { width: 11%; } col.c5 { width: 11%; }
-    col.c6 { width: 7%;  } col.c7 { width: 7%;  }
-
-    thead tr.th-sub th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 6px 10px; text-align: left;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      white-space: nowrap;
-    }
-    thead tr.th-sub th.num { text-align: right; }
-    thead tr.th-sub th:last-child { border-right: none; }
-
-    tr.prod-row td {
-      background: #e8ecf2; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid #d5dce8;
-    }
-
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
-      vertical-align: top;
-    }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-
-    tr.sub-total td {
-      background: #d5dce8; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.sub-total td:first-child { text-align: right; }
-
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-    tr.grand-total td:first-child { text-align: right; }
-
-    /* ── Footer ── */
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code {
-      font-family: "Courier New", monospace; font-size: 9px; color: #6b7280;
-    }
-
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-
-      tr.prod-row {
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-      tr.sub-total,
-      tr.grand-total {
-        break-before: avoid;
-        page-break-before: avoid;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-
-    <!-- ── Report title banner ── -->
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Print meta row ── -->
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
+    <div class="info-grid">
+      <div>${col(infoLeft, 3)}</div>
+      <div>${col(infoMid, 3)}</div>
+      <div>${col(infoRight, 3)}</div>
     </div>
 
-    <!-- ── Job header block (flat, no box) ── -->
-    <div class="job-header">
-
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Job No</span>
-          <span class="job-value">${escapeHtml(text(r.job_no) || jobNo)}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Job Date</span>
-          <span class="job-value${r.job_date ? "" : " nil"}">${r.job_date ? dateText(r.job_date) : "&nbsp;"}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Principal</span>
-          <span class="job-value">${escapeHtml(text(r.prin_code) || prinCode)}${r.prin_name ? ` | ${escapeHtml(text(r.prin_name))}` : ""}</span>
-        </div>
-      </div>
-
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Department</span>
-          <span class="job-value${r.dept_code ? "" : " nil"}">${r.dept_code ? escapeHtml(text(r.dept_code)) : "&nbsp;"}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Document Ref</span>
-          <span class="job-value${r.doc_ref ? "" : " nil"}">${r.doc_ref ? escapeHtml(text(r.doc_ref)) : "&nbsp;"}</span>
-        </div>
-      </div>
-
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Principal Reference</span>
-          <span class="job-value${r.prin_ref1 ? "" : " nil"}">${r.prin_ref1 ? escapeHtml(text(r.prin_ref1)) : "&nbsp;"}</span>
-        </div>
-      </div>
-
-    </div><!-- /job-header -->
-
-    <!-- ── Data table ── -->
-    <table class="rpt-table">
-      <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/>
-      </colgroup>
-      <thead>
-        <tr class="th-sub">
-          <th>Product</th>
-          <th>Pallet Id</th>
-          <th>Batch No</th>
-          <th>Lot No</th>
-          <th>Mfg Date</th>
-          <th>Exp Date</th>
-          <th class="num">ASN Qty</th>
-          <th class="num">Tally Qty</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${bodyRows}
-        ${grandRow}
-      </tbody>
+    <table class="data-table">
+      <colgroup>${colgroup}</colgroup>
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
     </table>
-
-    <!-- ── Page footer ── -->
-    <div class="rpt-footer">
-      <span>Report Name : <code>${escapeHtml(jobNo)}</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-
-  </main>
-  <script>
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
-    });
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+    ${PRINT_LISTENER_SCRIPT}
+  `;
 }
 
-// ─── Excel builder ─────────────────────────────────────────────────────────────
+async function renderHtml(
+  req: RequestWithUser,
+  groups: ProductGroup[],
+  firstRow: ReportRow | null,
+  jobNo: string,
+  prinCode: string,
+  reportTitle: string,
+  loginId: string,
+  autoPrint: boolean
+): Promise<string> {
+  const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
+  const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode, reportTitle);
+  const footerHtml = reportFooter({
+    reportName: "rpt_tally_report",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
+  });
+
+  return buildReportDocument({
+    title: `${reportTitle} - ${jobNo}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: TALLY_EXTRA_CSS,
+    autoPrint,
+    showPrintButton: true,
+    fontMode: "native",
+  });
+}
+
+// ─── Excel builder ────────────────────────────────────────────────────────────
+// Same palette / Arial font as the DN Summary Excel.
+// STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
-  default:      0,
-  header:       1,
-  sectionProd:  2,
-  value:        3,
-  numValue:     4,
-  subTotal:     5,
-  numSubTotal:  6,
-  grandTotal:   7,
-  numGrand:     8,
+  default:       0,
+  header:        1,   // white on #00378c, centered
+  title:         2,   // blue bold 14, no fill
+  meta:          3,   // grey on #f8fafc
+  secProduct:    4,   // blue bold on #eaf0f8
+  data:          5,   // left, light bottom border
+  dataCenter:    6,   // centered, light bottom border
+  dataNum:       7,   // right, #,##0
+  subTotal:      8,   // #f1f5f9, blue bold, right
+  subTotalNum:   9,   // same + #,##0
+  grandTotal:   10,   // #e2e8f0, blue bold, right
+  grandTotalNum:11,   // same + #,##0
+  footer:       12,   // italic grey, right
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -450,74 +478,85 @@ function xc(v: unknown, style: StyleKey): XlCell {
   return { v, s: STYLE_ID[style] };
 }
 
-function buildExcelBuffer(groups: ProductGroup[], jobNo: string, prinCode: string): Buffer {
-  const NCOLS = 8;
+function buildExcelBuffer(
+  groups: ProductGroup[],
+  firstRow: ReportRow | null,
+  jobNo: string,
+  prinCode: string,
+  reportTitle: string
+): Buffer {
+  const NCOLS = COL_COUNT;
   type Row = (XlCell | null)[];
   const skip = null;
+  const r    = firstRow || {};
   const rows: Row[] = [];
 
-  // Title
-  rows.push([xc(`Inbound Tally Report — Job ${jobNo} / ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
-  rows.push(Array(NCOLS).fill(skip));
+  const spanRow = (label: string, style: StyleKey) => {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[0] = xc(label, style);
+    rows.push(row);
+  };
 
-  // Column headers
-  rows.push([
-    xc("Product",   "header"),
-    xc("Pallet Id", "header"),
-    xc("Batch No",  "header"),
-    xc("Lot No",    "header"),
-    xc("Mfg Date",  "header"),
-    xc("Exp Date",  "header"),
-    xc("ASN Qty",   "header"),
-    xc("Tally Qty", "header"),
-  ]);
+  // total row: label merged across first 5 cols, then pallet count / ASN qty / Tally qty
+  const totalRow = (label: string, pallets: number, asn: number, tally: number, lvl: "subTotal" | "grandTotal") => {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[0] = xc(label, lvl);
+    row[5] = xc(pallets, `${lvl}Num` as StyleKey);
+    row[6] = xc(asn,     `${lvl}Num` as StyleKey);
+    row[7] = xc(tally,   `${lvl}Num` as StyleKey);
+    rows.push(row);
+  };
+
+  spanRow(reportTitle, "title");
+  spanRow(
+    `Applied Filters: Job No: ${text(r.job_no) || jobNo} | Principal: ${text(r.prin_code) || prinCode} | Job Date: ${dateText(r.job_date)}`,
+    "meta"
+  );
+
+  rows.push(TALLY_COLUMNS.map((c) => xc(c.label, "header")));
 
   let grandPalletCount = 0, grandAsn = 0, grandTally = 0;
 
   for (const pg of groups) {
-    rows.push([xc(`${pg.prodCode} | ${pg.prodName}`, "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
+    spanRow(pg.prodCode + (pg.prodName ? " - " + pg.prodName : ""), "secProduct");
 
     for (const dr of pg.rows) {
       rows.push([
-        xc("",                          "value"),
-        xc(text(dr.pallet_id) || "—",  "value"),
-        xc(text(dr.batch_no)  || "—",  "value"),
-        xc(text(dr.lot_no)    || "—",  "value"),
-        xc(dateText(dr.prod_mfg_date),       "value"),
-        xc(dateText(dr.prod_exp_date),       "value"),
-        xc(toNum(dr.asn_qty),            "numValue"),
-        xc(toNum(dr.tally_qty),          "numValue"),
+        xc(pg.prodCode || "\u2014",              "data"),
+        xc(text(dr.pallet_id) || "\u2014",       "data"),
+        xc(text(dr.batch_no)  || "\u2014",       "data"),
+        xc(text(dr.lot_no)    || "\u2014",       "data"),
+        xc(dateText(dr.prod_mfg_date),           "dataCenter"),
+        xc(dateText(dr.prod_exp_date),           "dataCenter"),
+        xc(toNum(dr.asn_qty),                    "dataNum"),
+        xc(toNum(dr.tally_qty),                  "dataNum"),
       ]);
     }
 
-    rows.push([
-      xc("Sub Total :", "subTotal"),
-      skip, skip, skip, skip,
-      xc(pg.palletCount, "numSubTotal"),
-      xc(pg.asnTotal,    "numSubTotal"),
-      xc(pg.tallyTotal,  "numSubTotal"),
-    ]);
+    totalRow(`Sub Total (${pg.prodCode}) \u2014 Pallets / ASN Qty / Tally Qty:`, pg.palletCount, pg.asnTotal, pg.tallyTotal, "subTotal");
 
     grandPalletCount += pg.palletCount;
     grandAsn         += pg.asnTotal;
     grandTally       += pg.tallyTotal;
   }
 
-  // Grand total
-  rows.push([
-    xc("Total :", "grandTotal"),
-    skip, skip, skip, skip,
-    xc(grandPalletCount, "numGrand"),
-    xc(grandAsn,         "numGrand"),
-    xc(grandTally,       "numGrand"),
-  ]);
+  totalRow(
+    `GRAND TOTAL (${grandPalletCount} Records) \u2014 Pallets / ASN Qty / Tally Qty:`,
+    grandPalletCount, grandAsn, grandTally, "grandTotal"
+  );
 
-  const COL_WIDTHS = [30, 14, 16, 16, 12, 12, 12, 12];
+  {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[NCOLS - 1] = xc("Powered by Bayanat Technology", "footer");
+    rows.push(row);
+  }
+
+  const COL_WIDTHS = [26, 16, 16, 16, 13, 13, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Merge ranges (for label cells spanning multiple columns, marked by trailing nulls)
+  // merge each run of "value followed by nulls" into one merged range
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -540,7 +579,7 @@ function buildExcelBuffer(groups: ProductGroup[], jobNo: string, prinCode: strin
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
     const rn = ri + 1;
-    const ht = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    const ht = rn === 1 ? ` ht="24" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -572,39 +611,50 @@ function buildExcelBuffer(groups: ProductGroup[], jobNo: string, prinCode: strin
   <numFmts count="1">
     <numFmt numFmtId="164" formatCode="#,##0"/>
   </numFmts>
-  <fonts count="5">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+  <fonts count="7">
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="14"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><sz val="9"/><color rgb="FF475569"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><i/><sz val="8"/><color rgb="FF64748B"/><name val="Arial"/></font>
   </fonts>
-  <fills count="5">
+  <fills count="8">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8ECF2"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD5DCE8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
-  <borders count="2">
+  <borders count="5">
     <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
+    <border><left/><right/><top style="thin"><color rgb="FFCBD5E1"/></top><bottom/><diagonal/></border>
+    <border><left/><right/><top style="thin"><color rgb="FF00378C"/></top><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="9">
-    <xf numFmtId="0"   fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0"   fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0"   fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0"   fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="164" fontId="3" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0"   fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="164" fontId="4" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0"   fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="164" fontId="1" fillId="2" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+  <cellXfs count="13">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="5" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="4" fillId="5" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="6" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="4" fillId="6" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -666,8 +716,9 @@ export const getTallyReportHtml = async (
     const groups = groupRows(rows);
     const first  = rows[0] ?? null;
 
+    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
     console.error("Tally HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -691,7 +742,7 @@ export const getTallyReportPdf = async (
     const groups      = groupRows(rows);
     const first       = rows[0] ?? null;
     const reportTitle = "Inbound Tally Report";
-    const html = renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
+    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="Tally_${jobNo}.pdf"`);
@@ -707,8 +758,9 @@ export const getTallyReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
+    const reportTitle = text(req.query.title) || "Inbound Tally Report";
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
@@ -717,7 +769,7 @@ export const getTallyReportExcel = async (
 
     const rows   = await loadTallyData(req, jobNo, prinCode);
     const groups = groupRows(rows);
-    const buffer = buildExcelBuffer(groups, jobNo, prinCode);
+    const buffer = buildExcelBuffer(groups, rows[0] ?? null, jobNo, prinCode, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Tally_${jobNo}.xlsx"`);
