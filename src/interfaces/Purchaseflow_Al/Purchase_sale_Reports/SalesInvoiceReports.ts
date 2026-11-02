@@ -200,12 +200,29 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
-     cancelled: text(h.cancelled || h.canceled).toUpperCase() === "Y",
+         cancelled: isCancelledDoc(rows),
   };
 }
 
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/** True when the document row is cancelled (add your real column name here if different) */
+// const isCancelledRow = (r: ReportRow): boolean => {
+//   const v = text(r.cancelled ?? r.canceled ?? r.doc_status ?? r.status).trim().toUpperCase();
+//   return v === "Y" || v === "YES" || v === "1" || v === "TRUE" || v.startsWith("CANCEL");
+// };
+
+/** Line-level cancel flag (column DET_CANCEL = 'Y') */
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+
+/** Cancelled if the header flag (from the procedure) or the line flag is Y */
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+
+/** Document is cancelled when every line is cancelled */
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
 
 
 const lineDiscOf = (r: ReportRow) => {
@@ -239,7 +256,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 0 0 8px 0 !important;
+    margin: 0 0 4px 0 !important;
     padding: 0 !important;
   }
   .doc-title-row h1 {
@@ -250,7 +267,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     line-height: 1.2 !important;
   }
   .doc-title-row .doc-sub {
-    margin: 2px 0 0 !important;
+    margin: 1px 0 0 !important;
     font-size: 11px;
     color: #64748b;
     line-height: 1.3 !important;
@@ -327,9 +344,10 @@ const SALES_INVOICE_EXTRA_CSS = `
 
 // ─── Inline spacing overrides (CHANGED) ─────────────────────────────────────
 // const S_TITLE_ROW = "background:#ffd6d6 !important;margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
-const S_TITLE_ROW = "margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
+// const S_TITLE_ROW = "margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
 const S_H1 = "margin:0 !important;padding:0 !important;line-height:1.2 !important;";
-const S_SUB = "margin:2px 0 0 0 !important;padding:0 !important;line-height:1.3 !important;";
+const S_TITLE_ROW = "margin:0 0 2px 0 !important;padding:0 !important;gap:0 !important;";
+const S_SUB = "margin:1px 0 0 0 !important;padding:0 !important;line-height:1.2 !important;";
 // const S_GRID      = "background:#d6e8ff !important;display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
 const S_GRID = "display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
 // const S_BLOCK     = "background:#fff3b0 !important;display:block !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 7px !important;gap:0 !important;";
@@ -349,6 +367,48 @@ function infoBlockHtml(label: string, linesHtml: string): string {
       </div>`;
 }
 
+
+
+
+type KvPair = [string, string];
+ 
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+ 
+/** Two boxes side by side (50% / 50%, no outer border). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+ 
+/** "To" box rows – empty fields are skipped, the customer name is always shown. */
+function partyPairs(header: SalesInvoiceHeader): KvPair[] {
+  const all: KvPair[] = [
+    ["Customer", header.party_name],
+    ["Address", header.party_address],
+    ["Tel", header.party_phone],
+    ["Fax", header.party_fax],
+    ["Mobile", header.cust_mobile],
+    ["Email", header.cust_email],
+    ["TRN No", header.trn_no],
+  ];
+  return all.filter(([, v], i) => i === 0 || !!text(v).trim());
+}
+
 function infoGridHtml(innerHtml: string): string {
   return `<div class="info-grid" style="${S_GRID}">${innerHtml}</div>`;
 }
@@ -356,15 +416,17 @@ function infoGridHtml(innerHtml: string): string {
 // ─── Shared body pieces ─────────────────────────────────────────────────────
 
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled = false): string {
-  const shownTitle = cancelled ? `${title} - CANCELLED` : title;
-  const shownSub = cancelled ? `${subtitle} (This document is cancelled)` : subtitle;
+  if (cancelled) {
+    return `
+    <table class="si-top-line si-top-cancel"><tbody><tr>
+      <td><h1 class="report-title">${escapeHtml(title)}</h1></td>
+      <td class="si-cancel-tag center">CANCELLED</td>
+    </tr></tbody></table>`;
+  }
   return `
-    <div class="doc-title-row" style="${S_TITLE_ROW}">
-      <div>
-        <h1 style="${S_H1}">${escapeHtml(shownTitle)}</h1>
-        <div class="doc-sub" style="${S_SUB}">${escapeHtml(shownSub)}</div>
-      </div>
-    </div>`;
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
 }
 
 function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
@@ -385,18 +447,19 @@ function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
 // ─── Body 1: Sales Invoice ───────────────────────────────────────────────
 
 function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
+
+
+
+
+  console.log("Invoice columns👍👍:", Object.keys(rows[0] || {}));
+console.log("Cancel-like values:👍👍👍👍", Object.entries(rows[0] || {}).filter(([k]) => /cancel|status|stat|void/i.test(k)));
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
-  // const header = buildSalesInvoiceHeader(rows);
-  // const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  // const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  // const overallDiscount = header.disc_hdr_price;
-  // const grandTotal = totalAmount - overallDiscount;
+ 
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
-
+ 
   const bodyRows = rows.map((r, i) => `
   <tr>
     <td>${i + 1}</td>
@@ -407,27 +470,24 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
     <td class="right">${amtFmt(lineDiscOf(r))}</td>
     <td class="right amount">${amtFmt(r.amount)}</td>
   </tr>`).join("");
-
-  const detailsBlock = infoBlockHtml(
-    "Invoice Details",
-    [
-      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
-      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
-      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
-      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
-      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
-      header.due_date ? vl(`Due Date: ${escapeHtml(dateText(header.due_date))}`) : "",
-    ].join("")
-  );
-
+ 
+  const detailsPairs: KvPair[] = [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Payment Term", header.payment_terms],
+  ];
+  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
+  if (header.due_date) detailsPairs.push(["Due Date", dateText(header.due_date)]);
+ 
   return `
-      ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
-
-    <table class="data-table" style="${S_TABLE}">
+    ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
+ 
+        <table class="data-table si-items" style="${S_TABLE}">
       <thead>
         <tr>
-          <th>S.No.</th>
+          <th>S.No</th>
           <th>Product / Description</th>
           <th>Unit</th>
           <th class="right">Qty</th>
@@ -438,40 +498,40 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
+ 
     <div class="totals-box">
-     <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
-<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
-<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-<div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>`;
 }
-
 // ─── Body 2: Sales Invoice (Tax) ───────────────────────────────────────────
 
 function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
+ 
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
   const netTotal = round2(t.grandTotal + t.totalTax);
-   rows.forEach((r) => {
+ 
+  rows.forEach((r) => {
     const expected = round2((lineNetOf(r) * num(r.tx_compnt_perc_1)) / 100);
     if (Math.abs(expected - num(r.tx_compnt_amt_1)) > 0.01) {
       console.warn("Tax mismatch", r.doc_no, r.prod_code, "expected:", expected, "db:", r.tx_compnt_amt_1);
     }
   });
-
+ 
   const bodyRows = rows
     .map((r, i) => {
-       const net = lineNetOf(r);
-const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
-return `
+      const net = lineNetOf(r);
+      const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
+      return `
   <tr>
     <td>${i + 1}</td>
-    <td>...</td>
+    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
     <td>${escapeHtml(r.p_uom)}</td>
     <td class="right">${qtyFmt(r.quantity)}</td>
     <td class="right">${amtFmt(r.unit_price)}</td>
@@ -483,25 +543,21 @@ return `
   </tr>`;
     })
     .join("");
-
-  const detailsBlock = infoBlockHtml(
-    "Invoice Details",
-    [
-      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
-      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
-      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
-      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
-      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
-      vl(`Company TRN No: ${escapeHtml(header.company_trn_no)}`),
-    ].join("")
-  );
-
+ 
+  const detailsPairs: KvPair[] = [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Payment Term", header.payment_terms],
+  ];
+  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
+  detailsPairs.push(["Company TRN No", header.company_trn_no]);
+ 
   return `
-      ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-
-    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
-
-    <table class="data-table" style="${S_TABLE}">
+    ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
+ 
+        <table class="data-table si-items-tax" style="${S_TABLE}">
       <thead>
         <tr>
           <th>S.No.</th>
@@ -518,13 +574,13 @@ return `
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
+ 
     <div class="totals-box">
-     <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
-<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
-<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-<div class="row"><span>Tax Amount</span><span>${amtFmt(t.totalTax)}</span></div>
-<div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row"><span>Tax Amount</span><span>${amtFmt(t.totalTax)}</span></div>
+      <div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
     </div>`;
 }
 
@@ -604,8 +660,7 @@ export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Respo
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceBody(rows, params.loginid);
-
+    const bodyHtml = renderSalesInvoiceBody(rows, params.loginid).replace(/>\s+</g, "><");
     const html = buildReportDocument({
       title: "Sales Invoice",
       headerHtml,
@@ -640,7 +695,7 @@ export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid);
+   const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Sales Invoice (Tax)",
@@ -676,7 +731,7 @@ export const getSalesAccountDetailsReportHtml = async (req: RequestWithUser, res
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesAccountDetailsBody(rows, params.loginid);
+    const bodyHtml = renderSalesAccountDetailsBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Account Details",
