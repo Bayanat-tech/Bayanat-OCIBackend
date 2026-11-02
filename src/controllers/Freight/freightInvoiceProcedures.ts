@@ -183,7 +183,7 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
           } catch (_) {}
         }
       }
-      if (!exRate || exRate <= 0) exRate = currCode === "OMR" ? 1 : 0.385;
+      if (!exRate || exRate <= 0) exRate = currCode === "OMR" ? 1 : 1;
 
       try {
         await connection.execute(
@@ -197,6 +197,31 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
         );
       } catch (updErr) {
         console.warn("Could not sync curr_code / ex_rate to TN_INVOICE:", updErr);
+      }
+
+      try {
+        await connection.execute(
+          `UPDATE TN_INVOICE_CONSOLE 
+              SET curr_code = :curr_code, 
+                  ex_rate = :ex_rate 
+            WHERE company_code = :company_code 
+              AND invoice_no = :invoice_no`,
+          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+        await connection.execute(
+          `UPDATE TN_INVOICE_DET_CONSOLE 
+              SET curr_code = :curr_code, 
+                  ex_rate = :ex_rate,
+                  bill_curr_code = :curr_code,
+                  bill_ex_rate = :ex_rate 
+            WHERE company_code = :company_code 
+              AND invoice_no = :invoice_no`,
+          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+      } catch (updConsoleErr) {
+        console.warn("Could not sync curr_code / ex_rate to TN_INVOICE_CONSOLE:", updConsoleErr);
       }
 
       if (requestedStatus === "C") {

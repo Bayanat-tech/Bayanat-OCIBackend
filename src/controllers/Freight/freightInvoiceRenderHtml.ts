@@ -227,7 +227,7 @@ function amountInWords(
   customDivision?: string | null
 ): string {
   const code = (currCode || "OMR").toUpperCase();
-  const major = (customCurrName || (code === "OMR" ? "Omani rial" : code === "USD" ? "United States Dollar" : code)).trim();
+  const major = (code === "USD" ? "United States Dollar" : (customCurrName || (code === "OMR" ? "Omani rial" : code))).trim();
   const minor = (customDivision || (code === "OMR" ? "Baisa" : "Cents")).trim();
 
   const whole = Math.floor(amount);
@@ -358,12 +358,15 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     totalExclTax += amountExcl;
     totalTax += taxAmt;
 
-    const vatPercNum = Number(r.tx_compnt_perc_1 || 0);
+    const expmt = String((r as any).tx_compnt_1_expamt || (r as any).tx_compnt_1_expmt || (r as any).TX_COMPNT_1_EXPAMT || (r as any).TX_COMPNT_1_EXPMT || "").toUpperCase().trim();
+    const vatPercNum = Number(r.tx_compnt_perc_1 || (r as any).TX_COMPNT_PERC_1 || 0);
     let vatLabel = "NT";
-    if (vatPercNum > 0) {
-      vatLabel = `${vatPercNum} %`;
-    } else if (String(r.tx_compnt_1_expamt || "").toUpperCase() === "ZERO" || (vatPercNum === 0 && taxAmt === 0 && String(desc).toUpperCase().includes("PORT"))) {
+    if (expmt === "N") {
+      vatLabel = "NT";
+    } else if (expmt === "Z" || (vatPercNum === 0 && String(desc).toUpperCase().includes("PORT"))) {
       vatLabel = "Zero";
+    } else if (expmt === "S" || vatPercNum > 0) {
+      vatLabel = `${vatPercNum > 0 ? vatPercNum : 5} %`;
     }
 
     return `

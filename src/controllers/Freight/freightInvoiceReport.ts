@@ -77,7 +77,8 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
           d.srno, d.act_code, nvl(d.inv_desc, ma.activity) as inv_desc,
           ma.activity, mag.act_group_name, mag.activity_group_code,
           nvl(d.quantity, 1) as quantity, d.bill_rate, d.bill,
-          d.tx_compnt_perc_1, d.tx_compnt_amt_1, d.job_no,
+          d.tx_compnt_perc_1, d.tx_compnt_amt_1, d.tx_compnt_1_expmt,
+          d.tx_compnt_1_expmt as tx_compnt_1_expamt, d.job_no,
           d.bill_rate_oc, d.bill_oc, d.bill_curr_code, d.bill_ex_rate
         FROM TN_INVOICE h
         INNER JOIN TN_INVOICE_DET d 
@@ -131,6 +132,8 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
             bill: r.BILL || r.bill,
             tx_compnt_perc_1: r.TX_COMPNT_PERC_1 || r.tx_compnt_perc_1,
             tx_compnt_amt_1: r.TX_COMPNT_AMT_1 || r.tx_compnt_amt_1,
+            tx_compnt_1_expmt: r.TX_COMPNT_1_EXPMT || r.tx_compnt_1_expmt,
+            tx_compnt_1_expamt: r.TX_COMPNT_1_EXPAMT || r.tx_compnt_1_expamt || r.TX_COMPNT_1_EXPMT || r.tx_compnt_1_expmt,
             job_no: r.JOB_NO || r.job_no,
             prin_addr1: r.PRIN_ADDR1 || r.prin_addr1,
             prin_addr2: r.PRIN_ADDR2 || r.prin_addr2,
