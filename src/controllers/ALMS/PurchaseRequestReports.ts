@@ -208,7 +208,8 @@ const REPORT_NAME = "rep_pfs_txns_datewise";
 /** Shared extra CSS for both Summary and Details reports */
 const PR_REGISTER_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 8mm; }
-  .pr-register { font-size: 9.5px; line-height: 1.25; color: #1e293b; }
+  .pr-register { width: 100%; font-size: 9.5px; line-height: 1.25; color: #1e293b; }
+  .pr-register table.data-table { width: 100% !important; table-layout: fixed; }
 `;
 
 // Inline styles, same approach as the PO Order Register report (does not depend on extraCss)
@@ -267,7 +268,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
     <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
       ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
       : `
-      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+                 <table class="data-table pr-reg-summary" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:14%"/><col style="width:11%"/><col style="width:12%"/><col style="width:33%"/><col style="width:9%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
         <thead>
           <tr>
@@ -375,7 +376,7 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
           <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(DETAILS_REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
       ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
       : `
-      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+           <table class="data-table pr-reg-details" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:6%"/><col style="width:13%"/><col style="width:33%"/><col style="width:11%"/><col style="width:9%"/><col style="width:8%"/><col style="width:8%"/><col style="width:12%"/></colgroup>
         <thead>
           <tr>
