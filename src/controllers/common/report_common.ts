@@ -711,6 +711,7 @@ export type BuildReportDocumentOptions = {
   footerHtml: string;
   extraCss?: string;
   autoPrint?: boolean;
+  
   showPrintButton?: boolean;
   /**
    * "fixed"  – force REPORT_FONT_PX on almost everything.
