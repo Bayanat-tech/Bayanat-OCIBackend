@@ -266,7 +266,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
   return `
   <div class="pr-register">
     <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
-      ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+            ? `<div class="empty">No records found for the selected criteria.</div>`
       : `
                  <table class="data-table pr-reg-summary" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:14%"/><col style="width:11%"/><col style="width:12%"/><col style="width:33%"/><col style="width:9%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
@@ -374,7 +374,7 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
   return `
   <div class="pr-register" style="${PR_WRAP}">
           <table class="pr-title-line pr-title-tight"><tbody><tr><td><h1 class="report-title">${escapeHtml(DETAILS_REPORT_TITLE)}</h1></td></tr></tbody></table>${rows.length === 0
-      ? `<div style="${PR_EMPTY}">No records found for the selected filters.</div>`
+           ? `<div class="empty">No records found for the selected criteria.</div>`
       : `
            <table class="data-table pr-reg-details" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:6%"/><col style="width:13%"/><col style="width:33%"/><col style="width:11%"/><col style="width:9%"/><col style="width:8%"/><col style="width:8%"/><col style="width:12%"/></colgroup>
@@ -846,10 +846,10 @@ export const getPrRegisterSummaryReportHtml = async (req: RequestWithUser, res: 
     const rows = await loadPrRegisterData(req, params, PARAM_SUMMARY);
     console.log(`[PR] load data total: ${Date.now() - t0} ms`);
 
-    if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
+    // if (!rows.length) {
+    //   res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+    //   return;
+    // }
 
     const companyCode =
       params.company_code ||
@@ -910,10 +910,10 @@ export const getPrRegisterDetailReportHtml = async (req: RequestWithUser, res: R
   try {
     const params = extractParams(req);
     const rows = await loadPrRegisterData(req, params, PARAM_DETAILS);
-    if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
+    // if (!rows.length) {
+    //   res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+    //   return;
+    // }
 
     const companyCode =
       params.company_code ||

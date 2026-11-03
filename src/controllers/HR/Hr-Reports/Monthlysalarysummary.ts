@@ -298,25 +298,40 @@ function buildExcelHtml(rows: SalaryRow[], p: SalaryParams): string {
 
 // ─── Layout CSS ───────────────────────────────────────────────────────────────
 
-const SALARY_EXTRA_CSS = `
-  @page { size: A4 portrait; margin: 6mm 12mm 12mm 12mm; }
+type Orientation = "portrait" | "landscape";
+
+/** ?orientation=portrait|landscape (query or body). Default = landscape. */
+function resolveOrientation(req: Request): Orientation {
+    const o = text((req.query as any)?.orientation ?? (req.body as any)?.orientation).toLowerCase();
+    return o === "portrait" ? "portrait" : "landscape";
+}
+
+/**
+ * Base rules = landscape (wide page, medium sizes).
+ * `@media (max-width: 900px)` = portrait page (A4 portrait is ~794px wide, landscape ~1123px),
+ * so the compact sizes apply automatically whenever the page is portrait – even if the
+ * orientation is switched in the preview – and the table never gets squeezed/overlapped.
+ */
+const buildSalaryCss = (orientation: Orientation): string => `
+  @page { size: A4 ${orientation}; margin: 6mm 12mm 12mm 12mm; }
 
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
   html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
   body::before, body::after { display: none !important; content: none !important; }
 
-  .company-header { border-bottom: 2px solid #00378c; padding: 0 0 10px 0; margin: 0 0 8px 0; }
-  .company-name       { font-size: 16px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
-  .company-address    { font-size: 9.5px; line-height: 1.4; }
-  .company-logo-wrap  { max-width: 180px; }
-  .company-logo       { max-height: 56px; max-width: 180px; }
+  /* ── Landscape (default) ── */
+  .company-header { border-bottom: 1.5px solid #00378c; padding: 0 0 8px 0; margin: 0 0 8px 0; }
+  .company-name       { font-size: 14px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 9px; line-height: 1.35; }
+  .company-logo-wrap  { max-width: 120px; }
+  .company-logo       { max-height: 40px; max-width: 120px; }
 
-  h1.report-title { margin: 28px 0 14px 0; font-size: 18px; font-weight: 700; color: #00378c !important; }
-  .applied-filters { font-size: 10.5px; margin-bottom: 28px; }
+  h1.report-title { margin: 12px 0 8px 0; font-size: 15px; font-weight: 700; color: #00378c !important; }
+  .applied-filters { font-size: 9.5px; margin-bottom: 10px; }
 
   table.data-table { width: 100%; table-layout: fixed; font-size: 10px; margin-top: 0; border-collapse: collapse; }
   table.data-table th, table.data-table td {
-    overflow: visible; overflow-wrap: anywhere; word-break: break-word;
+    overflow: visible; overflow-wrap: anywhere; word-break: normal;
     white-space: normal !important; min-width: 0;
   }
   table.data-table .left   { text-align: left   !important; }
@@ -325,26 +340,46 @@ const SALARY_EXTRA_CSS = `
 
   table.data-table thead tr th {
     background: #00378c !important; color: #ffffff !important; font-weight: 700;
-    font-size: 10px; padding: 9px 4px; border: 1px solid #ffffff55 !important;
-    text-transform: none; white-space: normal !important; text-align: center;
+    font-size: 10px; padding: 6px 4px; border: 1px solid #ffffff55 !important;
+    text-transform: none; white-space: normal !important; text-align: center; vertical-align: middle;
   }
   table.data-table tbody tr.data-row td {
-    background: #fafcfe !important; font-size: 10px; padding: 7px 4px;
+    background: #fafcfe !important; font-size: 10px; padding: 5px 4px;
     border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; vertical-align: middle;
   }
   table.data-table tbody tr.data-row td.nw { white-space: nowrap !important; font-variant-numeric: tabular-nums; }
   table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
   table.data-table tbody tr.grand-total-row td {
-    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700;
-    padding: 9px 4px; text-align: right; border-bottom: 1px solid #cbd5e1 !important;
+    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700; white-space: nowrap !important;
+    padding: 6px 4px; text-align: right; border-bottom: 1px solid #cbd5e1 !important;
   }
-  table.data-table tbody tr.empty-row td { padding: 20px; text-align: center; color: #64748b; background: #fafcfe !important; }
+  table.data-table tbody tr.empty-row td { padding: 16px; text-align: center; color: #64748b; background: #fafcfe !important; }
 
   .report-footer {
-    width: 100% !important; max-width: 100% !important; padding-right: 2px; font-size: 9px;
+    width: 100% !important; max-width: 100% !important; padding-right: 2px; font-size: 8.5px;
     overflow: visible !important; overflow-wrap: anywhere; word-break: break-word;
   }
   .report-footer * { max-width: 100%; }
+
+  /* ── Portrait (compact – same scale as the other HR listing reports) ── */
+  @media (max-width: 900px) {
+    .company-header { border-bottom: 1px solid #00378c; padding: 0 0 6px 0; margin: 0 0 6px 0; }
+    .company-name       { font-size: 12.5px; margin: 0 0 1px 0; }
+    .company-address    { font-size: 8.5px; line-height: 1.3; }
+    .company-logo-wrap  { max-width: 100px; }
+    .company-logo       { max-height: 32px; max-width: 100px; }
+
+    h1.report-title { margin: 8px 0 6px 0; font-size: 13.5px; }
+    .applied-filters { font-size: 9px; margin-bottom: 8px; }
+
+    table.data-table { font-size: 9px; }
+    table.data-table thead tr th { font-size: 9px; padding: 4px 3px; }
+    table.data-table tbody tr.data-row td { font-size: 9px; padding: 3px 3px; }
+    table.data-table tbody tr.grand-total-row td { padding: 4px 3px; }
+    table.data-table tbody tr.empty-row td { padding: 12px; }
+
+    .report-footer { font-size: 8px; }
+  }
 
   @media print {
     table.data-table thead { display: table-header-group; }
@@ -355,7 +390,7 @@ const SALARY_EXTRA_CSS = `
 // ─── Body ─────────────────────────────────────────────────────────────────────
 
 // % widths – add up to 100
-const COL_WIDTHS = [5, 12, 27, 12, 11, 11, 11, 11];
+const COL_WIDTHS = [5, 11, 25, 13, 12, 12, 11, 11];
 
 function renderBody(rows: SalaryRow[], p: SalaryParams): string {
     const amt = (v: number) => `<td class="right nw">${money(v)}</td>`;
@@ -434,7 +469,7 @@ export const getMonthlySalarySummaryReport = async (req: RequestWithUser, res: R
             headerHtml,
             bodyHtml,
             footerHtml,
-            extraCss: SALARY_EXTRA_CSS,
+            extraCss: buildSalaryCss(resolveOrientation(req)),
             autoPrint: req.query.print !== "false",
             showPrintButton: true,
             fontMode: "native",
