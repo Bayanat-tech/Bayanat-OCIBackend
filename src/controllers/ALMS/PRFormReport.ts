@@ -306,10 +306,16 @@ function remarkLines(raw: unknown): string[] {
 
 function renderFormBody(data: FormData, requestNumber: string, orientation: Orientation = "portrait"): string {
   const { items, history } = data;
+    if (!items.length && !data.header) {
+    return `
+<div class="pr-form">
+  <table class="pr-title-line"><tbody><tr><td><h1 class="report-title">Purchase Request : ${escapeHtml(requestNumber)}</h1></td></tr></tbody></table>
+  <div class="empty">No data found for the selected request.</div>
+</div>`;
+  }
   const { left, right } = formHeaderPairs(data, requestNumber);
 
-  // ── Header: 2 columns, grey label + bold value ──
-  // ── Header: title + 2 separate boxes (label : value) ──
+
   const kvTable = (title: string, pairs: [string, string][]) => {
     const rows = pairs
       .map(([k, v]) => {
@@ -955,10 +961,10 @@ export const getPrRegisterFormReportHtml = async (req: RequestWithUser, res: Res
     }
 
     const data = await loadFormData(req, params);
-    if (!data.items.length && !data.header) {
-      res.status(200).json({ success: false, message: "No data found for the selected request." });
-      return;
-    }
+    // if (!data.items.length && !data.header) {
+    //   res.status(200).json({ success: false, message: "No data found for the selected request." });
+    //   return;
+    // }
 
     const companyCode =
       params.company_code ||
