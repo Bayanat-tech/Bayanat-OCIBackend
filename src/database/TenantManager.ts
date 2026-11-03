@@ -22,6 +22,7 @@ interface TenantPool {
 export class TenantManager {
   private static centralPool: oracledb.Pool | null = null;
   private static tenantPools: Map<string, TenantPool> = new Map();
+  private static pendingTenantPools: Map<string, Promise<oracledb.Pool>> = new Map();
   private static initialized = false;
 
   // Initialize central connection pool
@@ -207,7 +208,22 @@ export class TenantManager {
     const pool = await this.getPoolForTenant(config);
     
     console.log(`[getConnection] STEP 3: Acquiring connection from tenant pool...`);
-    const conn = await pool.getConnection();
+    let conn: oracledb.Connection;
+    try {
+      conn = await pool.getConnection();
+    } catch (error) {
+      console.error(`[getConnection] Tenant pool acquisition failed`, {
+        tenantId,
+        code: (error as any)?.code,
+        connectionsInUse: pool.connectionsInUse,
+        connectionsOpen: pool.connectionsOpen,
+        poolMax: pool.poolMax,
+        queueTimeout: pool.queueTimeout,
+        thin: oracledb.thin,
+        workerThreads: process.env.UV_THREADPOOL_SIZE || "default (4)",
+      });
+      throw error;
+    }
     console.log(`[getConnection] Connection acquired`);
     
     // Schema-based tenants must fail closed: never continue on the connection's
@@ -250,6 +266,21 @@ export class TenantManager {
   // Get or create pool for tenant
   private static async getPoolForTenant(config: TenantConfig): Promise<oracledb.Pool> {
     const poolKey = `${config.TENANT_ID}_${config.DB_USER}`;
+
+    const pending = this.pendingTenantPools.get(poolKey);
+    if (pending) return pending;
+    if (this.tenantPools.has(poolKey)) return this.tenantPools.get(poolKey)!.pool;
+
+    const creation = this.createPoolForTenant(config, poolKey);
+    this.pendingTenantPools.set(poolKey, creation);
+    try {
+      return await creation;
+    } finally {
+      this.pendingTenantPools.delete(poolKey);
+    }
+  }
+
+  private static async createPoolForTenant(config: TenantConfig, poolKey: string): Promise<oracledb.Pool> {
     
     console.log(`[getPoolForTenant] STEP 1: Checking if pool exists for: ${poolKey}...`);
     if (this.tenantPools.has(poolKey)) {
@@ -280,6 +311,9 @@ export class TenantManager {
         poolMax: 10,
         poolIncrement: 1,
         poolTimeout: 60,
+        // Bound acquisition in the driver; Promise.race would leave queued requests behind.
+        queueTimeout: 10000,
+        enableStatistics: true,
       });
 
       this.tenantPools.set(poolKey, { pool, config });

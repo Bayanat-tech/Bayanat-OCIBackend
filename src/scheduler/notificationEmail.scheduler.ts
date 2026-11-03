@@ -4,6 +4,7 @@ import TenantManager from "../database/TenantManager";
 import { notifyUser } from "../helpers/functions";
 import constants from "../helpers/constants";
 const SCHEDULE_EXPR = "*/2 * * * *"; 
+let running = false;
 
 async function sendEmail(row: any) {
   // Build an attractive, responsive HTML message and delegate sending
@@ -86,6 +87,11 @@ export function startNotificationEmailScheduler() {
   logger.info("Starting Notification Email Scheduler...");
 
   cron.schedule(SCHEDULE_EXPR, async () => {
+    if (running) {
+      logger.warn("NotificationEmailScheduler skipped: previous run is still active");
+      return;
+    }
+    running = true;
     logger.info("NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO...");
 
     try {
@@ -138,6 +144,8 @@ export function startNotificationEmailScheduler() {
       }
     } catch (error) {
       logger.error("NotificationEmailScheduler failed:", error);
+    } finally {
+      running = false;
     }
   });
 

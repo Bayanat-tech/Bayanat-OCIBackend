@@ -17,6 +17,9 @@ import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 
+function isPoolUnavailable(error: any): boolean {
+  return ["NJS-040", "NJS-076", "NJS-002", "NJS-065"].includes(error?.code);
+}
 
 // Update generateToken to include tenant
 export async function generateToken(userData: any): Promise<string> {
@@ -83,6 +86,7 @@ async function resolveTenantCompanyName(tenantId: string, companyCode: string): 
     const companyRow = Array.isArray(rows) ? rows[0] : null;
     return companyRow?.COMPANY_NAME || companyRow?.company_name || undefined;
   } catch (error) {
+    if (isPoolUnavailable(error)) throw error;
     console.warn(`[auth.controller] Failed to resolve company name for tenant=${tenantId}, company_code=${companyCode}:`, error);
     return undefined;
   }
@@ -232,7 +236,6 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     });
     
     console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
-    console.log(`[login] ✅ LOGIN SUCCESSFUL for ${user.LOGINID}`);
 
     let userDecimals = 2;
     let baseCurr = "OMR";
@@ -250,9 +253,11 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
         if (acRow.BASE_CURR_CODE) baseCurr = String(acRow.BASE_CURR_CODE).trim();
       }
     } catch (e) {
+      if (isPoolUnavailable(e)) throw e;
       console.warn("[login] Could not load MS_AC_SETUP for user:", e);
     }
 
+    console.log(`[login] LOGIN SUCCESSFUL for ${user.LOGINID}`);
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: { 
@@ -274,6 +279,14 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error(`[login] ❌ ERROR:`, err.message);
+    if (isPoolUnavailable(err)) {
+      res.status(503).json({
+        success: false,
+        code: "TENANT_DATABASE_UNAVAILABLE",
+        message: "Your company database is busy or unavailable. Please try again shortly.",
+      });
+      return;
+    }
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred",

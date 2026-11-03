@@ -1,6 +1,7 @@
 FROM node:20-bookworm-slim
 
 ENV PORT=3505 \
+    UV_THREADPOOL_SIZE=128 \
     ORACLE_INSTANT_CLIENT_PATH=/opt/oracle/instantclient_19_31 \
     LD_LIBRARY_PATH=/opt/oracle/instantclient_19_31
 
