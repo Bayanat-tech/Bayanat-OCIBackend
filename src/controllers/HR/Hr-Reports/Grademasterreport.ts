@@ -269,6 +269,7 @@ export const getGradeMasterReportHtml = async (req: RequestWithUser, res: Respon
       autoPrint,
       showPrintButton: true,
       fontMode: "native",
+      orientation: "landscape",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");

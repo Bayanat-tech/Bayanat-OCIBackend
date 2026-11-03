@@ -161,9 +161,70 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
     const result = await runFreightInvoiceSave(connection, req);
     const invoiceNo = String((result.outBinds as any).p_invoice_no || "");
     const requestedStatus = value(req.body.invoiceHeader?.[0]?.inv_status ?? req.body.invoiceHeader?.[0]?.INV_STATUS);
-    if (requestedStatus === "C" && invoiceNo) {
-      const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE ?? req.body.invoiceHeader?.[0]?.company_code ?? req.body.invoiceHeader?.[0]?.COMPANY_CODE);
-      if (companyCode) {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE ?? req.body.invoiceHeader?.[0]?.company_code ?? req.body.invoiceHeader?.[0]?.COMPANY_CODE);
+    const hdr = req.body.invoiceHeader?.[0] || {};
+    const currCode = value(hdr.curr_code ?? hdr.CURR_CODE, "OMR");
+    let exRate = numberValue(hdr.ex_rate ?? hdr.EX_RATE);
+
+    if (invoiceNo && companyCode) {
+      if (!exRate || exRate <= 0) {
+        if (currCode === "OMR") {
+          exRate = 1;
+        } else {
+          try {
+            const curRes = await connection.execute(
+              `SELECT ex_rate FROM MS_CURRENCY WHERE curr_code = :curr AND (company_code = :comp OR :comp IS NULL) AND ROWNUM = 1`,
+              { curr: currCode, comp: companyCode },
+              { outFormat: (await import("oracledb")).OUT_FORMAT_OBJECT }
+            );
+            if (curRes.rows && curRes.rows.length > 0) {
+              exRate = Number((curRes.rows[0] as any).EX_RATE || (curRes.rows[0] as any).ex_rate || 0);
+            }
+          } catch (_) {}
+        }
+      }
+      if (!exRate || exRate <= 0) exRate = currCode === "OMR" ? 1 : 1;
+
+      try {
+        await connection.execute(
+          `UPDATE TN_INVOICE 
+              SET curr_code = :curr_code, 
+                  ex_rate = :ex_rate 
+            WHERE company_code = :company_code 
+              AND (invoice_no = :invoice_no OR invno_prefixed = :invoice_no)`,
+          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+      } catch (updErr) {
+        console.warn("Could not sync curr_code / ex_rate to TN_INVOICE:", updErr);
+      }
+
+      try {
+        await connection.execute(
+          `UPDATE TN_INVOICE_CONSOLE 
+              SET curr_code = :curr_code, 
+                  ex_rate = :ex_rate 
+            WHERE company_code = :company_code 
+              AND invoice_no = :invoice_no`,
+          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+        await connection.execute(
+          `UPDATE TN_INVOICE_DET_CONSOLE 
+              SET curr_code = :curr_code, 
+                  ex_rate = :ex_rate,
+                  bill_curr_code = :curr_code,
+                  bill_ex_rate = :ex_rate 
+            WHERE company_code = :company_code 
+              AND invoice_no = :invoice_no`,
+          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+      } catch (updConsoleErr) {
+        console.warn("Could not sync curr_code / ex_rate to TN_INVOICE_CONSOLE:", updConsoleErr);
+      }
+
+      if (requestedStatus === "C") {
         await connection.execute(
           `UPDATE TN_INVOICE_CONSOLE SET INV_STATUS = 'C' WHERE COMPANY_CODE = :company_code AND INVOICE_NO = :invoice_no`,
           { company_code: companyCode, invoice_no: invoiceNo },
@@ -431,6 +492,7 @@ function buildHeaderRows(req: Request) {
     CUST_CODE: value(h.CUST_CODE ?? h.cust_code),
     INV_AMOUNT: numberValue(h.INV_AMOUNT ?? h.inv_amount),
     CURR_CODE: value(h.CURR_CODE ?? h.curr_code, "OMR"),
+    EX_RATE: numberValue(h.EX_RATE ?? h.ex_rate ?? 1),
     INV_STATUS: value(h.INV_STATUS ?? h.inv_status, "N"),
     INV_DESC1: value(h.INV_DESC1 ?? h.inv_desc1),
     INV_DESC2: value(h.INV_DESC2 ?? h.inv_desc2),
@@ -533,3 +595,25 @@ function toDate(input: unknown) {
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+export const frtGetCurrencyRate = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code || req.body.COMPANY_CODE;
+    const currCode = req.body.curr_code || req.body.CURR_CODE;
+    if (!companyCode || !currCode) {
+      res.json({ success: true, data: { curr_code: currCode || 'OMR', curr_name: currCode || 'OMANI RIAL', ex_rate: 1, division: 'BAISA' } });
+      return;
+    }
+    const result = await connection.execute(
+      `SELECT curr_code, curr_name, NVL(ex_rate, 1) AS ex_rate, division, subdivision
+         FROM MS_CURRENCY
+        WHERE company_code = :p_company_code
+          AND curr_code = :p_curr_code
+          AND ROWNUM = 1`,
+      { p_company_code: companyCode, p_curr_code: currCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const row = (result.rows as any[])?.[0] || { curr_code: currCode, curr_name: currCode, ex_rate: 1, division: null };
+    res.json({ success: true, data: row });
+  });
+};

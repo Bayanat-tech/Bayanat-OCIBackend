@@ -1,9 +1,9 @@
 import { FilesVHService } from "../services/filesVH.service";
 import {FilesVendorService} from "../services/filesVendor.service";
 import { Response } from "express";
+import oracledb from "oracledb";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
-import { oracleDb } from "../database/connection";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
@@ -401,14 +401,24 @@ export const deleteFilesAF = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
+  let connection: any;
   try {
     const { request_number, sr_no } = req.params;
     const aws_file_locn = req.body?.aws_file_locn;
+    const tenantId = getCurrentTenantId();
 
     if (request_number === undefined) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: true,
         message: constants.MESSAGES.BAD_REQUEST,
+      });
+      return;
+    }
+
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found",
       });
       return;
     }
@@ -421,8 +431,19 @@ export const deleteFilesAF = async (
       return;
     }
 
-    const conditions = sr_no ? { request_number, sr_no } : { request_number, aws_file_locn };
-    const file = await filesAFService.findOne(conditions);
+    connection = await TenantManager.getConnection(tenantId);
+    const whereClause = sr_no
+      ? "REQUEST_NUMBER = :request_number AND SR_NO = :sr_no"
+      : "REQUEST_NUMBER = :request_number AND AWS_FILE_LOCN = :aws_file_locn";
+    const binds = sr_no
+      ? { request_number, sr_no }
+      : { request_number, aws_file_locn };
+    const selected = await connection.execute(
+      `SELECT AWS_FILE_LOCN FROM ACCOUNTS_FILES WHERE ${whereClause}`,
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const file = (selected.rows?.[0] || null) as { AWS_FILE_LOCN?: string } | null;
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -432,20 +453,28 @@ export const deleteFilesAF = async (
       return;
     }
 
-    if (file.awsFileLocn) {
-  const key = getOCIObjectKey(file.awsFileLocn);
-  await deleteFile(key);
-}
+    try {
+      const result = await connection.execute(
+        `DELETE FROM ACCOUNTS_FILES WHERE ${whereClause}`,
+        binds,
+        { autoCommit: false }
+      );
+      if (!result.rowsAffected) {
+        await connection.rollback();
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: constants.MESSAGES.FILE_NOT_FOUND,
+        });
+        return;
+      }
 
-
-    const result = await filesAFService.delete(conditions);
-
-    if (result.affected === 0) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "Delete operation failed",
-      });
-      return;
+      if (file.AWS_FILE_LOCN) {
+        await deleteFile(getOCIObjectKey(file.AWS_FILE_LOCN));
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
     }
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -454,10 +483,13 @@ export const deleteFilesAF = async (
     });
     return;
   } catch (error: any) {
+    console.error("deleteFilesAF error:", error);
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
     return;
+  } finally {
+    if (connection) await connection.close();
   }
 };
 //vendor and HR file attachment

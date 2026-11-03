@@ -37,30 +37,29 @@ async function runLookup(req: Request, res: Response, components: boolean) {
     connection = await TenantManager.getConnection(tenantId);
     const result = await connection.execute(
       components
-        ? `WITH ranked AS (
-             SELECT c.*,
-                    ROW_NUMBER() OVER (ORDER BY c.SR_NO, c.TX_COMPNTCAT_CODE) component_pos
-               FROM MS_TAX_COMPNTCATEGORY c
-              WHERE c.COMPANY_CODE = :company_code
-                AND c.DIV_CODE = :div_code
-                AND c.TX_CAT_CODE = :tx_cat_code
-           )
-           SELECT c.DIV_CODE,
+        ? `SELECT DISTINCT
+                  c.DIV_CODE,
                   c.TX_CAT_CODE,
                   c.TX_COMPNTCAT_CODE,
                   c.TX_COMPNTCAT_NAME,
                   c.TX_TYPE,
-                  NVL(CASE c.component_pos
-                        WHEN 1 THEN a.TX_COMPNT_1_PERC WHEN 2 THEN a.TX_COMPNT_2_PERC
-                        WHEN 3 THEN a.TX_COMPNT_3_PERC WHEN 4 THEN a.TX_COMPNT_4_PERC
+                  c.TX_COMPNT_CODE,
+                  a.TX_COMPNT_1_EXPMT,
+                  NVL(CASE c.TX_COMPNT_CODE
+                        WHEN '1' THEN a.TX_COMPNT_1_PERC
+                        WHEN '2' THEN a.TX_COMPNT_2_PERC
+                        WHEN '3' THEN a.TX_COMPNT_3_PERC
+                        WHEN '4' THEN a.TX_COMPNT_4_PERC
                       END, NVL(c.TX_PERCNT, 0)) TX_PERCNT
-             FROM ranked c
+             FROM MS_TAX_COMPNTCATEGORY c
              LEFT JOIN MS_ACTIVITY a ON a.COMPANY_CODE = :company_code AND a.ACTIVITY_CODE = :act_code
-            WHERE 1=1
+            WHERE c.COMPANY_CODE = :company_code
+              AND c.DIV_CODE = :div_code
+              AND c.TX_CAT_CODE = :tx_cat_code
               AND (:search IS NULL
                    OR UPPER(c.TX_COMPNTCAT_CODE || ' ' || c.TX_COMPNTCAT_NAME || ' ' || NVL(c.TX_TYPE, ''))
                       LIKE '%' || UPPER(:search) || '%')
-            ORDER BY c.SR_NO, c.TX_COMPNTCAT_CODE`
+            ORDER BY c.TX_COMPNT_CODE, c.TX_COMPNTCAT_CODE`
         : `SELECT c.DIV_CODE,
                   c.TX_CAT_CODE,
                   c.TX_CAT_NAME,

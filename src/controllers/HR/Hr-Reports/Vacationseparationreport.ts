@@ -288,16 +288,17 @@ const VS_EXTRA_CSS = `
   html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
   body::before, body::after { display: none !important; content: none !important; }
 
-  .company-header { border-bottom: 2px solid #00378c; padding: 0 0 10px 0; margin: 0 0 8px 0; }
-  .company-name       { font-size: 16px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
-  .company-address    { font-size: 9.5px; line-height: 1.4; }
-  .company-logo-wrap  { max-width: 180px; }
-  .company-logo       { max-height: 56px; max-width: 180px; }
+  /* Header – compact, same scale as the other HR listing reports */
+  .company-header { border-bottom: 1px solid #00378c; padding: 0 0 6px 0; margin: 0 0 6px 0; }
+  .company-name       { font-size: 12.5px; font-weight: 700; color: #172033; margin: 0 0 1px 0; }
+  .company-address    { font-size: 8.5px; line-height: 1.3; }
+  .company-logo-wrap  { max-width: 100px; }
+  .company-logo       { max-height: 32px; max-width: 100px; }
 
-  h1.report-title { margin: 28px 0 14px 0; font-size: 18px; font-weight: 700; color: #00378c !important; }
-  .applied-filters { font-size: 10.5px; margin-bottom: 28px; }
+  h1.report-title { margin: 8px 0 6px 0; font-size: 13.5px; font-weight: 700; color: #00378c !important; }
+  .applied-filters { font-size: 9px; margin-bottom: 8px; }
 
-  table.data-table { width: 100%; table-layout: fixed; font-size: 10.5px; margin-top: 0; border-collapse: collapse; }
+  table.data-table { width: 100%; table-layout: fixed; font-size: 9px; margin-top: 0; border-collapse: collapse; }
   table.data-table th, table.data-table td {
     overflow: visible; overflow-wrap: anywhere; word-break: break-word;
     white-space: normal !important; min-width: 0;
@@ -308,23 +309,23 @@ const VS_EXTRA_CSS = `
 
   table.data-table thead tr th {
     background: #00378c !important; color: #ffffff !important; font-weight: 700;
-    font-size: 10.5px; padding: 9px 4px; border: 1px solid #ffffff55 !important;
+    font-size: 9px; padding: 4px 4px; border: 1px solid #ffffff55 !important;
     text-transform: none; white-space: normal !important; text-align: center;
   }
   table.data-table tbody tr.data-row td {
-    background: #fafcfe !important; font-size: 10.5px; padding: 7px 4px;
+    background: #fafcfe !important; font-size: 9px; padding: 3px 4px;
     border-bottom: 1px solid #e2e8f0 !important; color: #1e293b; vertical-align: middle;
   }
   table.data-table tbody tr.data-row td.nw { white-space: nowrap !important; font-variant-numeric: tabular-nums; }
   table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
   table.data-table tbody tr.grand-total-row td {
     background: #dbe4f0 !important; color: #00378c !important; font-weight: 700;
-    padding: 9px 4px; text-align: right; border-bottom: 1px solid #cbd5e1 !important;
+    padding: 4px 4px; text-align: right; border-bottom: 1px solid #cbd5e1 !important;
   }
-  table.data-table tbody tr.empty-row td { padding: 20px; text-align: center; color: #64748b; background: #fafcfe !important; }
+  table.data-table tbody tr.empty-row td { padding: 12px; text-align: center; color: #64748b; background: #fafcfe !important; }
 
   .report-footer {
-    width: 100% !important; max-width: 100% !important; padding-right: 2px; font-size: 9px;
+    width: 100% !important; max-width: 100% !important; padding-right: 2px; font-size: 8px;
     overflow: visible !important; overflow-wrap: anywhere; word-break: break-word;
   }
   .report-footer * { max-width: 100%; }
@@ -466,4 +467,3 @@ export const exportVacationSeparationReportExcel = async (req: Request, res: Res
         if (connection) try { await connection.close(); } catch (e) { console.error(e); }
     }
 };
-
