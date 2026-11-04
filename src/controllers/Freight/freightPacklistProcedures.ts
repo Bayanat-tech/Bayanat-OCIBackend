@@ -84,7 +84,23 @@ export const frtPacklistGet = async (req: Request, res: Response): Promise<void>
     const rows = await rowsFromCursor((result.outBinds as any).p_result);
     const packlist = rows[0] ?? null;
     if (!packlist) {
-      res.json({ success: true, data: null });
+      const cntrFallback = await connection.execute(
+        `SELECT SRNO, CONTAINER_NO, CONTAINER_TYPE, T_F, SEAL_NO,
+                VOLUME, GROSS_WEIGHT, NO_OF_PKGS, PUOM, CONTN_DESC,
+                CONTN_PICK_DATE, BL_NO
+           FROM TF_CONTAINER_DET
+          WHERE COMPANY_CODE = :p_company_code
+            AND PRIN_CODE = :p_prin_code
+            AND JOB_NO = :p_job_no
+          ORDER BY NVL(SRNO, 999999), CONTAINER_NO`,
+        {
+          p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+          p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+          p_job_no: req.body.job_no ?? req.body.JOB_NO,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      res.json({ success: true, data: { CONTAINERS: cntrFallback.rows ?? [] } });
       return;
     }
 

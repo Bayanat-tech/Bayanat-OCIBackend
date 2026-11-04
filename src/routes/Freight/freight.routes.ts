@@ -1,3 +1,4 @@
+import multer from "multer";
 import * as express from "express";
 import passport from "passport";
 import { Router } from "express";
@@ -79,6 +80,16 @@ import {
   trkProTaskSave,
   trkDcStationList,
   trkDcContainerUpdate,
+  trkAdminCcList,
+  trkAdminCcSave,
+  trkAdminCcDelete,
+  trkAdminDailyReportGet,
+  trkAdminDailyReportSave,
+  trkAdminDailyReportTrigger,
+  trkWorkflowConfigGet,
+  trkWorkflowConfigSave,
+  trkSmartDocumentParse,
+  trkSmartJobCreate,
 } from "../../controllers/Freight/freightTrackerProcedures";
 import {
   frtPacklistDelete,
@@ -139,6 +150,7 @@ import {
 import { getCompanyLogoDirect } from "../../controllers/Freight/companyLogo.controller";
 
 const router = express.Router();
+const smartDocUpload = multer({ storage: multer.memoryStorage() });
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 router.use(enforceFreightRequestIdentity);
@@ -208,6 +220,16 @@ router.post("/tracker/pro-queue/list", trkProQueueList);
 router.post("/tracker/pro-queue/save", trkProTaskSave);
 router.post("/tracker/dc-station/list", trkDcStationList);
 router.post("/tracker/dc-station/update-container", trkDcContainerUpdate);
+router.post("/tracker/admin/cc-configs/list", trkAdminCcList);
+router.post("/tracker/admin/cc-configs/save", trkAdminCcSave);
+router.post("/tracker/admin/cc-configs/delete", trkAdminCcDelete);
+router.post("/tracker/admin/daily-report/get", trkAdminDailyReportGet);
+router.post("/tracker/admin/daily-report/save", trkAdminDailyReportSave);
+router.post("/tracker/admin/daily-report/trigger", trkAdminDailyReportTrigger);
+router.post("/tracker/admin/workflow-config/get", trkWorkflowConfigGet);
+router.post("/tracker/admin/workflow-config/save", trkWorkflowConfigSave);
+router.post("/tracker/smart-doc/parse", smartDocUpload.single("file"), trkSmartDocumentParse);
+router.post("/tracker/smart-doc/create-job", smartDocUpload.single("file"), trkSmartJobCreate);
 router.post("/tax/categories", frtTaxCategoryList);
 router.post("/tax/components", frtTaxComponentList);
 

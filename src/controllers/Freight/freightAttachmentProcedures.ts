@@ -193,6 +193,39 @@ export const frtAttachmentSave = async (req: Request, res: Response): Promise<vo
       },
       { autoCommit: true }
     );
+    // Automatically synchronize to TF_JOB_DOCUMENTS
+    try {
+      const companyCode = value(file.company_code ?? file.COMPANY_CODE ?? req.body.company_code);
+      const prinCode = value(file.prin_code ?? file.PRIN_CODE ?? req.body.prin_code);
+      const jobNo = value(file.job_no ?? file.JOB_NO ?? req.body.job_no);
+      const docNr = value(file.doc_nr ?? file.DOC_NR ?? req.body.doc_nr);
+      const fileLocn = value(file.aws_file_locn ?? file.AWS_FILE_LOCN);
+      const userId = value(file.user_id ?? file.USER_ID ?? req.body.user_id);
+
+      if (companyCode && prinCode && jobNo && fileLocn) {
+        if (docNr) {
+          await connection.execute(
+            `UPDATE TF_JOB_DOCUMENTS
+                SET COLLECTED = 'Y',
+                    DOC_PATH = :locn,
+                    DOC_RECEIVED_DT = NVL(DOC_RECEIVED_DT, SYSDATE),
+                    DOC_RECEIVED_BY = NVL(DOC_RECEIVED_BY, :usr),
+                    DOC_RECEIVED_MODE = 'UPLOAD',
+                    USER_ID = :usr,
+                    USER_DT = SYSDATE
+              WHERE COMPANY_CODE = :comp
+                AND PRIN_CODE = :prin
+                AND JOB_NO = :job
+                AND (DOC_NR = :dnr OR UPPER(DOCUMENT_TYPE) LIKE '%' || UPPER(:dnr) || '%')`,
+            { locn: fileLocn, usr: userId || 'ADMIN', comp: companyCode, prin: prinCode, job: jobNo, dnr: docNr },
+            { autoCommit: true }
+          );
+        }
+      }
+    } catch (syncErr) {
+      console.warn("[frtAttachmentSave] TF_JOB_DOCUMENTS sync warning (non-blocking):", syncErr);
+    }
+
     res.json({ success: true, message: "Freight attachment saved successfully", data: { sr_no: (result.outBinds as any).p_sr_no_out } });
   });
 };

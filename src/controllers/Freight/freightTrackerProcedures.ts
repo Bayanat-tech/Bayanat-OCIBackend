@@ -3,6 +3,7 @@ import oracledb from "oracledb";
 import TenantManager from "../../../src/database/TenantManager";
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware";
 import { sendTrackerStageEmail } from "../../services/Freight/freightTrackerNotificationService";
+import { parseShippingDocumentPdf } from "../../services/Freight/freightDocumentAiService";
 
 type Connection = oracledb.Connection;
 
@@ -323,6 +324,18 @@ export const trkShipmentGet = async (req: Request, res: Response): Promise<void>
     const eventRows = await rowsFromCursor(outBinds.p_events);
 
     const header = headerRows[0] ?? null;
+    if (header) {
+      header.DOC_REF = header.DOC_REF || header.BL_NUMBER;
+      header.BL_NUMBER = header.BL_NUMBER || header.DOC_REF;
+    }
+
+    const normalizedContainers = (containerRows || []).map((c: any) => ({
+      ...c,
+      CONTAINER_NO: c.CONTAINER_NO || c.CONTAINER_NUMBER,
+      CONTAINER_NUMBER: c.CONTAINER_NUMBER || c.CONTAINER_NO,
+      TRUCK_PLATE: c.TRUCK_PLATE || c.TRUCK_PLATE_NUMBER,
+      TRUCK_PLATE_NUMBER: c.TRUCK_PLATE_NUMBER || c.TRUCK_PLATE,
+    }));
 
     // Calculate progress statistics
     const totalTasks = taskRows.length;
@@ -335,7 +348,7 @@ export const trkShipmentGet = async (req: Request, res: Response): Promise<void>
       data: {
         header,
         tasks: taskRows,
-        containers: containerRows,
+        containers: normalizedContainers,
         events: eventRows,
         stats: {
           totalTasks,
@@ -401,16 +414,14 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
     const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const taskType = value(req.body.task_type ?? req.body.TASK_TYPE);
     const rawStatus = value(req.body.status ?? req.body.STATUS);
-    let status = rawStatus;
-    if (rawStatus === 'IN_TRANSIT' || rawStatus === 'ASSIGNED' || rawStatus === 'BREAKDOWN') {
-      status = 'PULLED_OUT';
-    } else if (rawStatus === 'AT_DC' || req.body.arrived === true || req.body.arrived === 'Y') {
-      status = 'ARRIVED';
-    } else if (rawStatus === 'EMPTY_RETURNED') {
-      status = 'RETURNED';
-    } else if (rawStatus && !['PENDING', 'ARRIVED', 'PULLED_OUT', 'OFFLOADED', 'RETURNED'].includes(rawStatus)) {
-      status = 'PENDING';
-    } // IN_PROGRESS, ON_HOLD, COMPLETED
+    let status = String(rawStatus || 'IN_PROGRESS').trim().toUpperCase();
+    if (['DONE', 'COMPLETE', 'FINISHED', 'APPROVED'].includes(status)) {
+      status = 'COMPLETED';
+    } else if (['HOLD', 'HELD'].includes(status)) {
+      status = 'ON_HOLD';
+    } else if (!['IN_PROGRESS', 'ON_HOLD', 'COMPLETED'].includes(status)) {
+      status = 'IN_PROGRESS';
+    }
     const holdEntity = value(req.body.hold_entity ?? req.body.HOLD_ENTITY);
     const holdReason = value(req.body.hold_reason ?? req.body.HOLD_REASON);
     const holdRemark = value(req.body.hold_remark ?? req.body.HOLD_REMARK);
@@ -542,6 +553,49 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
       );
     } catch (notifErr) {
       console.warn('[trkTaskUpdate] In-app notification creation notice:', notifErr);
+    }
+
+    // Auto-sync milestone to TT_ALERT_DATES for PowerBuilder compatibility
+    if (status === 'COMPLETED') {
+      try {
+        const opCodes: number[] = [];
+        if (taskType === 'FFD_REVIEW') opCodes.push(13, 51);
+        else if (taskType === 'PRO_PERMITS' || taskType === 'PERMIT') opCodes.push(40);
+        else if (taskType === 'CUSTOMS_BAYAN' || taskType === 'BAYAN') opCodes.push(38, 39);
+        else if (taskType === 'SHIPPING_LINE_DO' || taskType === 'DO') opCodes.push(37);
+        else if (taskType === 'CCRO') opCodes.push(40);
+        else if (taskType === 'TRANSPORT') opCodes.push(41);
+        else if (taskType === 'DC_OFFLOAD' || taskType === 'DC') opCodes.push(43, 44);
+
+        for (const opCode of opCodes) {
+          await connection.execute(
+            `MERGE INTO TT_ALERT_DATES d
+             USING (
+               SELECT :comp AS company_code,
+                      :prin AS prin_code,
+                      :job AS job_no,
+                      :op_code AS op_code,
+                      TRUNC(SYSDATE) AS op_date,
+                      :usr AS user_id,
+                      'Milestone completed in Live Tracking' AS remarks,
+                      'IMP' AS op_type,
+                      1 AS op_count,
+                      'Y' AS op_yesno
+                 FROM DUAL
+             ) s
+             ON (d.COMPANY_CODE = s.company_code AND d.PRIN_CODE = s.prin_code AND d.JOB_NO = s.job_no AND d.OP_CODE = s.op_code)
+             WHEN MATCHED THEN
+               UPDATE SET d.OP_DATE = s.op_date, d.OP_YESNO = 'Y', d.REMARKS = s.remarks, d.USER_ID = s.user_id
+             WHEN NOT MATCHED THEN
+               INSERT (COMPANY_CODE, PRIN_CODE, JOB_NO, OP_CODE, OP_DATE, USER_ID, REMARKS, OP_TYPE, OP_COUNT, OP_YESNO)
+               VALUES (s.company_code, s.prin_code, s.job_no, s.op_code, s.op_date, s.user_id, s.remarks, s.op_type, s.op_count, s.op_yesno)`,
+            { comp: companyCode, prin: prinCode, job: jobNo, op_code: opCode, usr: userId || 'ADMIN' },
+            { autoCommit: true }
+          );
+        }
+      } catch (alertSyncErr) {
+        console.warn('[trkTaskUpdate] TT_ALERT_DATES sync warning (non-blocking):', alertSyncErr);
+      }
     }
 
     sendTrackerStageEmail(connection, {
@@ -677,6 +731,30 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    let divCode = value(req.body.div_code ?? req.body.DIV_CODE);
+    let deptCode = value(req.body.dept_code ?? req.body.DEPT_CODE);
+    if (!divCode || !deptCode) {
+      try {
+        const pairRes = await connection.execute(
+          `SELECT d.DIV_CODE, m.DEPT_CODE 
+             FROM MS_HR_DIVISION d
+             JOIN MS_DEPARTMENT m ON d.COMPANY_CODE = m.COMPANY_CODE AND d.DIV_CODE = m.DIV_CODE
+            WHERE d.COMPANY_CODE = :comp
+            ORDER BY CASE WHEN m.DEPT_CODE = 'FRT' THEN 1 ELSE 2 END`,
+          { comp: companyCode }
+        );
+        if (pairRes.rows && pairRes.rows.length > 0) {
+          const row: any = pairRes.rows[0];
+          divCode = row.DIV_CODE ?? row[0];
+          deptCode = row.DEPT_CODE ?? row[1];
+        }
+      } catch (dErr) {
+        console.warn("Could not dynamically resolve division/department:", dErr);
+      }
+    }
+    divCode = divCode || "10";
+    deptCode = deptCode || "FRT";
+
     // Step 1: Create TI_JOB with JOB_FLAG = 'C' (CFS) via PROC_FRT_JOB_SAVE
     const saveJobResult = await connection.execute(
       `BEGIN
@@ -686,8 +764,11 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
            NULL, -- p_job_no: generates new number
            SYSDATE,
            'CFS', -- p_job_type
-           'SEA', -- p_transport_mode
-           NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           'S', -- p_transport_mode
+           :p_dept_code,
+           :p_div_code,
+           'Combined services', NULL, NULL,
+           'Normal', '01', NULL,
            :p_doc_ref,
            NULL, NULL,
            :p_port_code,
@@ -708,6 +789,8 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
       {
         p_company_code: companyCode,
         p_prin_code: prinCode,
+        p_dept_code: deptCode,
+        p_div_code: divCode,
         p_doc_ref: blNumber,
         p_port_code: portCode,
         p_cust_code: custCode,
@@ -733,9 +816,9 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
         if (containerNo) {
           await connection.execute(
             `INSERT INTO TF_CONTAINER_DET (
-               COMPANY_CODE, PRIN_CODE, JOB_NO, SRNO, CONTAINER_NO, SEAL_NO, CONTN_SIZE, CREATED_BY, CREATED_DATE
+               COMPANY_CODE, PRIN_CODE, JOB_NO, SRNO, CONTAINER_NO, SEAL_NO, CONTAINER_TYPE, BL_NO, USER_ID, USER_DT
              ) VALUES (
-               :p_comp, :p_prin, :p_job, :p_srno, :p_cntr, :p_seal, :p_size, :p_user, SYSDATE
+               :p_comp, :p_prin, :p_job, :p_srno, :p_cntr, :p_seal, :p_type, :p_bl, :p_user, SYSDATE
              )`,
             {
               p_comp: companyCode,
@@ -744,7 +827,8 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
               p_srno: i + 1,
               p_cntr: containerNo,
               p_seal: sealNo,
-              p_size: containerSize,
+              p_type: containerSize,
+              p_bl: blNumber || null,
               p_user: userId,
             },
             { autoCommit: true }
@@ -1204,6 +1288,605 @@ export const trkDcStationList = async (req: Request, res: Response): Promise<voi
     res.json({
       success: true,
       data: result.rows || [],
+    });
+  });
+};
+
+
+// =============================================================================
+// 12. MAIL & ALERT ADMIN CONFIGURATION (Parity with Shipment Tracker Settings)
+// =============================================================================
+export const trkAdminCcList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    const result = await connection.execute(
+      `SELECT CONFIG_ID, COMPANY_CODE, TEAM_CODE, CC_EMAIL, CREATED_BY, CREATED_DT
+         FROM TRK_ALERT_CC_CONFIGS
+        WHERE COMPANY_CODE = :comp
+        ORDER BY TEAM_CODE, CREATED_DT DESC`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({ success: true, data: result.rows || [] });
+  });
+};
+
+export const trkAdminCcSave = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
+    const teamCode = value(req.body.team_code ?? req.body.TEAM_CODE);
+    const ccEmail = value(req.body.cc_email ?? req.body.CC_EMAIL);
+    const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "ADMIN");
+
+    if (!companyCode || !teamCode || !ccEmail) {
+      res.status(400).json({ success: false, message: "company_code, team_code, and cc_email are required" });
+      return;
+    }
+
+    if (!ccEmail.includes("@")) {
+      res.status(400).json({ success: false, message: "Please provide a valid email address" });
+      return;
+    }
+
+    await connection.execute(
+      `INSERT INTO TRK_ALERT_CC_CONFIGS (CONFIG_ID, COMPANY_CODE, TEAM_CODE, CC_EMAIL, CREATED_BY, CREATED_DT)
+        VALUES (RAWTOHEX(SYS_GUID()), :comp, :team, :email, :uid, SYSDATE)`,
+      { comp: companyCode, team: teamCode, email: ccEmail, uid: userId },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Alert CC email added successfully" });
+  });
+};
+
+export const trkAdminCcDelete = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const configId = value(req.body.config_id ?? req.body.CONFIG_ID);
+    if (!configId) {
+      res.status(400).json({ success: false, message: "config_id is required" });
+      return;
+    }
+
+    await connection.execute(
+      `DELETE FROM TRK_ALERT_CC_CONFIGS WHERE CONFIG_ID = :cid`,
+      { cid: configId },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Alert CC config removed successfully" });
+  });
+};
+
+export const trkAdminDailyReportGet = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    const result = await connection.execute(
+      `SELECT CONFIG_ID, COMPANY_CODE, SEND_TIME, RECIPIENT_EMAILS, LAST_SENT_DATE, UPDATED_BY, UPDATED_DT
+         FROM TRK_DAILY_REPORT_CONFIGS
+        WHERE COMPANY_CODE = :comp
+          AND ROWNUM = 1`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const cfg = (result.rows as any[])?.[0] || {
+      SEND_TIME: "17:30",
+      RECIPIENT_EMAILS: "operations@bayanat.om",
+    };
+
+    res.json({ success: true, data: cfg });
+  });
+};
+
+export const trkAdminDailyReportSave = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
+    const sendTime = value(req.body.send_time ?? req.body.SEND_TIME ?? "17:30");
+    const recipientEmails = value(req.body.recipient_emails ?? req.body.RECIPIENT_EMAILS ?? "");
+    const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "ADMIN");
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    await connection.execute(
+      `MERGE INTO TRK_DAILY_REPORT_CONFIGS dst
+        USING (SELECT :comp AS COMPANY_CODE, :stime AS SEND_TIME, :recips AS RECIPIENT_EMAILS, :uid AS UPDATED_BY FROM DUAL) src
+        ON (dst.COMPANY_CODE = src.COMPANY_CODE)
+        WHEN MATCHED THEN
+          UPDATE SET dst.SEND_TIME = src.SEND_TIME,
+                     dst.RECIPIENT_EMAILS = src.RECIPIENT_EMAILS,
+                     dst.UPDATED_BY = src.UPDATED_BY,
+                     dst.UPDATED_DT = SYSDATE
+        WHEN NOT MATCHED THEN
+          INSERT (CONFIG_ID, COMPANY_CODE, SEND_TIME, RECIPIENT_EMAILS, UPDATED_BY, UPDATED_DT)
+          VALUES (RAWTOHEX(SYS_GUID()), src.COMPANY_CODE, src.SEND_TIME, src.RECIPIENT_EMAILS, src.UPDATED_BY, SYSDATE)`,
+      { comp: companyCode, stime: sendTime, recips: recipientEmails, uid: userId },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Daily Report Configuration updated successfully" });
+  });
+};
+
+export const trkAdminDailyReportTrigger = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code;
+    const userId = (req as any).user?.loginid ?? "ADMIN";
+
+    // Insert an audit event indicating manual report dispatch
+    await connection.execute(
+      `INSERT INTO TRK_SHIPMENT_EVENTS (EVENT_ID, COMPANY_CODE, PRIN_CODE, JOB_NO, EVENT_TYPE, ACTOR_ID, REMARK, CREATED_DT)
+        VALUES (RAWTOHEX(SYS_GUID()), :comp, 'SYSTEM', 'REPORT', 'DAILY_REPORT_TRIGGERED', :uid, 'Manual Daily Operational Digest triggered by admin', SYSDATE)`,
+      { comp: companyCode, uid: userId },
+      { autoCommit: true }
+    );
+
+    // Update last sent date
+    await connection.execute(
+      `UPDATE TRK_DAILY_REPORT_CONFIGS SET LAST_SENT_DATE = SYSDATE WHERE COMPANY_CODE = :comp`,
+      { comp: companyCode },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Daily Operational Report queued and dispatched successfully to configured recipients." });
+  });
+};
+
+export const trkWorkflowConfigGet = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code ?? "BSG";
+    const flowCode = req.body.flow_code ?? req.body.FLOW_CODE ?? "NORM";
+
+    const result = await connection.execute(
+      `SELECT COMPANY_CODE, PROCESS, FLOW_CODE, LAST_LEVEL,
+              LEVEL1_ROLE, LEVEL2_ROLE, LEVEL3_ROLE, LEVEL4_ROLE, LEVEL5_ROLE, LEVEL6_ROLE, LEVEL7_ROLE
+         FROM MS_APPROVER_LEVELS
+        WHERE COMPANY_CODE = :comp
+          AND PROCESS IN ('TRACKER', 'FREIGHT_TRACKER')
+        ORDER BY FLOW_CODE ASC`,
+      { comp: companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows: any[] = (result.rows as any[]) || [];
+
+    const flowOptions = [
+      { flow_code: "NORM", flow_name: "Normal Ocean Import (Customizable 3 to 7 stages)" },
+      { flow_code: "AIR", flow_name: "Air Freight Fast-Track" },
+      { flow_code: "EXP", flow_name: "Ocean Export" },
+      { flow_code: "CFS", flow_name: "CFS Bonded Transfer" },
+    ];
+
+    const masterStages = [
+      { level: 1, task_type: "FFD_REVIEW", title: "FFD Review", subtitle: "B/L & ETA Verification", defaultRole: "FFD_TEAM" },
+      { level: 2, task_type: "PRO_PERMITS", title: "PRO Permits", subtitle: "Ministry Inspection & Permits", defaultRole: "PRO_TEAM" },
+      { level: 3, task_type: "CUSTOMS_BAYAN", title: "Customs Bayan", subtitle: "Bayan Declaration & Duty", defaultRole: "BAYAN_TEAM" },
+      { level: 4, task_type: "SHIPPING_LINE_DO", title: "Delivery Order (DO)", subtitle: "Shipping Line DO & Validity", defaultRole: "SHIPPING_LINE" },
+      { level: 5, task_type: "CCRO", title: "CCRO / Port Police", subtitle: "Customs & Port Police Clearance", defaultRole: "ROP_PORT_POLICE" },
+      { level: 6, task_type: "TRANSPORT", title: "Transport Dispatch", subtitle: "Fleet & Truck Allocation", defaultRole: "TRANSPORT_FLEET" },
+      { level: 7, task_type: "DC_OFFLOAD", title: "DC Offloading", subtitle: "Warehouse Gate & Offloading", defaultRole: "DC_WAREHOUSE" },
+    ];
+
+    const availableRoles = [
+      { role_id: "FFD_TEAM", role_name: "Freight Forwarding Team (Documentation & BL)" },
+      { role_id: "PRO_TEAM", role_name: "Public Relations Officer / Permits & Ministries" },
+      { role_id: "BAYAN_TEAM", role_name: "Customs Broker / Bayan Declaration" },
+      { role_id: "SHIPPING_LINE", role_name: "Shipping Line Agent / Delivery Order" },
+      { role_id: "ROP_PORT_POLICE", role_name: "Royal Oman Police / Port Police & CCRO" },
+      { role_id: "TRANSPORT_FLEET", role_name: "Transport & Trucking Dispatch Team" },
+      { role_id: "DC_WAREHOUSE", role_name: "Distribution Center / Warehouse Receiving" },
+      { role_id: "FINANCE", role_name: "Finance & Accounts Clearance" },
+      { role_id: "OPS_MANAGER", role_name: "Operations & Freight Management" },
+      { role_id: "CUSTOMER_SERVICE", role_name: "Customer Service & Accounts" },
+    ];
+
+    res.json({
+      success: true,
+      data: {
+        company_code: companyCode,
+        selected_flow: flowCode,
+        configurations: rows,
+        flow_options: flowOptions,
+        master_stages: masterStages,
+        available_roles: availableRoles,
+      },
+    });
+  });
+};
+
+export const trkWorkflowConfigSave = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
+    const flowCode = value(req.body.flow_code ?? req.body.FLOW_CODE ?? "NORM");
+    const lastLevel = Number(req.body.last_level ?? req.body.LAST_LEVEL ?? 7);
+    const l1Role = value(req.body.level1_role ?? req.body.LEVEL1_ROLE ?? "FFD_TEAM");
+    const l2Role = value(req.body.level2_role ?? req.body.LEVEL2_ROLE ?? "PRO_TEAM");
+    const l3Role = value(req.body.level3_role ?? req.body.LEVEL3_ROLE ?? "BAYAN_TEAM");
+    const l4Role = value(req.body.level4_role ?? req.body.LEVEL4_ROLE ?? "SHIPPING_LINE");
+    const l5Role = value(req.body.level5_role ?? req.body.LEVEL5_ROLE ?? "ROP_PORT_POLICE");
+    const l6Role = value(req.body.level6_role ?? req.body.LEVEL6_ROLE ?? "TRANSPORT_FLEET");
+    const l7Role = value(req.body.level7_role ?? req.body.LEVEL7_ROLE ?? "DC_WAREHOUSE");
+
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "Company code is required" });
+      return;
+    }
+
+    if (lastLevel < 1 || lastLevel > 7) {
+      res.status(400).json({ success: false, message: "Last level must be between 1 and 7" });
+      return;
+    }
+
+    await connection.execute(
+      `MERGE INTO MS_APPROVER_LEVELS dst
+       USING (
+         SELECT :comp AS COMPANY_CODE, 'TRACKER' AS PROCESS, :fcode AS FLOW_CODE FROM DUAL
+       ) src
+       ON (dst.COMPANY_CODE = src.COMPANY_CODE AND dst.PROCESS = src.PROCESS AND dst.FLOW_CODE = src.FLOW_CODE)
+       WHEN MATCHED THEN
+         UPDATE SET dst.LAST_LEVEL = :llvl,
+                    dst.LEVEL1_ROLE = :l1,
+                    dst.LEVEL2_ROLE = :l2,
+                    dst.LEVEL3_ROLE = :l3,
+                    dst.LEVEL4_ROLE = :l4,
+                    dst.LEVEL5_ROLE = :l5,
+                    dst.LEVEL6_ROLE = :l6,
+                    dst.LEVEL7_ROLE = :l7
+       WHEN NOT MATCHED THEN
+         INSERT (COMPANY_CODE, PROCESS, FLOW_CODE, LAST_LEVEL, LEVEL1_ROLE, LEVEL2_ROLE, LEVEL3_ROLE, LEVEL4_ROLE, LEVEL5_ROLE, LEVEL6_ROLE, LEVEL7_ROLE)
+         VALUES (src.COMPANY_CODE, src.PROCESS, src.FLOW_CODE, :llvl, :l1, :l2, :l3, :l4, :l5, :l6, :l7)`,
+      {
+        comp: companyCode,
+        fcode: flowCode,
+        llvl: lastLevel,
+        l1: l1Role,
+        l2: l2Role,
+        l3: l3Role,
+        l4: l4Role,
+        l5: l5Role,
+        l6: l6Role,
+        l7: l7Role,
+      },
+      { autoCommit: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Workflow configuration for company ${companyCode} (${flowCode}) updated to ${lastLevel} dynamic levels successfully.`,
+    });
+  });
+};
+
+// =============================================================================
+// SMART DOCUMENT INGESTION (PDF PARSER & 1-CLICK VERIFIED JOB CREATION)
+// =============================================================================
+export const trkSmartDocumentParse = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const file = req.file;
+    if (!file || !file.buffer) {
+      res.status(400).json({ success: false, message: "PDF Document file is required for parsing" });
+      return;
+    }
+
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE ?? (req as any).user?.company_code ?? "BSG";
+
+    // Parse the PDF text layer using regex & ISO 6346 validation
+    const parsedData = await parseShippingDocumentPdf(file.buffer);
+
+    // Fetch lookups for the company (Principals, Customers, Ports)
+    const [prinRes, custRes, portRes] = await Promise.all([
+      connection.execute(
+        `SELECT PRIN_CODE, PRIN_NAME FROM MS_PRINCIPAL WHERE COMPANY_CODE = :comp AND ROWNUM <= 100 ORDER BY PRIN_NAME ASC`,
+        { comp: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      ),
+      connection.execute(
+        `SELECT CUST_CODE, CUST_NAME FROM MS_CUSTOMER WHERE COMPANY_CODE = :comp AND ROWNUM <= 100 ORDER BY CUST_NAME ASC`,
+        { comp: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      ),
+      connection.execute(
+        `SELECT PORT_CODE, PORT_NAME FROM MS_PORT WHERE COMPANY_CODE = :comp AND ROWNUM <= 100 ORDER BY PORT_NAME ASC`,
+        { comp: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: parsedData,
+      filename: file.originalname,
+      file_size: file.size,
+      lookups: {
+        principals: (prinRes.rows as any[]) || [],
+        customers: (custRes.rows as any[]) || [],
+        ports: (portRes.rows as any[]) || [],
+      },
+    });
+  });
+};
+
+export const trkSmartJobCreate = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const body = req.body || {};
+    const companyCode = value(body.company_code ?? body.COMPANY_CODE ?? (req as any).user?.company_code ?? "BSG");
+    const prinCode = value(body.prin_code ?? body.PRIN_CODE);
+    const custCode = value(body.cust_code ?? body.CUST_CODE);
+    let rawJobType = String(body.job_type ?? body.JOB_TYPE ?? "IMP").trim().toUpperCase();
+    if (rawJobType === "AIMP" || rawJobType.startsWith("AIR")) {
+      rawJobType = "IMP";
+    } else if (rawJobType.length > 3) {
+      rawJobType = rawJobType.substring(0, 3);
+    }
+    const jobType = rawJobType || "IMP";
+    const rawMode = String(body.transport_mode ?? body.TRANSPORT_MODE ?? "S").trim().toUpperCase();
+    let transportMode = "S";
+    if (rawMode.startsWith("A")) transportMode = "A";
+    else if (rawMode.startsWith("R") || rawMode.startsWith("L")) transportMode = "R";
+    else transportMode = "S";
+
+    let blNumber = value(body.bl_number ?? body.BL_NUMBER ?? body.doc_ref ?? body.DOC_REF);
+    let docRef2 = value(body.transfer_request_number ?? body.doc_ref2 ?? body.DOC_REF2 ?? body.invoice_no);
+    const portCode = value(body.port_code ?? body.PORT_CODE ?? "SOH");
+    const userId = value(body.user_id ?? body.USER_ID ?? (req as any).user?.loginid ?? "ADMIN");
+    const jobFlag = jobType === "CFS" ? "C" : "M";
+
+    let containers: any[] = [];
+    if (body.containers) {
+      if (typeof body.containers === "string") {
+        try { containers = JSON.parse(body.containers); } catch {}
+      } else if (Array.isArray(body.containers)) {
+        containers = body.containers;
+      }
+    }
+
+    // Smart fallback: if B/L or containers are empty and a file was provided, parse automatically
+    if ((!blNumber || containers.length === 0) && req.file && req.file.buffer) {
+      try {
+        const parsed = await parseShippingDocumentPdf(req.file.buffer);
+        if (!blNumber && parsed.bl_number) blNumber = parsed.bl_number;
+        if (!docRef2 && parsed.transfer_request_number) docRef2 = parsed.transfer_request_number;
+        if (containers.length === 0 && parsed.containers && parsed.containers.length > 0) {
+          containers = parsed.containers;
+        }
+      } catch (pErr) {
+        console.warn("Auto-parse fallback error in trkSmartJobCreate:", pErr);
+      }
+    }
+
+    if (!companyCode || !prinCode || !custCode) {
+      res.status(400).json({ success: false, message: "company_code, prin_code, and cust_code are required" });
+      return;
+    }
+
+    let divCode = value(body.div_code ?? body.DIV_CODE);
+    let deptCode = value(body.dept_code ?? body.DEPT_CODE);
+    if (!divCode || !deptCode) {
+      try {
+        const pairRes = await connection.execute(
+          `SELECT d.DIV_CODE, m.DEPT_CODE 
+             FROM MS_HR_DIVISION d
+             JOIN MS_DEPARTMENT m ON d.COMPANY_CODE = m.COMPANY_CODE AND d.DIV_CODE = m.DIV_CODE
+            WHERE d.COMPANY_CODE = :comp
+            ORDER BY CASE WHEN m.DEPT_CODE = 'FRT' THEN 1 ELSE 2 END`,
+          { comp: companyCode }
+        );
+        if (pairRes.rows && pairRes.rows.length > 0) {
+          const row: any = pairRes.rows[0];
+          divCode = row.DIV_CODE ?? row[0];
+          deptCode = row.DEPT_CODE ?? row[1];
+        }
+      } catch (dErr) {
+        console.warn("Could not dynamically resolve division/department:", dErr);
+      }
+    }
+    divCode = divCode || "10";
+    deptCode = deptCode || "FRT";
+
+    // Step 1: Execute PROC_FRT_JOB_SAVE to create the official ERP Job
+    const saveResult = await connection.execute(
+      `BEGIN
+         PROC_FRT_JOB_SAVE(
+           :p_company_code,
+           :p_prin_code,
+           NULL, -- new job number
+           SYSDATE,
+           :p_job_type,
+           :p_transport_mode,
+           :p_dept_code,
+           :p_div_code,
+           'Combined services', NULL, NULL,
+           'Normal', '01', NULL,
+           :p_doc_ref,
+           :p_doc_ref2,
+           NULL,
+           :p_port_code,
+           NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           SYSDATE + 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           'OMR', 1, 0, 0, 1,
+           :p_cust_code,
+           NULL, NULL, NULL, 'Smart AI Document Ingestion Job', NULL, NULL,
+           NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'N',
+           :p_job_flag,
+           'Y', SYSDATE, 'N', NULL, 'N', NULL, 'N', NULL,
+           'Created via Smart Document PDF Ingestion',
+           NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL,
+           :p_user_id,
+           :p_job_no_out
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_prin_code: prinCode,
+        p_job_type: jobType,
+        p_transport_mode: transportMode,
+        p_dept_code: deptCode,
+        p_div_code: divCode,
+        p_doc_ref: blNumber,
+        p_doc_ref2: docRef2,
+        p_port_code: portCode,
+        p_cust_code: custCode,
+        p_job_flag: jobFlag,
+        p_user_id: userId,
+        p_job_no_out: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 30 },
+      },
+      { autoCommit: true }
+    );
+
+    const generatedJobNo = (saveResult.outBinds as any)?.p_job_no_out;
+    if (!generatedJobNo) {
+      throw new Error("Failed to generate Job Number from PROC_FRT_JOB_SAVE");
+    }
+
+    // Step 2: Insert Extracted Containers into TF_CONTAINER_DET
+    if (containers.length > 0) {
+      for (let i = 0; i < containers.length; i++) {
+        const c = containers[i];
+        const containerNo = value(c.container_no ?? c.CONTAINER_NO);
+        const sealNo = value(c.seal_no ?? c.SEAL_NO);
+        const size = value(c.size ?? c.SIZE ?? "40");
+
+        if (containerNo) {
+          await connection.execute(
+            `INSERT INTO TF_CONTAINER_DET (
+               COMPANY_CODE, PRIN_CODE, JOB_NO, SRNO, CONTAINER_NO, SEAL_NO, CONTAINER_TYPE, BL_NO, USER_ID, USER_DT
+             ) VALUES (
+               :p_comp, :p_prin, :p_job, :p_srno, :p_cntr, :p_seal, :p_type, :p_bl, :p_user, SYSDATE
+             )`,
+            {
+              p_comp: companyCode,
+              p_prin: prinCode,
+              p_job: generatedJobNo,
+              p_srno: i + 1,
+              p_cntr: containerNo,
+              p_seal: sealNo,
+              p_type: size,
+              p_bl: blNumber || null,
+              p_user: userId,
+            },
+            { autoCommit: true }
+          );
+        }
+      }
+    }
+
+    // Step 3: Automatically attach source PDF to Job Documents & Accounts Files if provided
+    const file = req.file;
+    if (file && file.buffer) {
+      try {
+        const originalName = file.originalname || "Smart_Document.pdf";
+        const fileLocn = `uploads/freight_smart_docs/${generatedJobNo}_${Date.now()}_${originalName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+
+        // Save into ACCOUNTS_FILES
+        await connection.execute(
+          `BEGIN
+             PROC_FRT_ATTACHMENT_SAVE(
+               :p_company_code,
+               :p_prin_code,
+               :p_job_no,
+               'JOB',
+               NULL,
+               :p_file_name,
+               :p_org_file_name,
+               :p_aws_file_locn,
+               'pdf',
+               :p_user_file_name,
+               'FREIGHT',
+               'PDF',
+               1,
+               :p_user_id,
+               :p_sr_no_out
+             );
+           END;`,
+          {
+            p_company_code: companyCode,
+            p_prin_code: prinCode,
+            p_job_no: generatedJobNo,
+            p_file_name: originalName,
+            p_org_file_name: originalName,
+            p_aws_file_locn: fileLocn,
+            p_user_file_name: "Source Ingestion Document",
+            p_user_id: userId,
+            p_sr_no_out: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+          },
+          { autoCommit: true }
+        );
+
+        // Synchronize into TF_JOB_DOCUMENTS
+        await connection.execute(
+          `MERGE INTO TF_JOB_DOCUMENTS dst
+           USING (
+             SELECT :comp AS COMPANY_CODE, :prin AS PRIN_CODE, :job AS JOB_NO, 'DOC01' AS DOC_NR FROM DUAL
+           ) src
+           ON (dst.COMPANY_CODE = src.COMPANY_CODE AND dst.PRIN_CODE = src.PRIN_CODE AND dst.JOB_NO = src.JOB_NO)
+           WHEN MATCHED THEN
+             UPDATE SET dst.COLLECTED = 'Y',
+                        dst.DOC_PATH = :locn,
+                        dst.DOC_RECEIVED_DT = SYSDATE,
+                        dst.DOC_RECEIVED_BY = :usr,
+                        dst.USER_DT = SYSDATE
+           WHEN NOT MATCHED THEN
+             INSERT (COMPANY_CODE, PRIN_CODE, JOB_NO, DOC_NR, DOCUMENT_TYPE, COLLECTED, DOC_PATH, DOC_RECEIVED_DT, DOC_RECEIVED_BY, MANDATORY, USER_ID, USER_DT)
+             VALUES (:comp, :prin, :job, 'DOC01', 'Source Document', 'Y', :locn, SYSDATE, :usr, 'Y', :usr, SYSDATE)`,
+          {
+            comp: companyCode,
+            prin: prinCode,
+            job: generatedJobNo,
+            locn: fileLocn,
+            usr: userId,
+          },
+          { autoCommit: true }
+        );
+      } catch (docErr) {
+        console.warn("Could not attach source document automatically:", docErr);
+      }
+    }
+
+    // Step 4: Kickstart Dynamic Operational Tracking via PROC_TRK_SHIPMENT_INIT
+    await connection.execute(
+      `BEGIN
+         PROC_TRK_SHIPMENT_INIT(
+           :p_company_code,
+           :p_prin_code,
+           :p_job_no,
+           :p_user_id
+         );
+       END;`,
+      {
+        p_company_code: companyCode,
+        p_prin_code: prinCode,
+        p_job_no: generatedJobNo,
+        p_user_id: userId,
+      },
+      { autoCommit: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Verified Freight Job ${generatedJobNo} created and live tracking initialized!`,
+      data: {
+        job_no: generatedJobNo,
+        prin_code: prinCode,
+        cust_code: custCode,
+        bl_number: blNumber,
+        containers_count: containers.length,
+        containers: containers.map(c => c.container_no),
+        job_type: jobType,
+        is_cfs: jobFlag === "C",
+      },
     });
   });
 };

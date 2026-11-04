@@ -220,10 +220,31 @@ export async function sendTrackerStageEmail(
       `;
     }
 
+    // Query Team CC Configs configured by Admin
+    const ccEmails: string[] = [];
+    try {
+      const ccRes = await connection.execute(
+        `SELECT CC_EMAIL FROM TRK_ALERT_CC_CONFIGS
+           WHERE COMPANY_CODE = :comp
+             AND (TEAM_CODE = :team OR TEAM_CODE = 'ALL')`,
+        { comp: payload.companyCode, team: payload.taskType },
+        { outFormat: (oracledb as any).OUT_FORMAT_OBJECT }
+      );
+      for (const r of (ccRes.rows as any[]) || []) {
+        const em = String(r.CC_EMAIL || "").trim();
+        if (em && em.includes("@") && !ccEmails.includes(em)) {
+          ccEmails.push(em);
+        }
+      }
+    } catch (ccErr) {
+      console.warn("[TrackerNotification] Alert CC lookup notice:", ccErr);
+    }
+
     if (subject && htmlContent) {
       await transporter.sendMail({
         from: emailUser,
         to: targetEmail,
+        cc: ccEmails.length > 0 ? ccEmails.join(", ") : undefined,
         subject,
         html: htmlContent,
       });
