@@ -134,6 +134,7 @@ import {
   frtInvoiceJobSelection,
   frtInvoiceList,
   frtInvoiceSave,
+  frtGetCurrencyRate,
 } from "../../controllers/Freight/freightInvoiceProcedures";
 import { frtInvoiceReportHtml } from "../../controllers/Freight/freightInvoiceReport";
 import { frtTaxCategoryList, frtTaxComponentList } from "../../controllers/Freight/freightTaxLookups";
@@ -284,6 +285,7 @@ router.post("/invoice/list", frtInvoiceList);
 router.post("/invoice/get", frtInvoiceGet);
 router.post("/invoice/job-selection", frtInvoiceJobSelection);
 router.post("/invoice/save", frtInvoiceSave);
+router.post("/currency/rate", frtGetCurrencyRate);
 router.post("/invoice/confirm", frtInvoiceConfirm);
 router.get("/invoice/report/html", frtInvoiceReportHtml);
 

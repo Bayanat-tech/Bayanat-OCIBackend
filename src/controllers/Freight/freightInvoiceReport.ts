@@ -72,11 +72,14 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
           nvl(mp.trn_no, mc.vat_no) as prin_trn_no,
           h.invoice_no, nvl(h.invno_prefixed, h.invoice_no) as invno_prefixed,
           h.invoice_date, h.from_date, h.to_date, h.curr_code, h.inv_amount,
+          h.ex_rate,
           h.creditdays, h.salesman_code, h.remarks as onl_remrks, h.div_code,
           d.srno, d.act_code, nvl(d.inv_desc, ma.activity) as inv_desc,
           ma.activity, mag.act_group_name, mag.activity_group_code,
           nvl(d.quantity, 1) as quantity, d.bill_rate, d.bill,
-          d.tx_compnt_perc_1, d.tx_compnt_amt_1, d.job_no
+          d.tx_compnt_perc_1, d.tx_compnt_amt_1, d.tx_compnt_1_expmt,
+          d.tx_compnt_1_expmt as tx_compnt_1_expamt, d.job_no,
+          d.bill_rate_oc, d.bill_oc, d.bill_curr_code, d.bill_ex_rate
         FROM TN_INVOICE h
         INNER JOIN TN_INVOICE_DET d 
           ON d.company_code = h.company_code 
@@ -113,6 +116,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
             to_date: r.TO_DATE || r.to_date,
             curr_code: r.CURR_CODE || r.curr_code,
             inv_amount: r.INV_AMOUNT || r.inv_amount,
+            ex_rate: r.EX_RATE != null ? Number(r.EX_RATE) : (r.ex_rate != null ? Number(r.ex_rate) : null),
             creditdays: r.CREDITDAYS || r.creditdays,
             salesman_code: r.SALESMAN_CODE || r.salesman_code,
             onl_remrks: r.ONL_REMRKS || r.onl_remrks,
@@ -128,6 +132,8 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
             bill: r.BILL || r.bill,
             tx_compnt_perc_1: r.TX_COMPNT_PERC_1 || r.tx_compnt_perc_1,
             tx_compnt_amt_1: r.TX_COMPNT_AMT_1 || r.tx_compnt_amt_1,
+            tx_compnt_1_expmt: r.TX_COMPNT_1_EXPMT || r.tx_compnt_1_expmt,
+            tx_compnt_1_expamt: r.TX_COMPNT_1_EXPAMT || r.tx_compnt_1_expamt || r.TX_COMPNT_1_EXPMT || r.tx_compnt_1_expmt,
             job_no: r.JOB_NO || r.job_no,
             prin_addr1: r.PRIN_ADDR1 || r.prin_addr1,
             prin_addr2: r.PRIN_ADDR2 || r.prin_addr2,
@@ -301,6 +307,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
           `SELECT 
              j.job_no, j.transport_mode, j.job_type, j.place_receipt, j.place_delivery,
              j.doc_ref, j.hawb, j.description1, j.vessel_name, j.voyage_no, j.confirm_date,
+             j.curr_code as job_curr_code, j.ex_rate as job_ex_rate,
              p.no_of_packings, p.net_wt, p.gross_wt, p.volume, p.container_no,
              p.po_no, p.issue_date, p.bl_date, p.bl_no, p.prod_description,
              p.consignee_name, p.consignee_address, p.remarks as pack_remarks
@@ -324,8 +331,55 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       }
     }
 
+    // Multi-currency exchange rate resolution (MHDL / PowerBuilder standard)
+    const primaryCurr = (rows[0]?.curr_code || (rawRows[0] as any)?.curr_code || "OMR").toString().toUpperCase();
+    let effectiveExRate = Number(rows[0]?.ex_rate || (rawRows[0] as any)?.ex_rate || 0);
+
+    let currencyMasterInfo: any = null;
+    try {
+      const curRes = await connection.execute(
+        `SELECT curr_code, curr_name, ex_rate, division, subdivision 
+           FROM MS_CURRENCY 
+          WHERE curr_code = :curr 
+            AND (company_code = :comp OR :comp IS NULL) 
+            AND ROWNUM = 1`,
+        { curr: primaryCurr, comp: company_code },
+        { outFormat }
+      );
+      if (curRes.rows && curRes.rows.length > 0) {
+        const curRow = curRes.rows[0] as any;
+        currencyMasterInfo = {
+          curr_code: curRow.CURR_CODE || curRow.curr_code || primaryCurr,
+          curr_name: curRow.CURR_NAME || curRow.curr_name,
+          division: curRow.DIVISION || curRow.division,
+          subdivision: curRow.SUBDIVISION || curRow.subdivision,
+          ex_rate: Number(curRow.EX_RATE || curRow.ex_rate || 1),
+        };
+      }
+    } catch (_) {}
+
+    if (primaryCurr !== "OMR" && (!effectiveExRate || effectiveExRate === 1)) {
+      const jobEx = Number(shipmentInfo?.job_ex_rate || shipmentInfo?.ex_rate || 0);
+      if (jobEx > 0 && jobEx !== 1) {
+        effectiveExRate = jobEx;
+      } else if (currencyMasterInfo?.ex_rate > 0) {
+        effectiveExRate = currencyMasterInfo.ex_rate;
+      }
+    }
+
+    if (!effectiveExRate || effectiveExRate <= 0) {
+      effectiveExRate = primaryCurr === "OMR" ? 1 : (currencyMasterInfo?.ex_rate || 1);
+    }
+
+    for (const r of rows) {
+      r.ex_rate = effectiveExRate;
+      r.curr_code = primaryCurr;
+    }
+
     const meta: FreightInvoiceMeta = {
       invoiceNo: invoice_no,
+      curr_code: primaryCurr,
+      ex_rate: effectiveExRate,
       invoiceDate: invoice_date,
       invoicePeriod: invoice_period,
       clientName: client_name,
@@ -336,6 +390,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       divisionInfo,
       companyInfo,
       bankAccounts,
+      currencyMasterInfo,
     };
 
     const templateKey = company_code === "BTIND" ? "BTIND" : "MHDL";

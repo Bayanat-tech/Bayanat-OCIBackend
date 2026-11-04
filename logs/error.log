@@ -7873,3 +7873,56 @@ Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0058.AREP2
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-11-04 12:41:07 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m228[0m:[93m30[0m - [91merror[0m[90m TS2551: [0mProperty 'Company_code' does not exist on type 'IPaySlipHeader'. Did you mean 'company_code'?
+
+[7m228[0m       { COMPANY_CODE: header.Company_code }
+[7m   [0m [91m                             ~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m31[0m:[93m3[0m
+    [7m31[0m   company_code?: string;
+    [7m  [0m [96m  ~~~~~~~~~~~~[0m
+    'company_code' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m228[0m:[93m30[0m - [91merror[0m[90m TS2551: [0mProperty 'Company_code' does not exist on type 'IPaySlipHeader'. Did you mean 'company_code'?
+
+[7m228[0m       { COMPANY_CODE: header.Company_code }
+[7m   [0m [91m                             ~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m31[0m:[93m3[0m
+    [7m31[0m   company_code?: string;
+    [7m  [0m [96m  ~~~~~~~~~~~~[0m
+    'company_code' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m228[0m:[93m30[0m - [91merror[0m[90m TS2551: [0mProperty 'Company_code' does not exist on type 'IPaySlipHeader'. Did you mean 'company_code'?
+
+[7m228[0m       { COMPANY_CODE: header.Company_code }
+[7m   [0m [91m                             ~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/HR/MHDL/Payslip.report.controller.ts[0m:[93m31[0m:[93m3[0m
+    [7m31[0m   company_code?: string;
+    [7m  [0m [96m  ~~~~~~~~~~~~[0m
+    'company_code' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

@@ -382,6 +382,26 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
       { autoCommit: false }
     );
 
+    // Update additional fields that are directly on TF_PACKLIST table
+    const packlistNoSaved = (result.outBinds as any).p_packlist_no_out || numberValue(pack.packlist_no ?? pack.PACKLIST_NO);
+    if (packlistNoSaved) {
+      await connection.execute(
+        `UPDATE TF_PACKLIST
+            SET contn_seal_desc = NVL(:p_contn_seal_desc, contn_seal_desc)
+          WHERE company_code = :p_company_code
+            AND prin_code = :p_prin_code
+            AND job_no = :p_job_no
+            AND packlist_no = :p_packlist_no`,
+        {
+          p_contn_seal_desc: value(pack.contn_seal_desc ?? pack.CONTN_SEAL_DESC),
+          p_company_code: value(pack.company_code ?? pack.COMPANY_CODE),
+          p_prin_code: value(pack.prin_code ?? pack.PRIN_CODE),
+          p_job_no: value(pack.job_no ?? pack.JOB_NO),
+          p_packlist_no: packlistNoSaved,
+        }
+      );
+    }
+
     if (hasContainerPayload) {
       const companyCode = value(pack.company_code ?? pack.COMPANY_CODE);
       const prinCode = value(pack.prin_code ?? pack.PRIN_CODE);

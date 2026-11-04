@@ -126,6 +126,7 @@ export interface FreightInvoiceMeta {
   divisionInfo?: any;
   companyInfo?: any;
   bankAccounts?: any[];
+  currencyMasterInfo?: any;
 }
 
 export function normalizeOracleFreightInvoiceRow(raw: Record<string, any> | null | undefined): FreightInvoiceRow {
@@ -218,19 +219,16 @@ function integerToWords(num: number): string {
   return words.trim();
 }
 
-function amountInWords(amount: number, currCode: string | null | undefined, decimals = 2): string {
-  const code = (currCode || "USD").toUpperCase();
-  const majorNames: Record<string, string> = {
-    USD: "US Dollars", INR: "Indian Rupees", OMR: "Omani rial",
-    SAR: "Saudi Riyals", AED: "UAE Dirhams", EUR: "Euros", GBP: "Pounds Sterling",
-  };
-  const minorNames: Record<string, string> = {
-    USD: "Cents", INR: "Paise", OMR: "Baisa", SAR: "Halalas",
-    AED: "Fils", EUR: "Cents", GBP: "Pence",
-  };
-
-  const major = majorNames[code] || `${code}`;
-  const minor = minorNames[code] || "Cents";
+function amountInWords(
+  amount: number,
+  currCode: string | null | undefined,
+  decimals = 3,
+  customCurrName?: string | null,
+  customDivision?: string | null
+): string {
+  const code = (currCode || "OMR").toUpperCase();
+  const major = (code === "USD" ? "United States Dollar" : (customCurrName || (code === "OMR" ? "Omani rial" : code))).trim();
+  const minor = (customDivision || (code === "OMR" ? "Baisa" : "Cents")).trim();
 
   const whole = Math.floor(amount);
   const fracMultiplier = decimals === 3 ? 1000 : 100;
@@ -277,7 +275,11 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const displayShortName = divisionShortName || getProp(companyInfo, "company_short_name") || "MHDL LLC";
 
   const currCode = (first.curr_code || meta.curr_code || "OMR").toString().toUpperCase();
-  const decimals = currCode === "OMR" ? 3 : 2;
+  const rawEx = Number(first.ex_rate ?? (first as any).EX_RATE ?? meta.ex_rate ?? 0);
+  const isForeign = currCode !== "OMR";
+  const exRate = (isForeign && rawEx > 0) ? rawEx : 1;
+  // In PB rpt_invoice_ff_actnest_tax_i.srd: format="#,##0.000" (3 decimals) for all currency amounts
+  const decimals = 3;
 
   const rawInvNo = meta.invoiceNo || first.invno_prefixed || first.invoice_no || "";
   const invoiceNo = rawInvNo;
@@ -340,21 +342,31 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 
   const itemRowsHtml = billableRows.map((r, idx) => {
     const desc = (r as any).activity?.trim() || r.other_services || r.inv_desc || r.act_group_name || "Service";
-    const qty = r.quantity || 1;
-    const amountExcl = Number(r.bill || 0);
-    const rate = Number(r.bill_rate || (amountExcl / Number(qty || 1)));
-    const taxAmt = Number(r.tx_compnt_amt_1 || 0);
+    const qty = Number(r.quantity || 1) || 1;
+    // In PB rpt_invoice_ff_actnest_tax_i.srd:
+    // compute_4 (Amount Excl Tax) = bill / ex_rate
+    // compute_11 (Rate) = bill / (ex_rate * quantity)
+    // compute_10 (Tax Amt) = tx_compnt_amt_1 / ex_rate
+    // compute_7 (Amount Incl Tax) = compute_10 + compute_4
+    const baseAmount = Number(r.bill || 0);
+    const amountExcl = isForeign ? (baseAmount / exRate) : baseAmount;
+    const rate = amountExcl / qty;
+    const baseTax = Number(r.tx_compnt_amt_1 || 0);
+    const taxAmt = isForeign ? (baseTax / exRate) : baseTax;
     const amountIncl = amountExcl + taxAmt;
 
     totalExclTax += amountExcl;
     totalTax += taxAmt;
 
-    const vatPercNum = Number(r.tx_compnt_perc_1 || 0);
+    const expmt = String((r as any).tx_compnt_1_expamt || (r as any).tx_compnt_1_expmt || (r as any).TX_COMPNT_1_EXPAMT || (r as any).TX_COMPNT_1_EXPMT || "").toUpperCase().trim();
+    const vatPercNum = Number(r.tx_compnt_perc_1 || (r as any).TX_COMPNT_PERC_1 || 0);
     let vatLabel = "NT";
-    if (vatPercNum > 0) {
-      vatLabel = `${vatPercNum} %`;
-    } else if (String(r.tx_compnt_1_expamt || "").toUpperCase() === "ZERO" || (vatPercNum === 0 && taxAmt === 0 && String(desc).toUpperCase().includes("PORT"))) {
+    if (expmt === "N") {
+      vatLabel = "NT";
+    } else if (expmt === "Z" || (vatPercNum === 0 && String(desc).toUpperCase().includes("PORT"))) {
       vatLabel = "Zero";
+    } else if (expmt === "S" || vatPercNum > 0) {
+      vatLabel = `${vatPercNum > 0 ? vatPercNum : 5} %`;
     }
 
     return `
@@ -1062,7 +1074,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         <tr class="totals-row">
           <td colspan="3" class="totals-words-cell">
             <div class="tax-notes-txt">NT - No Tax, 0% - Zero, 5% - Standard</div>
-            <div class="words-amt-txt">${esc(amountInWords(totalInclTax, currCode, decimals))}</div>
+            <div class="words-amt-txt">${esc(amountInWords(totalInclTax, currCode, decimals, meta.currencyMasterInfo?.curr_name, meta.currencyMasterInfo?.division))}</div>
           </td>
           <td style="text-align: right;">Total :</td>
           <td style="text-align: right;">${fmtMoney(totalExclTax, decimals)}</td>

@@ -198,6 +198,15 @@ interface DnHeader {
   cancelled: boolean;
 }
 
+
+
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
+
+
 function buildHeader(rows: ReportRow[]): DnHeader {
   const h = rows[0] || {};
   const address =
@@ -221,7 +230,7 @@ function buildHeader(rows: ReportRow[]): DnHeader {
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code),
     remarks: text(h.remarks),
-    cancelled: text(h.cancelled || h.canceled).toUpperCase() === "Y",
+    cancelled: isCancelledDoc(rows),
   };
 }
 
@@ -424,6 +433,51 @@ const SALES_DN_EXTRA_CSS = `
 
 const REPORT_TITLE = "Delivery Note";
 
+
+// ── Invoice file madhun copy (DN file swatantra rahil, Invoice la touch nahi) ──
+type KvPair = [string, string];
+
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** Invoice sarkhach title line (si-top-line / si-top-cancel already frontend madhe handled) */
+function dnTitleHtml(title: string, cancelled: boolean): string {
+  if (cancelled) {
+    return `
+    <table class="si-top-line si-top-cancel"><tbody><tr>
+      <td><h1 class="report-title">${escapeHtml(title)}</h1></td>
+      <td class="si-cancel-tag center">CANCELLED</td>
+    </tr></tbody></table>`;
+  }
+  return `
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
+}
+
+const SIGN_LABELS = ["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"];
+
+
+
+
 function printMetaHtml(title: string, subtitle: string, cancelled: boolean): string {
   return `
     <div class="doc-title-row">
@@ -438,84 +492,66 @@ function printMetaHtml(title: string, subtitle: string, cancelled: boolean): str
 
 function renderSalesDnBody(rows: ReportRow[]): string {
   const header = buildHeader(rows);
-  const totals = computeTotals(rows, header);
- 
+  const totalQty = rows.reduce((s, r) => s + qtyOf(r), 0);
+  const uomOf = (r: ReportRow) => text(r.p_uom || r.uom || r.l_uom);
 
-  const bodyRows = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(qtyOf(r))}</td>
-          
-        </tr>`
-    )
-    .join("");
+  const bodyRows = rows.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+      <td>${escapeHtml(uomOf(r))}</td>
+      <td class="right">${qtyFmt(qtyOf(r))}</td>
+    </tr>`).join("");
+
+  // empty fields skip (Customer, DN No, Date, A/C Code nehmi)
+  const partyPairs: KvPair[] = ([
+    ["Customer", header.party_name],
+    ["Address", header.party_address],
+    ["Tel", header.party_phone],
+    ["Fax", header.party_fax],
+    ["Mobile", header.cust_mobile],
+    ["Email", header.cust_email],
+  ] as KvPair[]).filter(([, v], i) => i === 0 || !!text(v).trim());
+
+  const detailPairs: KvPair[] = [
+    ["DN No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+  ];
+  if (header.payment_terms) detailPairs.push(["Payment Term", header.payment_terms]);
+  if (header.user_id) detailPairs.push(["Sold By", header.user_id]);
+  if (header.delivery_to) detailPairs.push(["Delivery To", header.delivery_to]);
+
+ const signHtml = `
+  <table class="dn-sign"><tbody><tr>${SIGN_LABELS.map((label) => `
+    <td class="center"><strong>${escapeHtml(label)}</strong></td>`).join("")}
+  </tr></tbody></table>`;
 
   return `
-    ${printMetaHtml(REPORT_TITLE, `Delivery Document — ${header.div_name}`, header.cancelled)}
-
-    <div class="info-grid">
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)} &nbsp; Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.cust_mobile ? `<div class="value-line">Mob: ${escapeHtml(header.cust_mobile)}</div>` : ""}
-        ${header.cust_email ? `<div class="value-line">Email: ${escapeHtml(header.cust_email)}</div>` : ""}
-      </div>
-      <div class="info-block">
-        <div class="label">DN Details</div>
-        <div class="kv-line"><span class="kv-label">DN No</span><span class="kv-value">: <strong>${escapeHtml(header.doc_no)}</strong></span></div>
-        <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
-        <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
-        <div class="kv-line"><span class="kv-label">Payment Term</span><span class="kv-value">: ${escapeHtml(header.payment_terms)}</span></div>
-        <div class="kv-line"><span class="kv-label">Sold By</span><span class="kv-value">: ${escapeHtml(header.user_id)}</span></div>
-        <div class="kv-line"><span class="kv-label">Delivery To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
-      </div>
-    </div>
+    ${dnTitleHtml(REPORT_TITLE, header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs, "DN Details", detailPairs)}
 
     ${rows.length === 0
       ? `<div class="empty">No line items found for this delivery note.</div>`
       : `
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>S.No.</th>
-            <th>Product / Description</th>
-            <th>Unit</th>
-            <th class="right">Qty</th>
-            
-          </tr>
-        </thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-
-      <div class="totals-box">
-        <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-        
-      </div>
-
-     
-                  ${header.remarks ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>` : ""}
-
-      <table class="dn-sign-table">
+    <table class="data-table dn-items">
+      <thead>
         <tr>
-          ${["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"]
-        .map(
-          (label) => `
-            <td>
-              <div class="sign-space"></div>
-              <div class="sign-line"></div>
-              <div class="sign-label">${label}</div>
-            </td>`
-        )
-        .join("")}
+          <th>S.No</th>
+          <th>Product / Description</th>
+          <th>Unit</th>
+          <th class="right">Qty</th>
         </tr>
-      </table>`
-    }
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+
+    <div class="totals-box">
+      <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
+    </div>
+
+    ${header.remarks ? `<p><strong>Remarks:</strong> ${escapeHtml(header.remarks)}</p>` : ""}
+    ${signHtml}`}
   `;
 }
 
@@ -529,48 +565,67 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const totals = computeTotals(rows, header);
   const amountInWords = amountToWords(totals.grandTotal, header.curr_code);
 
-  const COL_COUNT = 7;
+    const COL_COUNT = 4; // S.No, Product / Description, Unit, Qty
+  const COL_WIDTHS = [8, 55, 12, 14];
+  const uomOf = (r: ReportRow) => text(r.p_uom || r.uom || r.l_uom);
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
   const rows_: Row[] = [];
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const merge = (r: number, c1: number, c2: number) => merges.push({ s: { r, c: c1 }, e: { r, c: c2 } });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null]);
-merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  // Row 0: title (+ cancelled)
+  rows_.push([cell(`${REPORT_TITLE.toUpperCase()}${header.cancelled ? " (CANCELLED)" : ""}`, "title"), null, null, null]);
+  merge(0, 0, COL_COUNT - 1);
 
-rows_.push([cell(`Print User: ${loginId}`, "meta"), null, cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null]);
-merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
+  // Row 1: DN No | Date
+  rows_.push([cell(`DN No: ${header.doc_no}`, "meta"), null, cell(`Date: ${dateText(header.doc_date)}`, "meta"), null]);
+  merge(1, 0, 1); merge(1, 2, 3);
 
-rows_.push([cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null]);
-merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
+  // Row 2: A/C Code | Sold By
+  rows_.push([cell(`A/C Code: ${header.ac_code}`, "meta"), null, cell(`Sold By: ${header.user_id}`, "meta"), null]);
+  merge(2, 0, 1); merge(2, 2, 3);
 
-rows_.push([null, null, null, null]);
+  // Row 3: To
+  rows_.push([cell(`To: ${[header.party_name, header.party_address].filter(Boolean).join(", ")}`, "meta"), null, null, null]);
+  merge(3, 0, COL_COUNT - 1);
 
-rows_.push([
-  cell("S.No", "header"), cell("Product / Description", "header"),
-  cell("Unit", "header"), cell("Qty", "header"),
-]);
+  rows_.push(new Array(COL_COUNT).fill(null));
 
-rows.forEach((r, i) => {
   rows_.push([
-    cell(i + 1, "data"),
-    cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-    cell(text(r.p_uom), "data"),
-    cell(qtyOf(r), "dataNum"),
+    cell("S.No", "header"), cell("Product / Description", "header"),
+    cell("Unit", "header"), cell("Qty", "header"),
   ]);
-});
 
-rows_.push([null, null, null, null]);
+  rows.forEach((r, i) => {
+    rows_.push([
+      cell(i + 1, "dataInt"),
+      cell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`, "data"),
+      cell(uomOf(r), "data"),
+      cell(qtyOf(r), "dataQty"),
+    ]);
+  });
 
-const qtyRow = rows_.length;
-rows_.push([cell("Total Quantity", "groupTotal"), null, null, cell(totals.totalQty, "groupTotalNum")]);
-merges.push({ s: { r: qtyRow, c: 0 }, e: { r: qtyRow, c: 2 } });
+  rows_.push(new Array(COL_COUNT).fill(null));
 
-rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  const qtyRow = rows_.length;
+  rows_.push([cell("Total Quantity", "groupTotal"), null, null, cell(totals.totalQty, "groupTotalQty")]);
+  merge(qtyRow, 0, 2);
+
+  if (header.remarks) {
+    const rr = rows_.length;
+    rows_.push([cell(`Remarks: ${header.remarks}`, "meta"), null, null, null]);
+    merge(rr, 0, COL_COUNT - 1);
+  }
+
+  // Signature row (browser/PDF sarkhach 4 labels)
+  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push([cell("Prepared By", "sign"), cell("Checked By", "sign"), cell("Delivered By", "sign"), cell("Receiver's Name & Signature", "sign")]);
+
+  rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
@@ -618,6 +673,26 @@ rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.00",
     },
+        dataInt: {
+      font: { sz: 10 }, alignment: { horizontal: "center", vertical: "center" },
+      border: { bottom: { color: { rgb: "FFF3F4F6" } } },
+    },
+    dataQty: {
+      font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "General", border: { bottom: { color: { rgb: "FFF3F4F6" } } },
+    },
+    groupTotalQty: {
+      font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
+      fill: { fgColor: { rgb: GREEN_BG } },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "General",
+    },
+    sign: {
+      font: { bold: true, sz: 9, color: { rgb: "FF334155" } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: { top: { color: { rgb: "FF64748B" } } },
+    },
+
     footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
 
@@ -686,8 +761,8 @@ rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
   };
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
-  const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="18" customWidth="1"/>`
+    const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${COL_WIDTHS[i]}" customWidth="1"/>`
   ).join("");
 
   let sheetDataXml = "";
@@ -833,7 +908,7 @@ export const getSalesDNReportHtml = async (req: RequestWithUser, res: Response):
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesDnBody(rows);
+   const bodyHtml = renderSalesDnBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,

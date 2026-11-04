@@ -234,11 +234,11 @@ const SALARY_EXTRA_CSS = `
 
   .table-container {
     width: 100%;
-    overflow-x: auto; /* Allows scrolling if it overflows on screen */
+    overflow-x: auto;
   }
 
   table.sal-table {
-    width: 1100px; /* Fixed width wider than page to force scaling */
+    /* width is set inline from the number of columns */
     table-layout: fixed; /* Forces browser to respect column widths */
     border-collapse: collapse;
     font-size: 9px;
@@ -250,41 +250,62 @@ const SALARY_EXTRA_CSS = `
     background: #00378c !important;
     color: #ffffff !important;
     font-weight: 700;
-    font-size: 8px; /* Smaller font for headers */
+    font-size: var(--sal-hfs, 8px);
     letter-spacing: 0;
-    padding: 6px 4px;
+    padding: 5px 2px;
     text-align: left;
     vertical-align: middle;
     border: 0 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.45) !important;
     box-shadow: inset 0 0 0 1000px #00378c;
-    white-space: normal;
+    white-space: normal !important;
+    word-break: normal;
     overflow-wrap: break-word;
+    overflow: hidden;
+    line-height: 1.25;
   }
   table.sal-table thead th.num-head { text-align: right; }
   
+  /* Fill any sub-pixel gap between the two header rows with the header colour */
+  table.sal-table thead,
+  table.sal-table thead tr {
+    background: #00378c !important;
+  }
+
   /* Group Headers */
   .super-head {
     background: #002560 !important;
     text-align: center !important;
-    border-bottom: 1px solid #00378c !important;
     font-size: 9px;
     padding: 4px !important;
   }
+  /* Visible separator under Earnings / Deductions (needs the higher specificity
+     because "thead th" above sets border: 0 !important) */
+  table.sal-table thead th.super-head {
+    border-bottom: 1px solid #5f82c2 !important;
+  }
 
   table.sal-table tbody td {
-    padding: 4px 4px;
+    padding: 3px 2px;
     border: 0;
     border-bottom: 1px solid #94a3b8 !important;
     border-right: 1px solid #94a3b8 !important;
     color: #1e293b;
-    font-size: 8.5px;
+    font-size: var(--sal-fs, 8.5px);
     font-weight: 400;
     background: #fcfdfe;
     vertical-align: middle;
     white-space: normal;
     overflow-wrap: anywhere;
     overflow: hidden;
+  }
+
+  /* Text cells (names etc.) wrap instead of being cut */
+  table.sal-table tbody td.txt {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    overflow: visible;
   }
 
   /* Department Grouping Rows */
@@ -363,15 +384,39 @@ const FONT_LINK = `
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
 
-// ─── Column detection ────────────────────────────────────────────────────────
+// ─── Column model ────────────────────────────────────────────────────────────
 
 type ColKind = "text" | "date" | "amount";
+type Band = "earn" | "ded" | "plain";
+
+type Col = {
+  key: string;
+  label: string;
+  kind: ColKind;
+  width: number; // px
+  total: boolean;
+  band: Band;
+};
 
 const NO_TOTAL_RE = /(^|_)(id|code|no|sno|year|month|days?|age)$/i;
 
-function detectColumns(rows: ReportRow[]) {
-  const keys = Object.keys(rows[0] || {});
-  return keys.map((key) => {
+// Column widths are relative weights (px at full font). The table is always
+// rendered at 100% of the page width, so it can never be cut off.
+const SNO_WIDTH = 30;
+const NAME_WIDTH = 130;
+const CODE_WIDTH = 80;
+const COMP_WIDTH = 62;
+const SUBTOTAL_WIDTH = 70;
+const TOTAL_WIDTH = 75;
+const FIT_WIDTH = 1075; // usable width of A4 landscape at full font
+const BODY_FONT = 8.5;
+const HEAD_FONT = 8;
+const MIN_FONT_SCALE = 0.76; // never shrink text below ~6.5px
+
+/** Generic columns for the non-payroll modes (whatever the procedure returns). */
+function buildFlatTable(rows: ReportRow[]): { cols: Col[]; rows: ReportRow[] } {
+  const keys = Object.keys(rows[0] || {}).filter((k) => k !== "dept_name");
+  const cols: Col[] = keys.map((key) => {
     const sample = rows.map((r) => r[key]).filter((v) => v != null && v !== "");
     let kind: ColKind = "text";
     if (sample.length && sample.every((v) => v instanceof Date)) kind = "date";
@@ -381,21 +426,166 @@ function detectColumns(rows: ReportRow[]) {
       kind,
       label: key.replace(/_/g, " ").toUpperCase(),
       total: kind === "amount" && !NO_TOTAL_RE.test(key),
+      band: "plain" as Band,
+      width: kind === "amount" ? 90 : key === "employee_name" ? NAME_WIDTH : 100,
     };
   });
+  return { cols, rows };
+}
+
+/** Short header text: abbreviate long words, drop stand-alone dashes. */
+const SHORT_WORDS: Record<string, string> = {
+  ALLOWANCE: "ALLOW.",
+  ALLOWANCES: "ALLOW.",
+  TRANSPORT: "TRANSP.",
+  TELEPHONE: "TEL.",
+  ADDITION: "ADDN.",
+  ADDITIONS: "ADDN.",
+  DEDUCTION: "DED.",
+  DEDUCTIONS: "DED.",
+  PROFESSIONAL: "PROF.",
+  INSURANCE: "INS.",
+  MEDICAL: "MED.",
+  INCENTIVE: "INCENT.",
+  ACCOMMODATION: "ACCOM.",
+  EMPLOYEE: "EMP.",
+  OVERTIME: "OT",
+  GRATUITY: "GRAT.",
+  SALARY: "SAL.",
+  ADVANCE: "ADV.",
+  MANAGEMENT: "MGMT.",
+  COMMISSION: "COMM.",
+  CONVEYANCE: "CONV.",
+  TOTAL: "TOT.",
+};
+
+function shortLabel(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/\s+-\s+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => SHORT_WORDS[w] ?? w)
+    .join(" ");
+}
+
+/** Greedy wrap of a header into short lines (max ~10 chars per line). */
+function wrapLabel(label: string, max = 10): string {
+  const lines: string[] = [];
+  for (const w of label.split(/\s+/).filter(Boolean)) {
+    const last = lines.length - 1;
+    if (last >= 0 && (lines[last] + " " + w).length <= max) lines[last] += " " + w;
+    else lines.push(w);
+  }
+  return lines.map(escapeHtml).join("<br>");
+}
+
+/**
+ * Pay Roll: the procedure returns one row per employee × pay component
+ * (employee_name, dept_name, employee_code, pay_comp_id, pay_comp_short_desc, pay_comp_desc, earn_ded, amt).
+ * Pivot it here so every pay component becomes its own column, grouped under
+ * Earnings / Deductions. New pay components appear automatically.
+ */
+function buildPayrollTable(rows: ReportRow[]): { cols: Col[]; rows: ReportRow[] } {
+  type Comp = { key: string; id: string; name: string; type: "E" | "D"; nonZero: boolean };
+
+  const comps = new Map<string, Comp>();
+  const emps = new Map<string, ReportRow>();
+
+  for (const r of rows) {
+    const id = text(r.pay_comp_id).trim();
+    const type: "E" | "D" = text(r.earn_ded).trim().toUpperCase().startsWith("D") ? "D" : "E";
+    const amt = Number(r.amt) || 0;
+
+    const ck = `${type}|${id}`;
+    let comp = comps.get(ck);
+    if (!comp) {
+      comp = {
+        key: `c${comps.size}`,
+        id,
+        name:
+          text(r.pay_comp_short_desc).trim() ||
+          shortLabel(text(r.pay_comp_desc ?? r.pay_comp_name).trim()) ||
+          id,
+        type,
+        nonZero: false,
+      };
+      comps.set(ck, comp);
+    }
+    if (amt !== 0) comp.nonZero = true;
+
+    const ek = `${text(r.dept_name)}|${text(r.employee_code)}`;
+    let emp = emps.get(ek);
+    if (!emp) {
+      emp = {
+        employee_name: r.employee_name,
+        dept_name: r.dept_name,
+        employee_code: r.employee_code,
+        earn_sub_total: 0,
+        ded_sub_total: 0,
+        grand_total: 0,
+      };
+      emps.set(ek, emp);
+    }
+    emp[comp.key] = (Number(emp[comp.key]) || 0) + amt;
+    if (type === "E") emp.earn_sub_total += amt;
+    else emp.ded_sub_total += amt;
+  }
+
+  const data = Array.from(emps.values());
+  for (const e of data) e.grand_total = e.earn_sub_total - e.ded_sub_total;
+
+  // BASIC, HRA first, then the rest by component id
+  const rank = (id: string) => ({ BASIC: 0, HRA: 1 } as Record<string, number>)[id.toUpperCase()] ?? 2;
+  const ordered = (type: "E" | "D") =>
+    Array.from(comps.values())
+      .filter((c) => c.type === type && c.nonZero) // all-zero components are hidden
+      .sort(
+        (a, b) =>
+          rank(a.id) - rank(b.id) ||
+          a.id.localeCompare(b.id, undefined, { numeric: true }),
+      );
+
+  const earn = ordered("E");
+  const ded = ordered("D");
+
+  const compCol = (c: Comp, band: Band): Col => ({
+    key: c.key,
+    label: c.name.toUpperCase(),
+    kind: "amount",
+    width: COMP_WIDTH,
+    total: true,
+    band,
+  });
+
+  const cols: Col[] = [
+    { key: "employee_name", label: "EMPLOYEE NAME", kind: "text", width: NAME_WIDTH, total: false, band: "plain" },
+    { key: "employee_code", label: "EMP. CODE", kind: "text", width: CODE_WIDTH, total: false, band: "plain" },
+    ...earn.map((c) => compCol(c, "earn")),
+    ...(earn.length
+      ? [{ key: "earn_sub_total", label: "EARN TOTAL", kind: "amount", width: SUBTOTAL_WIDTH, total: true, band: "earn" } as Col]
+      : []),
+    ...ded.map((c) => compCol(c, "ded")),
+    ...(ded.length
+      ? [{ key: "ded_sub_total", label: "DED TOTAL", kind: "amount", width: SUBTOTAL_WIDTH, total: true, band: "ded" } as Col]
+      : []),
+    { key: "grand_total", label: "GRAND TOTAL", kind: "amount", width: TOTAL_WIDTH, total: true, band: "plain" },
+  ];
+
+  return { cols, rows: data };
 }
 
 // ─── Body Renderer ────────────────────────────────────────────────────────────
 
 function renderSalaryRegisterBody(rows: ReportRow[], filtersHtml = "", params: any): string {
   const periodStr = `${MONTHS[params.payMonth - 1]} ${params.payYear}`;
-  
-    const heading = `
+
+  const heading = `
     ${FONT_LINK}
     <div class="doc-title-row">
       <div><h1>Salary Register - ${periodStr}</h1></div>
     </div>`;
-    
+
   if (!rows.length) {
     return `
       ${heading}
@@ -404,111 +594,107 @@ function renderSalaryRegisterBody(rows: ReportRow[], filtersHtml = "", params: a
     `;
   }
 
-  const cols = detectColumns(rows);
+  const { cols, rows: data } =
+    params.reportMode === "PAYROLL" ? buildPayrollTable(rows) : buildFlatTable(rows);
 
-  // Exclude department column from the main grid since we group by it
-  const displayCols = cols.filter(c => c.key !== "dept_name");
+  // ── Headers ────────────────────────────────────────────────────────────────
+  const hasBands = cols.some((c) => c.band !== "plain");
+  const bandLabel: Record<string, string> = { earn: "Earnings", ded: "Deductions" };
 
-  // Build Super Headers (Earnings / Deductions)
-  let superHeaderHtml = `<th rowspan="2" class="num-head" style="vertical-align: middle; width: 4%;">SNo.</th>`;
-  
-  // Hardcoded layout to match your exact design
-  const earningsCount = 9; // EMPLOYEE_NAME, EMPLOYEE_CODE, BASIC, HRA, INC, OA, TA, TEL_ALLOW, EARN_SUB_TOTAL
-  const deductionsCount = 2; // PTDED, DED_SUB_TOTAL
-
-  superHeaderHtml += `<th colspan="${earningsCount}" class="super-head">Earnings</th>`;
-  superHeaderHtml += `<th colspan="${deductionsCount}" class="super-head">Deductions</th>`;
-  superHeaderHtml += `<th rowspan="2" class="num-head" style="vertical-align: middle; width: 9%;">Grand Total</th>`;
-
-  // Manually assign widths. Total = 4 (SNo) + 14 + 9 + 7 + 5x6.5 + 9 + 6.5 + 9 + 9 (Grand Total) = 100%
-  const getWidth = (key: string) => {
-    if (key === 'employee_name') return '14%';
-    if (key === 'employee_code') return '9%';
-    if (key === 'basic') return '7%';
-    if (key === 'earn_sub_total') return '9%';
-    if (key === 'ded_sub_total') return '9%';
-    return '6.5%'; // default for other numeric columns
+  // Component headers get an explicit line break per word so long names
+  // (e.g. TRANSPORT ALLOWANCE) never overflow into the next column.
+  const th = (c: Col, rowspan: boolean) => {
+    const label = c.band === "plain" ? escapeHtml(c.label) : wrapLabel(c.label);
+    return `<th class="${c.kind === "amount" ? "num-head" : ""}"${rowspan ? ' rowspan="2"' : ""}>${label}</th>`;
   };
 
-  const dataCols = displayCols.filter(c => c.key !== "grand_total"); // Grand total is handled in super header
+  let head1 = `<th${hasBands ? ' rowspan="2"' : ""} class="num-head">SNo.</th>`;
+  let head2 = "";
 
-  // table-layout: fixed only reads widths from the first row / <col>, and the first row
-  // here is made of colspan cells, so widths on the sub-header <th>s are ignored.
-  // <colgroup> sets them reliably.
+  for (let i = 0; i < cols.length; i++) {
+    const c = cols[i];
+    if (c.band === "plain") {
+      head1 += th(c, hasBands);
+      continue;
+    }
+    if (i > 0 && cols[i - 1].band === c.band) {
+      head2 += th(c, false);
+      continue;
+    }
+    let span = 0;
+    while (i + span < cols.length && cols[i + span].band === c.band) span++;
+    head1 += `<th colspan="${span}" class="super-head">${bandLabel[c.band]}</th>`;
+    head2 += th(c, false);
+  }
+
+  const naturalWidth = SNO_WIDTH + cols.reduce((s, c) => s + c.width, 0);
+
+  // Column widths as % of the page, so the table always fits the page width.
+  const pct = (w: number) => ((w / naturalWidth) * 100).toFixed(3);
   const colGroupHtml = `
     <colgroup>
-      <col style="width: 4%;">
-      ${dataCols.map(c => `<col style="width: ${getWidth(c.key)};">`).join("")}
-      <col style="width: 9%;">
+      <col style="width: ${pct(SNO_WIDTH)}%;">
+      ${cols.map((c) => `<col style="width: ${pct(c.width)}%;">`).join("")}
     </colgroup>`;
 
-  // Build Sub Headers (Column Names)
-  const subHeaderHtml = dataCols
-    .map(c => `<th class="${c.kind === "amount" ? "num-head" : ""}" style="width: ${getWidth(c.key)};">${escapeHtml(c.label)}</th>`)
-    .join("");
+  // Many columns → shrink the text a little (down to a floor) instead of cutting.
+  const fontScale = Math.max(MIN_FONT_SCALE, Math.min(1, FIT_WIDTH / naturalWidth));
+  const tableStyle =
+    `width: 100%; --sal-fs: ${(BODY_FONT * fontScale).toFixed(2)}px; ` +
+    `--sal-hfs: ${(HEAD_FONT * fontScale).toFixed(2)}px;`;
 
-  const cell = (c: (typeof cols)[number], v: unknown): string => {
+  // ── Body ───────────────────────────────────────────────────────────────────
+  const cell = (c: Col, v: unknown): string => {
     if (c.kind === "amount") return `<td class="num">${fmtAmount(Number(v) || 0)}</td>`;
     if (c.kind === "date") return `<td class="center">${escapeHtml(fmtDate(v))}</td>`;
-    return `<td>${escapeHtml(v)}</td>`;
+    return `<td class="txt">${escapeHtml(v)}</td>`;
   };
 
-  // Group rows by Department
   const groupedRows = new Map<string, ReportRow[]>();
   let currentSno = 1;
 
-  rows.forEach(r => {
+  data.forEach((r) => {
     const dept = r.dept_name ? String(r.dept_name).trim() : "UNKNOWN DEPARTMENT";
-    if (!groupedRows.has(dept)) {
-      groupedRows.set(dept, []);
-    }
+    if (!groupedRows.has(dept)) groupedRows.set(dept, []);
     groupedRows.get(dept)!.push(r);
   });
 
   let bodyRowsHtml = "";
-  
+
   for (const [deptName, deptRows] of groupedRows.entries()) {
-    // Department Header Row
-    const colSpanTotal = displayCols.length + 1; // +1 for SNo
     bodyRowsHtml += `
       <tr class="dept-group-row">
-        <td colspan="${colSpanTotal}">${escapeHtml(deptName)}</td>
-      </tr>
-    `;
+        <td colspan="${cols.length + 1}">${escapeHtml(deptName)}</td>
+      </tr>`;
 
-    // Employee Rows
     deptRows.forEach((r) => {
       bodyRowsHtml += `
         <tr>
           <td class="num">${currentSno++}</td>
-          ${displayCols.map((c) => cell(c, r[c.key])).join("")}
+          ${cols.map((c) => cell(c, r[c.key])).join("")}
         </tr>`;
     });
   }
 
-  // Grand Total Row
-  // colspan="3" already covers SNo + employee_name + employee_code, so skip those 2 text columns here
-  const totalCells = displayCols
-    .filter(c => c.key !== "grand_total")
-    .slice(2)
+  // ── Total row (by column key, not position) ────────────────────────────────
+  const firstTotal = cols.findIndex((c) => c.total);
+  const lead = firstTotal < 0 ? cols.length : firstTotal;
+
+  const totalCells = cols
+    .slice(lead)
     .map((c) => {
       if (!c.total) return `<td></td>`;
-      const sum = rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0);
+      const sum = data.reduce((s, r) => s + (Number(r[c.key]) || 0), 0);
       return `<td class="num">${fmtAmount(sum)}</td>`;
     })
     .join("");
 
-  // Calculate total grand total
-  const grandTotalSum = rows.reduce((s, r) => s + (Number(r['grand_total']) || 0), 0);
-
   const grandTotalRow = `
         <tr class="grand-total-row">
-          <td colspan="3" class="num">TOTAL (${rows.length} Employees)</td>
+          <td colspan="${lead + 1}" class="num">TOTAL (${data.length} Employees)</td>
           ${totalCells}
-          <td class="num">${fmtAmount(grandTotalSum)}</td>
         </tr>`;
 
-  // Signatures
   const signaturesHtml = `
     <div class="signatures-row">
       <div class="signature-box">
@@ -530,11 +716,11 @@ function renderSalaryRegisterBody(rows: ReportRow[], filtersHtml = "", params: a
     ${heading}
     ${filtersHtml}
     <div class="table-container">
-      <table class="sal-table">
+      <table class="sal-table" style="${tableStyle}">
         ${colGroupHtml}
         <thead>
-          <tr>${superHeaderHtml}</tr>
-          <tr>${subHeaderHtml}</tr>
+          <tr>${head1}</tr>
+          ${hasBands ? `<tr>${head2}</tr>` : ""}
         </thead>
         <tbody>
           ${bodyRowsHtml}

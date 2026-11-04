@@ -1,12 +1,13 @@
-// Import necessary modules from TypeORM
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryColumn, Column } from "typeorm";
 import constants from "../../helpers/constants";
 import { ICategorymaster } from "../../interfaces/Hr/hr_category_interface";
 
-// Define the Categorymaster entity
 @Entity(constants.TABLE.MS_HR_CATEGORY)
 export class Categorymaster implements ICategorymaster {
-    // Company code attribute
+    updated_at?: Date | undefined;
+    updated_by?: string | undefined;
+    created_by: string;
+    created_at: Date;
     @Column({ 
         name: "COMPANY_CODE", 
         type: "varchar2", 
@@ -15,7 +16,6 @@ export class Categorymaster implements ICategorymaster {
     })
     company_code!: string;
 
-    // Category code attribute (primary key)
     @PrimaryColumn({ 
         name: "CATEGORY_CODE", 
         type: "varchar2", 
@@ -24,7 +24,6 @@ export class Categorymaster implements ICategorymaster {
     })
     category_code!: string;
 
-    // Category name attribute
     @Column({ 
         name: "CATEGORY_NAME", 
         type: "varchar2", 
@@ -33,7 +32,6 @@ export class Categorymaster implements ICategorymaster {
     })
     category_name!: string;
 
-    // Category short name attribute
     @Column({ 
         name: "CATEGORY_SHORT_NAME", 
         type: "varchar2", 
@@ -42,7 +40,6 @@ export class Categorymaster implements ICategorymaster {
     })
     category_short_name!: string;
 
-    // Remarks attribute
     @Column({ 
         name: "REMARKS", 
         type: "varchar2", 
@@ -51,7 +48,6 @@ export class Categorymaster implements ICategorymaster {
     })
     remarks!: string;
 
-    // Status attribute
     @Column({ 
         name: "STATUS", 
         type: "char", 
@@ -60,37 +56,20 @@ export class Categorymaster implements ICategorymaster {
     })
     status!: string;
 
-    // Updated at attribute (timestamp)
-    @UpdateDateColumn({ 
-        name: "UPDATED_AT", 
-        type: "timestamp",
-        nullable: true 
-    })
-    updated_at!: Date;
-
-    // Updated by attribute
+    // Matches USER_ID in database
     @Column({ 
-        name: "UPDATED_BY", 
+        name: "USER_ID", 
         type: "varchar2", 
         length: 50, 
         nullable: true 
     })
-    updated_by!: string;
+    user_id!: string;
 
-    // Created by attribute
+    // Matches USER_DT in database
     @Column({ 
-        name: "CREATED_BY", 
-        type: "varchar2", 
-        length: 20, 
-        nullable: false 
-    })
-    created_by!: string;
-
-    // Created at attribute (timestamp)
-    @CreateDateColumn({ 
-        name: "CREATED_AT", 
+        name: "USER_DT", 
         type: "timestamp",
-        nullable: false 
+        nullable: true 
     })
-    created_at!: Date;
+    user_dt!: Date;
 }
