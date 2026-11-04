@@ -163,6 +163,7 @@ async function loadPayslipData(employeeId: string, month: string, year: string):
   const headerRows = normalize((headerResult.rows as any[]) || []);
   const header: IPaySlipHeader | undefined = headerRows[0] as IPaySlipHeader | undefined;
   if (!header) return null;
+  console.log('header',header)
 
   const { payrollMonth: liveMonth, payrollYear: liveYear } = getLivePayrollPeriod();
   const isCurrentMonthView = parseInt(month, 10) === liveMonth && parseInt(year, 10) === liveYear;
@@ -224,19 +225,19 @@ const earnDedBinds = isCurrentMonthView
   let logoUrl: string | null = null;
   if (header.div_code) {
     const primary = await QueryExecutor.executeRawQuery(
-      `SELECT LOGO_URL FROM company_logo WHERE DIV_CODE = :divCode`,
-      { divCode: header.div_code }
+      `SELECT COMPANY_LOGO AS LOGO_URL FROM MS_COMPANY WHERE COMPANY_CODE = :COMPANY_CODE`,
+      { COMPANY_CODE: header.company_code }
     );
     const primaryRows = normalize((primary.rows as any[]) || []);
     if (primaryRows[0]?.logo_url) {
       logoUrl = primaryRows[0].logo_url;
     } else {
-      const fallback = await QueryExecutor.executeRawQuery(
-        `SELECT LOGO_URL FROM company_logo WHERE DIV_CODE = '10'`,
-        {}
-      );
-      const fallbackRows = normalize((fallback.rows as any[]) || []);
-      if (fallbackRows[0]?.logo_url) logoUrl = fallbackRows[0].logo_url;
+      // const fallback = await QueryExecutor.executeRawQuery(
+      //   `SELECT COMPANY_LOGO AS LOGO_URL FROM MS_COMPANY WHERE DIV_CODE = '10'`,
+      //   {}
+      // );
+      // const fallbackRows = normalize((fallback.rows as any[]) || []);
+      // if (fallbackRows[0]?.logo_url) logoUrl = fallbackRows[0].logo_url;
     }
   }
 

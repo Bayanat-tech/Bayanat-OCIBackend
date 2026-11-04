@@ -1,10 +1,4 @@
 // src/controllers/wms/reports/SectionMasterReport.controller.ts
-//
-// Section Master Report — HTML/print endpoint
-//
-//  • Uses the same DB helper / tenant resolution as the Absent Memo report.
-//  • Calls PROC_BUILD_DYNAMIC_SQL_HR_REPORT with parameter 'MST_HR_MS_HR_SECTION'.
-//  • Renders a standard table layout matching the Absent Memo styling.
 
 import { Response } from "express";
 import oracledb from "oracledb";
@@ -14,9 +8,10 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 import {
   reportHeader,
   reportFooter,
-  reportAppliedFilters,
   buildReportDocument,
+  reportAppliedFilters,
 } from "../../common/report_common";
+const AdmZip = require("adm-zip");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +24,9 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   if (!tenantId && req.user?.loginid)
     tenantId = await TenantManager.getTenantForUser(req.user.loginid);
   if (!tenantId)
-    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+    throw Object.assign(new Error("Unable to determine tenant database"), {
+      status: 400,
+    });
   return TenantManager.getConnection(tenantId);
 }
 
@@ -67,38 +64,69 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
+function escapeXml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function statusLabel(value: unknown): string {
+  const s = text(value).trim().toUpperCase();
+  if (s === "A" || s === "Y") return "Active";
+  if (s === "I" || s === "N") return "Inactive";
+  return text(value);
+}
+
 // ─── Request Param Parser ────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
+  const body = req.body || {};
   const pick = (v: unknown) => (v == null ? "" : String(v).trim());
+
+  const companyCode =
+    text(req.user?.company_code || pick(body.company_code) || pick(req.query.company_code) || "").trim() ||
+    "All";
+  const divCode = text(body.div_code ?? req.query.div_code ?? "All").trim() || "All";
+  const deptCode = text(body.dept_code ?? req.query.dept_code ?? "All").trim() || "All";
+  const sectionCode =
+    text(
+      body.section_code ||
+        body.code2 ||
+        req.query.section_code ||
+        req.query.code2 ||
+        "All",
+    ).trim() || "All";
+
   return {
-    companyCode:
-      req.user?.company_code ||
-      pick(req.body?.company_code) ||
-      pick(req.query?.company_code) ||
-      "",
-    divCode: pick(req.body?.div_code) || "All",
-    deptCode: pick(req.body?.dept_code) || "All",
-    sectionCode: pick(req.body?.section_code) || "All",
-    loginId: pick(req.user?.loginid || (req.user as any)?.username),
+    companyCode,
+    divCode,
+    deptCode,
+    sectionCode,
+    loginId: text(req.user?.loginid || (req.user as any)?.username),
   };
 }
 
-// ─── Data Loader (via stored procedure) ──────────────────────────────────────
+/** Company code for the letterhead lookup — independent of the (possibly "All") query filter. */
+function resolveHeaderCompanyCode(req: RequestWithUser, companyCode: string): string {
+  if (companyCode && companyCode.toUpperCase() !== "ALL") return companyCode;
+  return text(req.user?.company_code) || text(req.query.company_code) || "BSG";
+}
 
 const REPORT_PARAMETER = "MST_HR_MS_HR_SECTION";
 
-async function loadSectionData(req: RequestWithUser): Promise<ReportRow[]> {
-  const params = parseParams(req);
+// ─── Data Loader ─────────────────────────────────────────────────────────────
 
-  if (!params.companyCode) {
-    throw Object.assign(new Error("company_code is required"), { status: 400 });
+async function loadData(req: RequestWithUser): Promise<ReportRow[]> {
+  const params = parseParams(req);
+  if (!params.companyCode || params.companyCode.toUpperCase() === "ALL") {
+    params.companyCode = resolveHeaderCompanyCode(req, params.companyCode);
   }
 
   const conn = await getConn(req);
-
   try {
-    // Step 1: procedure builds the SELECT text
     const binds: Record<string, any> = {
       p_parameter: REPORT_PARAMETER,
       p_loginid: params.loginId,
@@ -116,141 +144,551 @@ async function loadSectionData(req: RequestWithUser): Promise<ReportRow[]> {
       p_date4: { val: null, type: oracledb.DATE },
       p_return_string: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
-    
-    for (let i = 5; i <= 20; i++) binds[`p_code${i}`] = null;
 
+    for (let i = 5; i <= 20; i++) binds[`p_code${i}`] = null;
     const codeArgs = Array.from({ length: 20 }, (_, i) => `:p_code${i + 1}`).join(", ");
 
     const procResult = await conn.execute(
-      `BEGIN
-         PROC_BUILD_DYNAMIC_SQL_HR_REPORT(
-           :p_parameter, :p_loginid,
-           ${codeArgs},
-           :p_number1, :p_number2, :p_number3, :p_number4,
-           :p_date1, :p_date2, :p_date3, :p_date4,
-           :p_return_string
-         );
-       END;`,
+      `BEGIN PROC_BUILD_DYNAMIC_SQL_HR_REPORT(
+         :p_parameter, :p_loginid, ${codeArgs},
+         :p_number1, :p_number2, :p_number3, :p_number4,
+         :p_date1, :p_date2, :p_date3, :p_date4, :p_return_string
+       ); END;`,
       binds,
     );
 
     const builtSql = text((procResult.outBinds as any)?.p_return_string).trim();
-
     if (!builtSql || builtSql.toUpperCase() === "INVALID PARAMETER VALUE") {
-      throw Object.assign(new Error("Report procedure returned no query"), { status: 500 });
+      throw Object.assign(new Error("No query returned"), { status: 500 });
     }
 
-    // Step 2: run the SELECT the procedure returned
+    console.log("SQL:--------------->Section", builtSql);
+
     const result = await conn.execute(builtSql, [], {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
-
     return normalize(result.rows as any[]);
   } finally {
     await closeConn(conn);
   }
 }
 
-// ─── Section Master CSS (Matches Absent Memo Table Style) ─────────────────────
+// ─── Layout CSS — Category visual system + 8-column landscape layout ────────
 
 const SECTION_EXTRA_CSS = `
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  @page { size: A4 landscape; }
-
-  .memo-title {
-    text-align: center;
-    font-size: 14px;
+  .doc-title-row h1 {
+    margin: 0 0 2px 0 !important;
+    padding: 0;
+    font-size: 18px;
     font-weight: 800;
-    letter-spacing: 4px;
-    padding: 5px 0;
-    margin: 0 0 10px;
-    border-bottom: 1px solid #cbd5e1;
+    color: #0b4ca1;
+    line-height: 1.2;
   }
 
-  table.lines-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    margin: 18px 0 0; 
+  .doc-title-row .doc-sub {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.3;
   }
-  table.lines-table th {
-    padding: 5px 8px;
-    background: #00378c;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
+
+  table.data-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 10.5px;
+    margin-top: 6px !important;
+  }
+
+  table.data-table th {
+    background: #e8f0fa !important;
+    color: #0b4ca1 !important;
+    font-size: 11px;
+    padding: 7px 6px;
     text-align: left;
-  }
-  table.lines-table td { 
-    padding: 6px 8px; 
-    font-size: 9.5px; 
-    vertical-align: middle; 
-  }
-  table.lines-table .num { text-align: right; }
-  table.lines-table .center { text-align: center; }
-  table.lines-table tr.total td {
-    border-top: 1px solid #1e293b;
-    border-bottom: 1px solid #1e293b;
     font-weight: 700;
-    font-size: 9.5px;
+    border-bottom: 2px solid #0b4ca1 !important;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  table.data-table th.center-head { text-align: center; }
+
+  table.data-table td {
+    padding: 5px 6px;
+    vertical-align: middle;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #334155;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  table.data-table td.center { text-align: center; }
+
+  table.data-table tbody tr:nth-child(even) td { 
+    background: #f8fafc !important; 
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-ACTIVE { background: #dcfce7; color: #166534; }
+  .status-INACTIVE { background: #fee2e2; color: #dc2626; }
+
+  @media print {
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { page-break-inside: avoid; }
+    table.data-table thead th {
+      background: #e8f0fa !important;
+      color: #0b4ca1 !important;
+      border-bottom: 2px solid #0b4ca1 !important;
+    }
   }
 `;
 
-// ─── HTML Body Renderer ───────────────────────────────────────────────────────
+function printMetaHtml(title: string, subtitle: string): string {
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+    </div>`;
+}
 
-function renderSectionBody(rows: ReportRow[], filtersHtml = ""): string {
-  const heading = `<div class="memo-title">LIST OF SECTIONS</div>`;
+// ─── Body Renderer ──────────────────────────────────────────────────────────
+
+function renderBody(rows: ReportRow[], filtersHtml: string): string {
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const subtitle = `List of Sections  |  Printed ${printDateTime}`;
 
   if (!rows.length) {
     return `
-      ${heading}
+      ${printMetaHtml("Section Master", subtitle)}
       ${filtersHtml}
-      <p style="text-align:center;color:#666;margin-top:20px;">No data found</p>
-    `;
+      <div class="empty">No sections found for the selected filters.</div>`;
   }
 
-  const linesHtml = rows.map((r) => {
-    const status = escapeHtml(r.status) === 'A' || escapeHtml(r.status) === 'Y' ? 'Active' : escapeHtml(r.status);
-    
-    return `
-      <tr>
-        <td class="center">${escapeHtml(r.section_code)}</td>
-        <td>${escapeHtml(r.section_name)}</td>
-        <td class="center">${escapeHtml(r.sect_head_id)}</td>
-        <td>${escapeHtml(r.sect_addr1)}</td>
-        <td class="center">${escapeHtml(r.staff_cntrl_ac_group)}</td>
-        <td class="center">${escapeHtml(r.staff_loan_ac_group)}</td>
-        <td class="center">${escapeHtml(r.salary_expense_ac_code)}</td>
-        <td class="center">${status}</td>
-      </tr>
-    `;
-  }).join("");
+  const lineRows = rows
+    .map((r) => {
+      const label = statusLabel(r.status);
+      const badgeClass =
+        label === "Active"
+          ? "status-ACTIVE"
+          : label === "Inactive"
+            ? "status-INACTIVE"
+            : "";
+      return `
+        <tr>
+          <td class="center">${escapeHtml(r.section_code)}</td>
+          <td>${escapeHtml(r.section_name)}</td>
+          <td class="center">${escapeHtml(r.sect_head_id)}</td>
+          <td>${escapeHtml(r.sect_addr1)}</td>
+          <td class="center">${escapeHtml(r.staff_cntrl_ac_group)}</td>
+          <td class="center">${escapeHtml(r.staff_loan_ac_group)}</td>
+          <td class="center">${escapeHtml(r.salary_expense_ac_code)}</td>
+          <td class="center">${
+            badgeClass
+              ? `<span class="status-badge ${badgeClass}">${escapeHtml(label)}</span>`
+              : escapeHtml(label)
+          }</td>
+        </tr>`;
+    })
+    .join("");
 
   return `
-    ${heading}
+    ${printMetaHtml("Section Master", subtitle)}
     ${filtersHtml}
-    <table class="lines-table">
+
+    <table class="data-table" style="margin-top: 3px !important;">
       <thead>
         <tr>
-          <th style="width: 8%; text-align: center;">Section</th>
-          <th style="width: 25%;">Section Name</th>
-          <th style="width: 10%; text-align: center;">Head</th>
-          <th style="width: 25%;">Address</th>
-          <th style="width: 8%; text-align: center;">Staff<br/>Control A/C</th>
-          <th style="width: 8%; text-align: center;">Staff<br/>Loan A/C</th>
-          <th style="width: 8%; text-align: center;">Salary<br/>Exp A/C</th>
-          <th style="width: 8%; text-align: center;">Status</th>
+          <th width="8%" class="center-head">Section</th>
+          <th width="25%">Section Name</th>
+          <th width="10%" class="center-head">Head</th>
+          <th width="25%">Address</th>
+          <th width="8%" class="center-head">Staff Control A/C</th>
+          <th width="8%" class="center-head">Staff Loan A/C</th>
+          <th width="8%" class="center-head">Salary Exp A/C</th>
+          <th width="8%" class="center-head">Status</th>
         </tr>
       </thead>
-      <tbody>
-        ${linesHtml}
-      </tbody>
+      <tbody>${lineRows}</tbody>
     </table>
   `;
+}
+
+// ─── Generic OOXML Excel builder engine ─────────────────────────────────────
+
+interface XlCell { v: unknown; styleKey: string }
+type XlRow = (XlCell | null)[];
+interface XlMerge { s: { r: number; c: number }; e: { r: number; c: number } }
+
+const XL_BLUE = "FF1D4ED8";
+const XL_WHITE = "FFFFFFFF";
+
+function xlCell(v: unknown, styleKey: string): XlCell {
+  return { v, styleKey };
+}
+
+function defaultXlStyleDefs(): Record<string, any> {
+  const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
+  return {
+    title: {
+      font: { bold: true, sz: 16, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "center", vertical: "center" },
+    },
+    meta: { font: { sz: 9, color: { rgb: "FF333333" } } },
+    header: {
+      font: { bold: true, sz: 10, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top: borderThin(XL_BLUE),
+        bottom: borderThin(XL_BLUE),
+        left: borderThin(XL_BLUE),
+        right: borderThin(XL_BLUE),
+      },
+    },
+    data: {
+      font: { sz: 10 },
+      alignment: { vertical: "center" },
+      border: { bottom: borderThin("FFF3F4F6") },
+    },
+    dataCenter: {
+      font: { sz: 10 },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: { bottom: borderThin("FFF3F4F6") },
+    },
+    grandTotal: {
+      font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    footer: {
+      font: { italic: true, sz: 8, color: { rgb: "FF64748B" } },
+      alignment: { horizontal: "right" },
+    },
+  };
+}
+
+function buildXlsxBuffer(
+  sheetName: string,
+  colCount: number,
+  colWidth: number,
+  rows_: XlRow[],
+  merges: XlMerge[],
+  styleDefs: Record<string, any>,
+): Buffer {
+  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string }
+  interface FillDef { color?: string }
+  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string }
+  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean }
+
+  const fonts: FontDef[] = [{}];
+  const fills: FillDef[] = [{}, {}];
+  const borders: BorderDef[] = [{}];
+  const numFmts: Array<{ id: number; code: string }> = [];
+  const cellXfs: XfDef[] = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
+  const sigCache = new Map<string, number>();
+  let nextCustomNumFmtId = 164;
+
+  const registerFont = (f: any): number => {
+    const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 10, color: f?.color?.rgb };
+    const key = `font:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fonts.push(def);
+    const idx = fonts.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerFill = (f: any): number => {
+    if (!f?.fgColor?.rgb) return 0;
+    const def: FillDef = { color: f.fgColor.rgb };
+    const key = `fill:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fills.push(def);
+    const idx = fills.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerBorder = (b: any): number => {
+    if (!b) return 0;
+    const def: BorderDef = {
+      top: b.top?.color?.rgb,
+      bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb,
+      right: b.right?.color?.rgb,
+    };
+    if (!def.top && !def.bottom && !def.left && !def.right) return 0;
+    const key = `border:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    borders.push(def);
+    const idx = borders.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerNumFmt = (code?: string): number => {
+    if (!code) return 0;
+    const existing = numFmts.find((n) => n.code === code);
+    if (existing) return existing.id;
+    const id = nextCustomNumFmtId++;
+    numFmts.push({ id, code });
+    return id;
+  };
+
+  const registerXf = (styleObj: any): number => {
+    if (!styleObj) return 0;
+    const fontId = registerFont(styleObj.font);
+    const fillId = registerFill(styleObj.fill);
+    const borderId = registerBorder(styleObj.border);
+    const numFmtId = registerNumFmt(styleObj.numFmt);
+    const align = styleObj.alignment?.horizontal;
+    const wrap = !!styleObj.alignment?.wrapText;
+    const key = `xf:${JSON.stringify({ fontId, fillId, borderId, numFmtId, align, wrap })}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    cellXfs.push({ fontId, fillId, borderId, numFmtId, align, wrap });
+    const idx = cellXfs.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
+
+  const colXml = Array.from({ length: colCount }, (_, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${colWidth}" customWidth="1"/>`,
+  ).join("");
+
+  let sheetDataXml = "";
+  rows_.forEach((row, ri) => {
+    const rn = ri + 1;
+    let rowXml = `<row r="${rn}">`;
+    row.forEach((c, ci) => {
+      if (c === null) return;
+      const ref = String.fromCharCode(65 + ci) + rn;
+      const s = styleIndexFor(c.styleKey);
+      if (typeof c.v === "number") {
+        rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
+      } else {
+        rowXml += `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${escapeXml(c.v ?? "")}</t></is></c>`;
+      }
+    });
+    rowXml += "</row>";
+    sheetDataXml += rowXml;
+  });
+
+  const mergesXml = merges
+    .map(
+      (m) =>
+        `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`,
+    )
+    .join("");
+  const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeFinal}
+</worksheet>`;
+
+  const numFmtsXml = numFmts.length
+    ? `<numFmts count="${numFmts.length}">${numFmts
+        .map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`)
+        .join("")}</numFmts>`
+    : "";
+
+  const fontsXml = `<fonts count="${fonts.length}">${fonts
+    .map(
+      (f) => `
+    <font>
+        ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+        ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+        <name val="Arial"/>
+        ${f.bold ? "<b/>" : ""}
+        ${f.italic ? "<i/>" : ""}
+    </font>`,
+    )
+    .join("")}
+</fonts>`;
+
+  const fillsXml = `<fills count="${fills.length}">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    ${fills
+      .slice(2)
+      .map(
+        (f) => `
+    <fill>
+        <patternFill patternType="solid">
+            <fgColor rgb="${f.color}"/>
+            <bgColor rgb="${f.color}"/>
+        </patternFill>
+    </fill>`,
+      )
+      .join("")}
+</fills>`;
+
+  const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
+  const bordersXml = `<borders count="${borders.length}">${borders
+    .map(
+      (b) => `
+    <border>
+        <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+        <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+        <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+        <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+        <diagonal/>
+    </border>`,
+    )
+    .join("")}
+</borders>`;
+
+  const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs
+    .map((xf) => {
+      const applyAlign = xf.align || xf.wrap;
+      return `
+    <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
+        applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
+        applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
+        ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+    </xf>`;
+    })
+    .join("")}
+</cellXfs>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    ${numFmtsXml}
+    ${fontsXml}
+    ${fillsXml}
+    ${bordersXml}
+    <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+    ${cellXfsXml}
+    <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels", Buffer.from(rels));
+  zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
+  return zip.toBuffer();
+}
+
+// ─── Excel builder: HR Sections ─────────────────────────────────────────────
+
+function buildExcelBuffer(rows: ReportRow[], sectionCode: string): Buffer {
+  const printDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const COL_COUNT = 8;
+  const rows_: XlRow[] = [];
+  const merges: XlMerge[] = [];
+
+  rows_.push([xlCell("LIST OF SECTIONS", "title"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+
+  rows_.push([
+    xlCell(`Section: ${sectionCode || "All"}`, "meta"),
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    xlCell(`Date: ${printDate}`, "meta"),
+  ]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 6 } });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
+
+  rows_.push([
+    xlCell("Section", "header"),
+    xlCell("Section Name", "header"),
+    xlCell("Head", "header"),
+    xlCell("Address", "header"),
+    xlCell("Staff Control A/C", "header"),
+    xlCell("Staff Loan A/C", "header"),
+    xlCell("Salary Exp A/C", "header"),
+    xlCell("Status", "header"),
+  ]);
+
+  rows.forEach((r) => {
+    rows_.push([
+      xlCell(text(r.section_code), "dataCenter"),
+      xlCell(text(r.section_name), "data"),
+      xlCell(text(r.sect_head_id), "dataCenter"),
+      xlCell(text(r.sect_addr1), "data"),
+      xlCell(text(r.staff_cntrl_ac_group), "dataCenter"),
+      xlCell(text(r.staff_loan_ac_group), "dataCenter"),
+      xlCell(text(r.salary_expense_ac_code), "dataCenter"),
+      xlCell(statusLabel(r.status), "dataCenter"),
+    ]);
+  });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
+
+  const totalRow = rows_.length;
+  rows_.push([xlCell(`Total Sections: ${rows.length}`, "grandTotal"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: COL_COUNT - 1 } });
+
+  rows_.push([...new Array(COL_COUNT - 1).fill(null), xlCell("Powered by Bayanat Technology", "footer")]);
+
+  return buildXlsxBuffer("Sections", COL_COUNT, 20, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Route Handlers ───────────────────────────────────────────────────────────
@@ -261,28 +699,34 @@ export const getSectionMasterReportHtml = async (
 ): Promise<void> => {
   try {
     const params = parseParams(req);
-    const rows = await loadSectionData(req);
+    const rows = await loadData(req);
 
-    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    
-    // Hide filters to match the clean look
-    const filtersHtml = ""; 
-    
-    const bodyHtml = renderSectionBody(rows, filtersHtml);
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected filters." });
+      return;
+    }
+
+    const companyCode = resolveHeaderCompanyCode(req, params.companyCode);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
       reportName: "rpt_hr_section",
-      userName: params.loginId,
-      endLabel: "End of Report",
+      endLabel: "Powered by Bayanat Technology",
     });
 
+    // Match the original: filters are hidden on the Section Master grid.
+    const filtersHtml = reportAppliedFilters([], { includeAll: false });
+
+    const bodyHtml = renderBody(rows, filtersHtml);
+
     const html = buildReportDocument({
-      title: "List of Sections",
+      title: "Section Master",
       headerHtml,
       bodyHtml,
       footerHtml,
       extraCss: SECTION_EXTRA_CSS,
-      autoPrint: req.query.print !== "false",
+      autoPrint: false,
       showPrintButton: true,
+      orientation: "landscape",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -297,6 +741,34 @@ export const getSectionMasterReportHtml = async (
       success: false,
       code: oraCode,
       message: error.message || "Unable to generate report",
+    });
+  }
+};
+
+export const exportSectionMasterReportExcel = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  try {
+    const params = parseParams(req);
+    const rows = await loadData(req);
+
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected filters." });
+      return;
+    }
+
+    const buffer = buildExcelBuffer(rows, params.sectionCode);
+    const filename = `sections_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.end(buffer);
+  } catch (error: any) {
+    console.error("Section Master Report Excel error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to export report",
     });
   }
 };

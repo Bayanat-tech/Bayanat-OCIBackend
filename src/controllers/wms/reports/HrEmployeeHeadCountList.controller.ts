@@ -1,17 +1,4 @@
 // src/controllers/wms/reports/EmployeeHeadCountReport.controller.ts
-//
-// HR Employee Head Count List — HTML/print endpoint
-// Visual style matches the Labour Card Expiry / Freight Expense preview:
-//   • navy header row (white text, no cell borders)
-//   • plain data rows, thin bottom border, no zebra
-//   • ALL data cells same weight (400), colour and size
-//   • bold-navy grand total (#e2e8f0)
-//
-// Frontend sends:
-//   GET /api/wms/reports/hr/employee-head-count/html
-//     ?company_code=...&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD
-//     &report_mode=DIVISION_WISE|DEPARTMENT_WISE|LOCAL_EXPAT|BUDGETED_VARIANCE|MANPOWER_DEPT|...
-//     &print=false
 
 import { Response } from "express";
 import oracledb from "oracledb";
@@ -21,9 +8,12 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 import {
   reportHeader,
   reportFooter,
-  reportAppliedFilters,
   buildReportDocument,
+  reportAppliedFilters,
 } from "../../common/report_common";
+const AdmZip = require("adm-zip");
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
@@ -60,7 +50,9 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   if (!tenantId && req.user?.loginid)
     tenantId = await TenantManager.getTenantForUser(req.user.loginid);
   if (!tenantId)
-    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+    throw Object.assign(new Error("Unable to determine tenant database"), {
+      status: 400,
+    });
   return TenantManager.getConnection(tenantId);
 }
 
@@ -98,6 +90,15 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
+function escapeXml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function fmtDate(value: unknown): string {
@@ -126,20 +127,17 @@ function num(value: unknown, digits = 0): string {
   return n.toFixed(digits);
 }
 
-// ─── Param Parser ────────────────────────────────────────────────────────────
-
-function allIfBlank(value: unknown): string {
-  const v = text(value).trim();
-  return v || "All";
-}
+// ─── Request Param Parser ────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
-  const src = { ...(req.query as Record<string, any>), ...(req.body || {}) };
+  const body = req.body || {};
+  const pick = (v: unknown) => (v == null ? "" : String(v).trim());
+  const src = { ...(req.query as Record<string, any>), ...body };
 
-  const userCompany = text(req.user?.company_code).trim();
-  const companyCode = userCompany || text(src.company_code).trim() || "";
+  const companyCode =
+    text(req.user?.company_code || pick(body.company_code) || pick(req.query.company_code) || "").trim() ||
+    "All";
 
-  // Normalise report_mode — accept exact keys, fall back to DIVISION_WISE
   const rawMode = text(src.report_mode).trim().toUpperCase();
   const reportMode = REPORT_MODE_TO_PARAMETER[rawMode] ? rawMode : "DIVISION_WISE";
 
@@ -149,581 +147,712 @@ function parseParams(req: RequestWithUser) {
     reportModeLabel: REPORT_MODE_LABEL[reportMode] ?? reportMode,
     fromDate: parseDate(src.from_date),
     toDate: parseDate(src.to_date),
-    loginId: text(req.user?.loginid || (req.user as any)?.username || ""),
+    loginId: text(req.user?.loginid || (req.user as any)?.username),
   };
+}
+
+/** Company code for the letterhead lookup — independent of the (possibly "All") query filter. */
+function resolveHeaderCompanyCode(req: RequestWithUser, companyCode: string): string {
+  if (companyCode && companyCode.toUpperCase() !== "ALL") return companyCode;
+  return text(req.user?.company_code) || text(req.query.company_code) || "BSG";
 }
 
 // ─── Data Loader ─────────────────────────────────────────────────────────────
 
-async function loadHeadCountData(req: RequestWithUser): Promise<ReportRow[]> {
+async function loadData(req: RequestWithUser): Promise<{ params: ReturnType<typeof parseParams>; rows: ReportRow[] }> {
   const params = parseParams(req);
 
-  console.log("[EmployeeHeadCount] params:", {
-    companyCode: params.companyCode,
-    reportMode: params.reportMode,
-    fromDate: params.fromDate?.toISOString(),
-    toDate: params.toDate?.toISOString(),
-  });
-
-  if (!params.companyCode) {
-    throw Object.assign(new Error("company_code is required"), { status: 400 });
+  if (!params.companyCode || params.companyCode.toUpperCase() === "ALL") {
+    params.companyCode = resolveHeaderCompanyCode(req, params.companyCode);
   }
   if (!params.fromDate || !params.toDate) {
     throw Object.assign(new Error("from_date and to_date are required"), { status: 400 });
   }
   if (params.fromDate > params.toDate) {
-    throw Object.assign(new Error("'From Date' cannot be greater than 'To Date'"), {
-      status: 400,
-    });
+    throw Object.assign(new Error("'From Date' cannot be greater than 'To Date'"), { status: 400 });
   }
 
   const parameter = REPORT_MODE_TO_PARAMETER[params.reportMode];
   if (!parameter) {
-    throw Object.assign(new Error(`Unknown report_mode: ${params.reportMode}`), {
-      status: 400,
-    });
+    throw Object.assign(new Error(`Unknown report_mode: ${params.reportMode}`), { status: 400 });
   }
 
   const conn = await getConn(req);
-
   try {
     const binds: Record<string, any> = {
       p_parameter: parameter,
       p_loginid: params.loginId,
-
-      // P_CODE1 = company. Others unused by head count branches — leave null.
       p_code1: params.companyCode,
-      p_code2: null,
-      p_code3: null,
-      p_code4: null,
-      p_code5: null,
-      p_code6: null,
-      p_code7: null,
-      p_code8: null,
-      p_code9: null,
-      p_code10: null,
-      p_code11: null,
-      p_code12: null,
-      p_code13: null,
-      p_code14: null,
-      p_code15: null,
-      p_code16: null,
-      p_code17: null,
-      p_code18: null,
-      p_code19: null,
-      p_code20: null,
-
-      p_number1: null,
-      p_number2: null,
-      p_number3: null,
-      p_number4: null,
-
-      // Procedure declares P_DATE1..4 as VARCHAR2 ('YYYY-MM-DD') — bind strings,
-      // NOT oracledb.DATE (that gets NLS-formatted and parsed as year 0001).
+      p_number1: 0,
+      p_number2: 0,
+      p_number3: 0,
+      p_number4: 0,
+      // Procedure declares P_DATE1..4 as VARCHAR2 ('YYYY-MM-DD') — bind strings, NOT oracledb.DATE.
       p_date1: toYmd(params.fromDate),
       p_date2: toYmd(params.toDate),
       p_date3: null,
       p_date4: null,
-
-      p_return_string: {
-        dir: oracledb.BIND_OUT,
-        type: oracledb.STRING,
-        maxSize: 32767,
-      },
+      p_return_string: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
+    for (let i = 2; i <= 20; i++) binds[`p_code${i}`] = null;
     const codeArgs = Array.from({ length: 20 }, (_, i) => `:p_code${i + 1}`).join(", ");
 
     const procResult = await conn.execute(
-      `BEGIN
-         PROC_BUILD_DYNAMIC_SQL_HR_REPORT(
-           :p_parameter, :p_loginid,
-           ${codeArgs},
-           :p_number1, :p_number2, :p_number3, :p_number4,
-           :p_date1, :p_date2, :p_date3, :p_date4,
-           :p_return_string
-         );
-       END;`,
+      `BEGIN PROC_BUILD_DYNAMIC_SQL_HR_REPORT(
+         :p_parameter, :p_loginid, ${codeArgs},
+         :p_number1, :p_number2, :p_number3, :p_number4,
+         :p_date1, :p_date2, :p_date3, :p_date4, :p_return_string
+       ); END;`,
       binds,
     );
 
     const builtSql = text((procResult.outBinds as any)?.p_return_string).trim();
-
-    console.log("[EmployeeHeadCount] Built SQL:", builtSql);
-
     if (!builtSql || builtSql.toUpperCase() === "INVALID PARAMETER VALUE") {
-      throw Object.assign(new Error("Report procedure returned no query"), { status: 500 });
+      throw Object.assign(new Error("No query returned"), { status: 500 });
     }
+
+    console.log("SQL:--------------->HeadCount", builtSql);
 
     const result = await conn.execute(builtSql, [], {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
-
-    console.log("[EmployeeHeadCount] Rows returned:", (result.rows as any[])?.length ?? 0);
-
-    return normalize(result.rows as any[]);
+    return { params, rows: normalize(result.rows as any[]) };
   } finally {
     await closeConn(conn);
   }
 }
 
-// ─── Extra CSS — matches the Labour Card Expiry / Freight Expense preview ────
-//
-//   navy          = #00378c  (header bar, title, totals)
-//   grandStrip    = #e2e8f0  (Grand Total row)
-//   rowBg         = #fcfdfe  (data rows)
-//   rule          = #e2e8f0  (thin bottom border under each row)
+// ─── Layout CSS — same visual system as Category Master ─────────────────────
 
 const HEAD_COUNT_EXTRA_CSS = `
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
-  body, table.hc-table {
-    font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  }
-
-  /* ── Title ──────────────────────────────────────────────────────────── */
   .doc-title-row {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin: 4px 0 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  body .doc-title-row h1 {
-    margin: 0;
-    font-size: 16px;
+
+  .doc-title-row h1 {
+    margin: 0 0 2px 0 !important;
+    padding: 0;
+    font-size: 18px;
     font-weight: 800;
-    color: #00378c !important;   /* beats report_common's print override (#0b4ca1) */
-    letter-spacing: 0;
+    color: #0b4ca1;
+    line-height: 1.2;
   }
-  .doc-subtitle {
-    margin-top: 2px;
+
+  .doc-title-row .doc-sub {
+    margin: 0 !important;
+    padding: 0 !important;
     font-size: 11px;
-    font-weight: 400;
     color: #64748b;
+    line-height: 1.3;
   }
 
-  /* ── Table reset ────────────────────────────────────────────────────── */
-  table.hc-table {
-    width: 100%;
-    max-width: 100%;
+  table.data-table {
     border-collapse: collapse;
+    width: 100%;
     font-size: 10.5px;
-    margin-top: 6px;
-    border: 0;
+    margin-top: 6px !important;
   }
 
-  /* ── Navy header ────────────────────────────────────────────────────── */
-  table.hc-table thead th {
-    background: #00378c !important;
-    color: #ffffff !important;
-    font-weight: 700;
-    font-size: 10.5px;
-    letter-spacing: 0;
-    padding: 10px 8px;
+  table.data-table th {
+    background: #e8f0fa !important;
+    color: #0b4ca1 !important;
+    font-size: 11px;
+    padding: 7px 6px;
     text-align: left;
-    vertical-align: middle;
-    border: 0 !important;
-    box-shadow: inset 0 0 0 1000px #00378c;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: normal;
+    font-weight: 700;
+    border-bottom: 2px solid #0b4ca1 !important;
   }
-  table.hc-table thead th.num-head { text-align: right; }
 
-  /* ── Data rows — every cell: same weight, colour, size ─────────────── */
-  table.hc-table tbody td {
-    padding: 6px 8px;
-    border: 0;
+  table.data-table th.num-head { text-align: right; }
+
+  table.data-table td {
+    padding: 5px 6px;
+    vertical-align: middle;
     border-bottom: 1px solid #e2e8f0 !important;
-    color: #1e293b;
-    font-size: 10.5px;
-    font-weight: 400;
-    background: #fcfdfe;
-    vertical-align: middle;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    color: #334155;
   }
-  table.hc-table tbody tr:nth-child(even) td { background: #fcfdfe; }
 
-  /* ── Alignment ─────────────────────────────────────────────────────── */
-  .center { text-align: center; }
-  .left   { text-align: left; }
-  .right  { text-align: right; }
-  .num {
+  table.data-table td.num {
     text-align: right;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
-  /* ── Grand Total ───────────────────────────────────────────────────── */
-  table.hc-table tbody tr.grand-total-row td {
+  table.data-table tbody tr:nth-child(even) td { 
+    background: #f8fafc !important; 
+  }
+
+  /* Grand total row */
+  table.data-table tbody tr.grand-total-row td {
     background: #e2e8f0 !important;
-    color: #00378c !important;
+    color: #0b4ca1 !important;
     font-weight: 800;
     text-align: right;
     border-bottom: 1px solid #cbd5e1 !important;
   }
 
-  /* ── Empty state ───────────────────────────────────────────────────── */
-  .hc-empty {
-    border: 1px dashed #cbd5e1;
-    background: #f8fafc;
-    text-align: center;
-    padding: 40px 12px;
-    margin-top: 14px;
-    color: #64748b;
-    font-weight: 700;
-  }
-
-  /* ── Screen-only compact sizing (print unaffected) ─────────────────── */
-  @media screen {
-    body .doc-title-row h1 { font-size: 13px; }
-    .doc-subtitle { font-size: 9.5px; }
-    table.hc-table { font-size: 9.5px; }
-    table.hc-table thead th { font-size: 9.5px; padding: 7px 6px; }
-    table.hc-table tbody td { padding: 5px 6px; font-size: 9.5px; }
-  }
-
-  /* ── Print: keep navy header, avoid row splits ─────────────────────── */
   @media print {
-    body .doc-title-row h1 { color: #00378c !important; }
-
-    table.hc-table thead { display: table-header-group; }
-    table.hc-table tr    { page-break-inside: avoid; }
-
-    table.hc-table thead th {
-      background: #00378c !important;
-      color: #ffffff !important;
-      box-shadow: inset 0 0 0 1000px #00378c;
+    table.data-table thead { display: table-header-group; }
+    table.data-table thead th {
+      background: #e8f0fa !important;
+      color: #0b4ca1 !important;
+      border-bottom: 2px solid #0b4ca1 !important;
     }
   }
 `;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Loads Inter so the PDF renderer doesn't fall back to a wide system font. */
-const FONT_LINK = `
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
-
-type Head = { label: string; num?: boolean; width?: string };
-
-function headHtml(heads: Head[]): string {
-  return heads
-    .map(
-      (h) =>
-        `<th${h.num ? ` class="num-head"` : ""}${h.width ? ` style="width:${h.width}"` : ""}>${escapeHtml(h.label)}</th>`,
-    )
-    .join("");
-}
-
-function tableHtml(heads: Head[], bodyRows: string, grandTotalRow: string): string {
+function printMetaHtml(title: string, subtitle: string): string {
   return `
-    <table class="hc-table">
-      <thead><tr>${headHtml(heads)}</tr></thead>
-      <tbody>${bodyRows}${grandTotalRow}</tbody>
-    </table>`;
-}
-
-/** Grand total row where the label spans every column. */
-function grandTotalFull(colCount: number, count: number): string {
-  return `
-        <tr class="grand-total-row">
-          <td colspan="${colCount}">GRAND TOTAL (${count} Records):</td>
-        </tr>`;
-}
-
-/** Grand total row with the label spanning leading columns and a total in the last one. */
-function grandTotalWithSum(labelCols: number, count: number, total: number): string {
-  return `
-        <tr class="grand-total-row">
-          <td colspan="${labelCols}">GRAND TOTAL (${count} Records):</td>
-          <td class="num">${total}</td>
-        </tr>`;
-}
-
-// ─── Body Renderers (one per mode) ───────────────────────────────────────────
-
-function renderDivisionWise(rows: ReportRow[]): string {
-  const total = rows.reduce((s, r) => s + Number(r.head_count || 0), 0);
-  const body = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td class="num">${i + 1}</td>
-          <td>${escapeHtml(r.div_name)}</td>
-          <td class="num">${escapeHtml(r.head_count)}</td>
-        </tr>`,
-    )
-    .join("");
-  return tableHtml(
-    [
-      { label: "SNo.", num: true, width: "6%" },
-      { label: "Division" },
-      { label: "Head Count", num: true, width: "20%" },
-    ],
-    body,
-    grandTotalWithSum(2, rows.length, total),
-  );
-}
-
-function renderDepartmentWise(rows: ReportRow[]): string {
-  const total = rows.reduce((s, r) => s + Number(r.head_count || 0), 0);
-  const body = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td class="num">${i + 1}</td>
-          <td>${escapeHtml(r.div_name)}</td>
-          <td>${escapeHtml(r.dept_name)}</td>
-          <td class="num">${escapeHtml(r.head_count)}</td>
-        </tr>`,
-    )
-    .join("");
-  return tableHtml(
-    [
-      { label: "SNo.", num: true, width: "6%" },
-      { label: "Division" },
-      { label: "Department" },
-      { label: "Head Count", num: true, width: "20%" },
-    ],
-    body,
-    grandTotalWithSum(3, rows.length, total),
-  );
-}
-
-function renderLocalExpat(rows: ReportRow[]): string {
-  const body = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td class="num">${i + 1}</td>
-          <td>${escapeHtml(r.company_code)}</td>
-          <td>${escapeHtml(r.div_name)}</td>
-          <td>${escapeHtml(r.dept_name)}</td>
-          <td class="num">${escapeHtml(r.omani_male)}</td>
-          <td class="num">${escapeHtml(r.omani_female)}</td>
-          <td class="num">${escapeHtml(r.omani_other)}</td>
-          <td class="num">${escapeHtml(r.expat_male)}</td>
-          <td class="num">${escapeHtml(r.expat_female)}</td>
-          <td class="num">${escapeHtml(r.expat_other)}</td>
-          <td class="num">${escapeHtml(r.emp_count)}</td>
-          <td class="num">${escapeHtml(num(r.omani_perc, 2))}%</td>
-        </tr>`,
-    )
-    .join("");
-  return tableHtml(
-    [
-      { label: "SNo.", num: true, width: "4%" },
-      { label: "Company" },
-      { label: "Division" },
-      { label: "Department" },
-      { label: "Omani M", num: true },
-      { label: "Omani F", num: true },
-      { label: "Omani O", num: true },
-      { label: "Expat M", num: true },
-      { label: "Expat F", num: true },
-      { label: "Expat O", num: true },
-      { label: "Total", num: true },
-      { label: "Omani %", num: true },
-    ],
-    body,
-    grandTotalFull(12, rows.length),
-  );
-}
-
-function renderBudgetedVariance(rows: ReportRow[]): string {
-  const body = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td class="num">${i + 1}</td>
-          <td class="num">${escapeHtml(r.bud_month)}</td>
-          <td>${escapeHtml(r.dept_code)}</td>
-          <td>${escapeHtml(r.dept_name)}</td>
-          <td>${escapeHtml(r.desg_code)}</td>
-          <td class="num">${escapeHtml(r.budgeted)}</td>
-          <td class="num">${escapeHtml(r.cur_month_budgt)}</td>
-          <td class="num">${escapeHtml(r.joiners)}</td>
-          <td class="num">${escapeHtml(r.leavers)}</td>
-          <td class="num">${escapeHtml(r.actuals)}</td>
-          <td class="num">${escapeHtml(r.prev_month_actuals)}</td>
-        </tr>`,
-    )
-    .join("");
-  return tableHtml(
-    [
-      { label: "SNo.", num: true, width: "4%" },
-      { label: "Month", num: true },
-      { label: "Dept" },
-      { label: "Dept Name" },
-      { label: "Desg" },
-      { label: "Budgeted (YTD)", num: true },
-      { label: "Current Month", num: true },
-      { label: "Joiners", num: true },
-      { label: "Leavers", num: true },
-      { label: "Actuals", num: true },
-      { label: "Prev Month", num: true },
-    ],
-    body,
-    grandTotalFull(11, rows.length),
-  );
-}
-
-function renderManpowerDept(rows: ReportRow[]): string {
-  const body = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td class="num">${i + 1}</td>
-          <td>${escapeHtml(r.company_code)}</td>
-          <td>${escapeHtml(r.div_code)}</td>
-          <td>${escapeHtml(r.dept_code)}</td>
-          <td>${escapeHtml(r.section_code)}</td>
-          <td class="num">${escapeHtml(r.prev_year_cnt)}</td>
-          <td class="num">${escapeHtml(r.join_addn_cnt)}</td>
-          <td class="num">${escapeHtml(r.transfer_addn_cnt)}</td>
-          <td class="num">${escapeHtml(r.promotion_addn_cnt)}</td>
-          <td class="num">${escapeHtml(r.leave_addn_cnt)}</td>
-          <td class="num">${escapeHtml(r.transfer_redn_cnt)}</td>
-          <td class="num">${escapeHtml(r.promotion_redn_cnt)}</td>
-        </tr>`,
-    )
-    .join("");
-  return tableHtml(
-    [
-      { label: "SNo.", num: true, width: "4%" },
-      { label: "Company" },
-      { label: "Division" },
-      { label: "Department" },
-      { label: "Section" },
-      { label: "Prev Year", num: true },
-      { label: "Joins", num: true },
-      { label: "Transfers", num: true },
-      { label: "Promotions", num: true },
-      { label: "Leave", num: true },
-      { label: "Transfers −", num: true },
-      { label: "Promotions −", num: true },
-    ],
-    body,
-    grandTotalFull(12, rows.length),
-  );
-}
-
-function renderGeneric(rows: ReportRow[]): string {
-  if (!rows.length) return "";
-  const cols = Object.keys(rows[0]);
-  const heads: Head[] = [
-    { label: "SNo.", num: true, width: "4%" },
-    ...cols.map((c) => ({ label: c.replace(/_/g, " ").toUpperCase() })),
-  ];
-  const body = rows
-    .map(
-      (r, i) =>
-        `<tr><td class="num">${i + 1}</td>` +
-        cols.map((c) => `<td>${escapeHtml(r[c])}</td>`).join("") +
-        `</tr>`,
-    )
-    .join("");
-  return tableHtml(heads, body, grandTotalFull(cols.length + 1, rows.length));
-}
-
-function renderHeadCountBody(
-  mode: string,
-  rows: ReportRow[],
-  filtersHtml: string,
-  subtitle: string,
-): string {
-  const heading = `
-    ${FONT_LINK}
     <div class="doc-title-row">
       <div>
-        <h1>HR Employee Head Count List</h1>
-        <div class="doc-subtitle">${escapeHtml(subtitle)}</div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
       </div>
     </div>`;
+}
+
+// ─── Column definitions per report mode ─────────────────────────────────────
+
+type ColDef = { key: string; label: string; num?: boolean; width?: string; pct?: boolean };
+
+const MODE_COLUMNS: Record<string, ColDef[]> = {
+  DIVISION_WISE: [
+    { key: "__sno__", label: "SNo.", num: true, width: "6%" },
+    { key: "div_name", label: "Division" },
+    { key: "head_count", label: "Head Count", num: true, width: "20%" },
+  ],
+  DEPARTMENT_WISE: [
+    { key: "__sno__", label: "SNo.", num: true, width: "6%" },
+    { key: "div_name", label: "Division" },
+    { key: "dept_name", label: "Department" },
+    { key: "head_count", label: "Head Count", num: true, width: "20%" },
+  ],
+  LOCAL_EXPAT: [
+    { key: "__sno__", label: "SNo.", num: true, width: "4%" },
+    { key: "company_code", label: "Company" },
+    { key: "div_name", label: "Division" },
+    { key: "dept_name", label: "Department" },
+    { key: "omani_male", label: "Omani M", num: true },
+    { key: "omani_female", label: "Omani F", num: true },
+    { key: "omani_other", label: "Omani O", num: true },
+    { key: "expat_male", label: "Expat M", num: true },
+    { key: "expat_female", label: "Expat F", num: true },
+    { key: "expat_other", label: "Expat O", num: true },
+    { key: "emp_count", label: "Total", num: true },
+    { key: "omani_perc", label: "Omani %", num: true, pct: true },
+  ],
+  BUDGETED_VARIANCE: [
+    { key: "__sno__", label: "SNo.", num: true, width: "4%" },
+    { key: "bud_month", label: "Month", num: true },
+    { key: "dept_code", label: "Dept" },
+    { key: "dept_name", label: "Dept Name" },
+    { key: "desg_code", label: "Desg" },
+    { key: "budgeted", label: "Budgeted (YTD)", num: true },
+    { key: "cur_month_budgt", label: "Current Month", num: true },
+    { key: "joiners", label: "Joiners", num: true },
+    { key: "leavers", label: "Leavers", num: true },
+    { key: "actuals", label: "Actuals", num: true },
+    { key: "prev_month_actuals", label: "Prev Month", num: true },
+  ],
+  MANPOWER_DEPT: [
+    { key: "__sno__", label: "SNo.", num: true, width: "4%" },
+    { key: "company_code", label: "Company" },
+    { key: "div_code", label: "Division" },
+    { key: "dept_code", label: "Department" },
+    { key: "section_code", label: "Section" },
+    { key: "prev_year_cnt", label: "Prev Year", num: true },
+    { key: "join_addn_cnt", label: "Joins", num: true },
+    { key: "transfer_addn_cnt", label: "Transfers", num: true },
+    { key: "promotion_addn_cnt", label: "Promotions", num: true },
+    { key: "leave_addn_cnt", label: "Leave", num: true },
+    { key: "transfer_redn_cnt", label: "Transfers −", num: true },
+    { key: "promotion_redn_cnt", label: "Promotions −", num: true },
+  ],
+};
+
+/** Modes without a fixed column set render generically (NATIONALITY_WISE / MONTHLY_*). */
+function getColumns(mode: string, rows: ReportRow[]): ColDef[] {
+  if (MODE_COLUMNS[mode]) return MODE_COLUMNS[mode];
+  if (!rows.length) return [];
+  const cols = Object.keys(rows[0]);
+  return [
+    { key: "__sno__", label: "SNo.", num: true, width: "4%" },
+    ...cols.map((c) => ({ key: c, label: c.replace(/_/g, " ").toUpperCase() })),
+  ];
+}
+
+/** Modes where the grand total is a count-only label row. */
+const COUNT_ONLY_GRAND_TOTAL = new Set([
+  "LOCAL_EXPAT",
+  "BUDGETED_VARIANCE",
+  "MANPOWER_DEPT",
+  "NATIONALITY_WISE",
+  "MONTHLY_JOINERS",
+  "MONTHLY_LEAVERS",
+  "MONTHLY_JOINERS_OPENING",
+]);
+
+// ─── Body Renderer ──────────────────────────────────────────────────────────
+
+function renderBody(mode: string, rows: ReportRow[], filtersHtml: string, modeLabel: string): string {
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const subtitle = `${modeLabel}  |  Printed ${printDateTime}`;
 
   if (!rows.length) {
     return `
-      ${heading}
+      ${printMetaHtml("HR Employee Head Count List", subtitle)}
       ${filtersHtml}
-      <div class="hc-empty">No data found</div>
-    `;
+      <div class="empty">No data found for the selected filters.</div>`;
   }
 
-  let inner: string;
-  switch (mode) {
-    case "DIVISION_WISE":
-      inner = renderDivisionWise(rows);
-      break;
-    case "DEPARTMENT_WISE":
-      inner = renderDepartmentWise(rows);
-      break;
-    case "LOCAL_EXPAT":
-      inner = renderLocalExpat(rows);
-      break;
-    case "BUDGETED_VARIANCE":
-      inner = renderBudgetedVariance(rows);
-      break;
-    case "MANPOWER_DEPT":
-      inner = renderManpowerDept(rows);
-      break;
-    default:
-      // NATIONALITY_WISE / MONTHLY_JOINERS / MONTHLY_LEAVERS / MONTHLY_JOINERS_OPENING
-      // fall back to a generic column-driven table until their SQL is added.
-      inner = renderGeneric(rows);
+  const cols = getColumns(mode, rows);
+  const headRow = cols
+    .map(
+      (c) =>
+        `<th${c.num ? ` class="num-head"` : ""}${c.width ? ` style="width:${c.width}"` : ""}>${escapeHtml(c.label)}</th>`,
+    )
+    .join("");
+
+  const bodyRows = rows
+    .map((r, i) => {
+      const cells = cols
+        .map((c) => {
+          if (c.key === "__sno__") return `<td class="num">${i + 1}</td>`;
+          const raw = r[c.key];
+          if (c.pct) return `<td class="num">${escapeHtml(num(raw, 2))}%</td>`;
+          return `<td${c.num ? ` class="num"` : ""}>${escapeHtml(raw)}</td>`;
+        })
+        .join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+
+  // Grand total row
+  let grandTotalRow: string;
+  if (COUNT_ONLY_GRAND_TOTAL.has(mode)) {
+    grandTotalRow = `
+        <tr class="grand-total-row">
+          <td colspan="${cols.length}">GRAND TOTAL (${rows.length} Records):</td>
+        </tr>`;
+  } else {
+    const totalHeadCount = rows.reduce((s, r) => s + Number(r.head_count || 0), 0);
+    grandTotalRow = `
+        <tr class="grand-total-row">
+          <td colspan="${cols.length - 1}">GRAND TOTAL (${rows.length} Records):</td>
+          <td class="num">${totalHeadCount}</td>
+        </tr>`;
   }
 
   return `
-    ${heading}
+    ${printMetaHtml("HR Employee Head Count List", subtitle)}
     ${filtersHtml}
-    ${inner}
+
+    <table class="data-table" style="margin-top: 3px !important;">
+      <thead><tr>${headRow}</tr></thead>
+      <tbody>${bodyRows}${grandTotalRow}</tbody>
+    </table>
   `;
 }
 
-// ─── Route Handler ────────────────────────────────────────────────────────────
+// ─── Generic OOXML Excel builder engine ─────────────────────────────────────
+
+interface XlCell { v: unknown; styleKey: string }
+type XlRow = (XlCell | null)[];
+interface XlMerge { s: { r: number; c: number }; e: { r: number; c: number } }
+
+const XL_BLUE = "FF1D4ED8";
+const XL_WHITE = "FFFFFFFF";
+
+function xlCell(v: unknown, styleKey: string): XlCell {
+  return { v, styleKey };
+}
+
+function defaultXlStyleDefs(): Record<string, any> {
+  const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
+  return {
+    title: {
+      font: { bold: true, sz: 16, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "center", vertical: "center" },
+    },
+    meta: { font: { sz: 9, color: { rgb: "FF333333" } } },
+    header: {
+      font: { bold: true, sz: 10, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top: borderThin(XL_BLUE),
+        bottom: borderThin(XL_BLUE),
+        left: borderThin(XL_BLUE),
+        right: borderThin(XL_BLUE),
+      },
+    },
+    data: {
+      font: { sz: 10 },
+      alignment: { vertical: "center" },
+      border: { bottom: borderThin("FFF3F4F6") },
+    },
+    dataCenter: {
+      font: { sz: 10 },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: { bottom: borderThin("FFF3F4F6") },
+    },
+    grandTotal: {
+      font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
+      fill: { fgColor: { rgb: XL_BLUE } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
+    footer: {
+      font: { italic: true, sz: 8, color: { rgb: "FF64748B" } },
+      alignment: { horizontal: "right" },
+    },
+  };
+}
+
+function buildXlsxBuffer(
+  sheetName: string,
+  colCount: number,
+  colWidth: number,
+  rows_: XlRow[],
+  merges: XlMerge[],
+  styleDefs: Record<string, any>,
+): Buffer {
+  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string }
+  interface FillDef { color?: string }
+  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string }
+  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean }
+
+  const fonts: FontDef[] = [{}];
+  const fills: FillDef[] = [{}, {}];
+  const borders: BorderDef[] = [{}];
+  const numFmts: Array<{ id: number; code: string }> = [];
+  const cellXfs: XfDef[] = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
+  const sigCache = new Map<string, number>();
+  let nextCustomNumFmtId = 164;
+
+  const registerFont = (f: any): number => {
+    const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 10, color: f?.color?.rgb };
+    const key = `font:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fonts.push(def);
+    const idx = fonts.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerFill = (f: any): number => {
+    if (!f?.fgColor?.rgb) return 0;
+    const def: FillDef = { color: f.fgColor.rgb };
+    const key = `fill:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    fills.push(def);
+    const idx = fills.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerBorder = (b: any): number => {
+    if (!b) return 0;
+    const def: BorderDef = {
+      top: b.top?.color?.rgb,
+      bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb,
+      right: b.right?.color?.rgb,
+    };
+    if (!def.top && !def.bottom && !def.left && !def.right) return 0;
+    const key = `border:${JSON.stringify(def)}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    borders.push(def);
+    const idx = borders.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const registerNumFmt = (code?: string): number => {
+    if (!code) return 0;
+    const existing = numFmts.find((n) => n.code === code);
+    if (existing) return existing.id;
+    const id = nextCustomNumFmtId++;
+    numFmts.push({ id, code });
+    return id;
+  };
+
+  const registerXf = (styleObj: any): number => {
+    if (!styleObj) return 0;
+    const fontId = registerFont(styleObj.font);
+    const fillId = registerFill(styleObj.fill);
+    const borderId = registerBorder(styleObj.border);
+    const numFmtId = registerNumFmt(styleObj.numFmt);
+    const align = styleObj.alignment?.horizontal;
+    const wrap = !!styleObj.alignment?.wrapText;
+    const key = `xf:${JSON.stringify({ fontId, fillId, borderId, numFmtId, align, wrap })}`;
+    if (sigCache.has(key)) return sigCache.get(key)!;
+    cellXfs.push({ fontId, fillId, borderId, numFmtId, align, wrap });
+    const idx = cellXfs.length - 1;
+    sigCache.set(key, idx);
+    return idx;
+  };
+
+  const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
+
+  const colXml = Array.from({ length: colCount }, (_, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${colWidth}" customWidth="1"/>`,
+  ).join("");
+
+  let sheetDataXml = "";
+  rows_.forEach((row, ri) => {
+    const rn = ri + 1;
+    let rowXml = `<row r="${rn}">`;
+    row.forEach((c, ci) => {
+      if (c === null) return;
+      const ref = String.fromCharCode(65 + ci) + rn;
+      const s = styleIndexFor(c.styleKey);
+      if (typeof c.v === "number") {
+        rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
+      } else {
+        rowXml += `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${escapeXml(c.v ?? "")}</t></is></c>`;
+      }
+    });
+    rowXml += "</row>";
+    sheetDataXml += rowXml;
+  });
+
+  const mergesXml = merges
+    .map(
+      (m) =>
+        `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`,
+    )
+    .join("");
+  const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeFinal}
+</worksheet>`;
+
+  const numFmtsXml = numFmts.length
+    ? `<numFmts count="${numFmts.length}">${numFmts
+        .map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`)
+        .join("")}</numFmts>`
+    : "";
+
+  const fontsXml = `<fonts count="${fonts.length}">${fonts
+    .map(
+      (f) => `
+    <font>
+        ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+        ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+        <name val="Arial"/>
+        ${f.bold ? "<b/>" : ""}
+        ${f.italic ? "<i/>" : ""}
+    </font>`,
+    )
+    .join("")}
+</fonts>`;
+
+  const fillsXml = `<fills count="${fills.length}">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    ${fills
+      .slice(2)
+      .map(
+        (f) => `
+    <fill>
+        <patternFill patternType="solid">
+            <fgColor rgb="${f.color}"/>
+            <bgColor rgb="${f.color}"/>
+        </patternFill>
+    </fill>`,
+      )
+      .join("")}
+</fills>`;
+
+  const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
+  const bordersXml = `<borders count="${borders.length}">${borders
+    .map(
+      (b) => `
+    <border>
+        <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+        <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+        <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+        <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+        <diagonal/>
+    </border>`,
+    )
+    .join("")}
+</borders>`;
+
+  const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs
+    .map((xf) => {
+      const applyAlign = xf.align || xf.wrap;
+      return `
+    <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
+        applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
+        applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
+        ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+    </xf>`;
+    })
+    .join("")}
+</cellXfs>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    ${numFmtsXml}
+    ${fontsXml}
+    ${fillsXml}
+    ${bordersXml}
+    <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+    ${cellXfsXml}
+    <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels", Buffer.from(rels));
+  zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
+  return zip.toBuffer();
+}
+
+// ─── Excel builder: HR Employee Head Count (per-mode columns) ───────────────
+
+function buildExcelBuffer(mode: string, modeLabel: string, rows: ReportRow[], fromDate: Date | null, toDate: Date | null): Buffer {
+  const printDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const cols = getColumns(mode, rows);
+  const COL_COUNT = Math.max(cols.length, 1);
+
+  const rows_: XlRow[] = [];
+  const merges: XlMerge[] = [];
+
+  rows_.push([xlCell("HR EMPLOYEE HEAD COUNT LIST", "title"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+
+  const metaRange = toDate ? `${fmtDate(fromDate)} to ${fmtDate(toDate)}` : "-";
+  rows_.push([
+    xlCell(`Mode: ${modeLabel}`, "meta"),
+    null,
+    null,
+    ...new Array(Math.max(COL_COUNT - 4, 0)).fill(null),
+    xlCell(`Date: ${printDate}`, "meta"),
+  ]);
+  if (COL_COUNT > 4) merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 3 } });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
+
+  rows_.push(cols.map((c) => xlCell(c.label, "header")));
+
+  rows.forEach((r, i) => {
+    const cells: XlCell[] = cols.map((c) => {
+      if (c.key === "__sno__") return xlCell(i + 1, "dataCenter");
+      if (c.pct) return xlCell(`${num(r[c.key], 2)}%`, "dataCenter");
+      const raw = r[c.key];
+      if (raw == null) return xlCell("", c.num ? "dataCenter" : "data");
+      if (typeof raw === "number") return xlCell(raw, c.num ? "dataCenter" : "data");
+      return xlCell(text(raw), c.num ? "dataCenter" : "data");
+    });
+    rows_.push(cells);
+  });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
+
+  const totalRow = rows_.length;
+  if (COUNT_ONLY_GRAND_TOTAL.has(mode)) {
+    rows_.push([xlCell(`GRAND TOTAL (${rows.length} Records):`, "grandTotal"), ...new Array(COL_COUNT - 1).fill(null)]);
+    merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: COL_COUNT - 1 } });
+  } else {
+    const totalHeadCount = rows.reduce((s, r) => s + Number(r.head_count || 0), 0);
+    rows_.push([
+      xlCell(`GRAND TOTAL (${rows.length} Records):`, "grandTotal"),
+      ...new Array(Math.max(COL_COUNT - 2, 0)).fill(null),
+      xlCell(totalHeadCount, "grandTotal"),
+    ]);
+    if (COL_COUNT > 1) merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: COL_COUNT - 2 } });
+  }
+
+  rows_.push([...new Array(COL_COUNT - 1).fill(null), xlCell("Powered by Bayanat Technology", "footer")]);
+
+  const sheetName = `HeadCount_${mode}`.slice(0, 31);
+  return buildXlsxBuffer(sheetName, COL_COUNT, 22, rows_, merges, defaultXlStyleDefs());
+}
+
+// ─── Route Handlers ───────────────────────────────────────────────────────────
 
 export const getEmployeeHeadCountReportHtml = async (
   req: RequestWithUser,
   res: Response,
 ): Promise<void> => {
   try {
-    const params = parseParams(req);
-    const rows = await loadHeadCountData(req);
+    const { params, rows } = await loadData(req);
 
-    const headerHtml = await reportHeader({
-      company_code: params.companyCode,
-      req,
-    });
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected filters." });
+      return;
+    }
 
-    const filtersHtml = reportAppliedFilters([
-      { label: "Report Mode", value: [params.reportModeLabel] },
-      {
-        label: "From Date",
-        value: [params.fromDate ? fmtDate(params.fromDate) : "-"],
-      },
-      {
-        label: "To Date",
-        value: [params.toDate ? fmtDate(params.toDate) : "-"],
-      },
-    ]);
-
-    const bodyHtml = renderHeadCountBody(
-      params.reportMode,
-      rows,
-      filtersHtml,
-      params.reportModeLabel,
-    );
-
+    const companyCode = resolveHeaderCompanyCode(req, params.companyCode);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
       reportName: "rpt_employee_head_count",
-      userName: params.loginId,
       endLabel: "Powered by Bayanat Technology",
     });
+
+    const filtersHtml = reportAppliedFilters(
+      [
+        { label: "Report Mode", value: params.reportModeLabel },
+        { label: "From Date", value: params.fromDate ? fmtDate(params.fromDate) : "-" },
+        { label: "To Date", value: params.toDate ? fmtDate(params.toDate) : "-" },
+      ],
+      { includeAll: false },
+    );
+
+    const bodyHtml = renderBody(params.reportMode, rows, filtersHtml, params.reportModeLabel);
 
     const html = buildReportDocument({
       title: "HR Employee Head Count List",
@@ -731,9 +860,9 @@ export const getEmployeeHeadCountReportHtml = async (
       bodyHtml,
       footerHtml,
       extraCss: HEAD_COUNT_EXTRA_CSS,
-      autoPrint: req.query.print !== "false",
+      autoPrint: false,
       showPrintButton: true,
-      orientation: "landscape", // wider tables (Local/Expat, Budgeted) read better
+      orientation: "landscape",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -748,6 +877,40 @@ export const getEmployeeHeadCountReportHtml = async (
       success: false,
       code: oraCode,
       message: error.message || "Unable to generate report",
+    });
+  }
+};
+
+export const exportEmployeeHeadCountReportExcel = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { params, rows } = await loadData(req);
+
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected filters." });
+      return;
+    }
+
+    const buffer = buildExcelBuffer(
+      params.reportMode,
+      params.reportModeLabel,
+      rows,
+      params.fromDate,
+      params.toDate,
+    );
+    const modeSlug = params.reportMode.toLowerCase();
+    const filename = `head_count_${modeSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.end(buffer);
+  } catch (error: any) {
+    console.error("Employee Head Count Report Excel error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to export report",
     });
   }
 };

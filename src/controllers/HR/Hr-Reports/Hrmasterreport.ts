@@ -59,6 +59,7 @@ const HR_REPORTS: Record<string, MasterReport> = {
     title: "Grade Master Report",
     table: "MS_HR_GRADE",
     companyCol: "COMPANY_CODE",
+    orientation: "landscape",
     filters: [{ col: "GRADE_CODE", source: "code", label: "Grade" }],
     columns: [
       { key: "company_code", label: "Company", weight: 0.8 },
