@@ -1356,7 +1356,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            ), 0) AS paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
-           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR h.div_code = :dc) 
+           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR h.div_code = :dc) 
            AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
              SELECT 1 FROM TR_AC_DETAIL d2 
              WHERE d2.company_code = h.company_code 
@@ -1460,7 +1460,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              ON h.company_code = inv.company_code
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
-             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR inv.div_code = :dc) 
+             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR inv.div_code = :dc) 
              AND NVL(h.canceled, 'N') = 'N'
              AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
              AND (
@@ -1471,6 +1471,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              AND (
                UPPER(TRIM(inv.inv_no)) IN (${missingPlaceholders}) 
                OR (inv.doc_no IS NOT NULL AND UPPER(TRIM(inv.doc_no)) IN (${missingPlaceholders}))
+               OR (h.ref_no IS NOT NULL AND UPPER(TRIM(h.ref_no)) IN (${missingPlaceholders}))
              )
            GROUP BY inv.inv_no`,
           missingBinds,

@@ -36,10 +36,12 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
     try {
       if (rows.length > 0 && companyCode) {
         const piSummary = await connection.execute(
-          `SELECT JOB_NO, COUNT(*) AS PI_LINE_COUNT, SUM(AMOUNT) AS PI_BOOKED_AMOUNT, MAX(DOC_NO) AS LAST_PI_NO
-           FROM TR_AC_DETAIL
-           WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'PI' AND JOB_NO IS NOT NULL
-           GROUP BY JOB_NO`,
+          `SELECT d.JOB_NO, COUNT(*) AS PI_LINE_COUNT, SUM(d.AMOUNT) AS PI_BOOKED_AMOUNT, MAX(d.DOC_NO) AS LAST_PI_NO
+           FROM TR_AC_DETAIL d
+           JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO IS NOT NULL
+             AND NVL(h.CANCELED, 'N') <> 'Y'
+           GROUP BY d.JOB_NO`,
           { cc: companyCode },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
@@ -120,10 +122,11 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO, h.CANCELED
            FROM TR_AC_DETAIL d
-           LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
-           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')`,
+           JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')
+             AND NVL(h.CANCELED, 'N') <> 'Y'`,
           { cc: companyCode, job_no: jobNo },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
@@ -133,6 +136,7 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
           `SELECT DISTINCT h.DOC_TYPE, h.DOC_NO, h.DOC_DATE, h.REF_NO, h.JOB_NO, h.PARTY_NAME
            FROM TR_AC_HEADER h
            WHERE h.COMPANY_CODE = :cc AND h.DOC_TYPE IN ('IV', 'SI')
+             AND NVL(h.CANCELED, 'N') <> 'Y'
              AND (
                TRIM(h.JOB_NO) = :job_no
                OR TRIM(h.REF_NO) = :job_no

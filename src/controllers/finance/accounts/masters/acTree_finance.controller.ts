@@ -516,7 +516,7 @@ export const createLevel3AcTreeNode = async (req: RequestWithUser, res: Response
       {
         company_code,
         l2_code,
-        l3_code: { dir: oracledb.BIND_INOUT, type: oracledb.STRING, val: '' },
+        l3_code: { dir: oracledb.BIND_INOUT, type: oracledb.STRING, val: req.body.l3_code || '' },
         l3_description,
         loginid,
         status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
@@ -785,7 +785,7 @@ export const createLevel4AcTreeNode = async (req: RequestWithUser, res: Response
       {
         company_code,
         l3_code,
-        l4_code: { dir: oracledb.BIND_INOUT, type: oracledb.STRING, val: '' },
+        l4_code: { dir: oracledb.BIND_INOUT, type: oracledb.STRING, val: req.body.l4_code || '' },
         l4_description,
         l4_type: l4_type || null,
         l4_job: l4_job || null,
