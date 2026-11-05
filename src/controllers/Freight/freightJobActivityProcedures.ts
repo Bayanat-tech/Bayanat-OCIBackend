@@ -36,7 +36,13 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
     try {
       if (rows.length > 0 && companyCode) {
         const piSummary = await connection.execute(
-          `SELECT d.JOB_NO, COUNT(*) AS PI_LINE_COUNT, SUM(d.AMOUNT) AS PI_BOOKED_AMOUNT, MAX(d.DOC_NO) AS LAST_PI_NO
+          `SELECT d.JOB_NO,
+                  COUNT(*) AS PI_LINE_COUNT,
+                  SUM(NVL(d.LCUR_AMOUNT, d.AMOUNT)) AS PI_BOOKED_AMOUNT,
+                  MAX(d.DOC_NO) AS LAST_PI_NO,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%AGENT%' OR UPPER(d.REMARKS) LIKE '%BROKER%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS AGENT_BOOKED_AMOUNT,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%OTHER%' OR UPPER(d.REMARKS) LIKE '%ACTUAL%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS OTHER_BOOKED_AMOUNT,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%TRANS%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS TRANS_BOOKED_AMOUNT
            FROM TR_AC_DETAIL d
            JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
            WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO IS NOT NULL
@@ -55,10 +61,22 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
           const piInfo = piMap.get(jNo);
           const expense = Number(job.expense || job.EXPENSE || 0);
           const bookedAmt = Number(piInfo?.PI_BOOKED_AMOUNT || 0);
+          const agentBooked = Number(piInfo?.AGENT_BOOKED_AMOUNT || 0);
+          const otherBooked = Number(piInfo?.OTHER_BOOKED_AMOUNT || 0);
+          const transBooked = Number(piInfo?.TRANS_BOOKED_AMOUNT || 0);
+
           job.pi_booked_amount = bookedAmt;
           job.pi_line_count = Number(piInfo?.PI_LINE_COUNT || 0);
           job.last_pi_no = piInfo?.LAST_PI_NO || null;
-          job.is_fully_booked = expense > 0 && bookedAmt >= expense;
+          job.agent_booked_amount = agentBooked;
+          job.other_booked_amount = otherBooked;
+          job.trans_booked_amount = transBooked;
+
+          // A job is fully booked only if total booked amount covers the total expense
+          // and tolerance of 0.005 OMR
+          job.is_fully_booked = expense > 0 && bookedAmt >= (expense - 0.005);
+          job.is_broker_booked = agentBooked > 0;
+          job.is_other_cost_booked = otherBooked > 0;
         });
       }
     } catch (piErr) {
