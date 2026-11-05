@@ -25,6 +25,7 @@ export const accountLevelThreeFinanceSchema = (
   data: IAccountLevelThreeAttributes
 ) => {
   const schema = Joi.object().keys({
+    l3_code: Joi.string().optional().allow(null, ""),
     l3_description: Joi.string().required(),
     l2_code: Joi.string().required(),
     company_code: Joi.string().optional().allow(null,""),
@@ -39,6 +40,7 @@ export const accountLevelFourFinanceSchema = (
 ) => {
   const schema = Joi.object().keys({
     l3_code: Joi.string().required(),
+    l4_code: Joi.string().optional().allow(null, ""),
     l4_description: Joi.string().required(),
     company_code: Joi.string().optional().allow(null,""),
     l4_type: Joi.string().valid("Y", "N").optional().allow(null).allow(""), // Optional type flag

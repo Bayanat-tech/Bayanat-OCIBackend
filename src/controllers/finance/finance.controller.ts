@@ -680,7 +680,7 @@ export const getFinanceListData = async (
         try {
           const headerInvoicesResult = await connection.execute(
             `SELECT 
-               h.doc_no AS inv_no,
+               NVL(h.ref_no, h.doc_no) AS inv_no,
                h.doc_no,
                h.ref_no,
                h.doc_date AS inv_date,
@@ -735,8 +735,17 @@ export const getFinanceListData = async (
                ), 0) AS amount
              FROM TR_AC_HEADER h
              WHERE h.company_code = :company_code
-               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR h.div_code = :div_code)
-               AND h.ac_code      = :ac_code
+               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR UPPER(:div_code) = 'ALL' OR h.div_code = :div_code)
+               AND (
+                 h.ac_code = :ac_code
+                 OR EXISTS (
+                   SELECT 1 FROM TR_AC_DETAIL d2 
+                   WHERE d2.company_code = h.company_code 
+                     AND d2.doc_type = h.doc_type 
+                     AND d2.doc_no = h.doc_no 
+                     AND d2.ac_code = :ac_code
+                 )
+               )
                AND NVL(h.canceled, 'N') = 'N'
                AND (
                  (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
