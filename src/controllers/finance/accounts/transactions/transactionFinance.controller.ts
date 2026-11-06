@@ -1287,6 +1287,17 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
     conn = await getConn(req);
 
+    const baseCurrResult = await conn.execute(
+      `SELECT BASE_CURR_CODE
+       FROM MS_AC_SETUP
+       WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
+         AND ROWNUM = 1`,
+      { cc: req.user.company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const baseCurrRow = baseCurrResult.rows?.[0] as { BASE_CURR_CODE?: string } | undefined;
+    const companyBaseCurr = String(baseCurrRow?.BASE_CURR_CODE || '').trim().toUpperCase();
+
     const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO' || doc_type === 'DN';
     const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV' || doc_type === 'CN' || doc_type === 'IV';
 
