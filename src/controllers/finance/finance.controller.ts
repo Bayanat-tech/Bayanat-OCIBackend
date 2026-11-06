@@ -685,7 +685,7 @@ export const getFinanceListData = async (
                h.ref_no,
                h.doc_date AS inv_date,
                CASE 
-                 WHEN h.curr_code IS NOT NULL AND TRIM(h.curr_code) <> 'OMR' THEN
+                 WHEN h.curr_code IS NOT NULL AND TRIM(UPPER(h.curr_code)) <> :base_curr THEN
                    NVL((
                      SELECT MAX(NVL(invd.amount_origin, ABS(invd.amount)))
                      FROM TR_AC_INVDETAIL invd
@@ -790,6 +790,7 @@ export const getFinanceListData = async (
               is_payment: isPayment ? 1 : 0,
               is_invoice_pi: isInvoicePI ? 1 : 0,
               is_invoice_si: isInvoiceSI ? 1 : 0,
+              base_curr: companyBaseCurr,
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
@@ -805,8 +806,14 @@ export const getFinanceListData = async (
             if (primaryInvNo) { knownKeys.add(primaryInvNo.toUpperCase()); }
 
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
-            const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
+            const exRate = Number(hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin || 1);
+            const currCode = String(hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin || companyBaseCurr).trim();
+            const isForeign = currCode && currCode.toUpperCase() !== companyBaseCurr;
+            const lcurPaid = Number(hRow.AMOUNT || hRow.amount || 0);
+            const lcurOrg = Number((invAmt * exRate).toFixed(3));
+            const paidAmt = isForeign ? (exRate > 0 ? Number((lcurPaid / exRate).toFixed(3)) : lcurPaid) : lcurPaid;
             const bal = Math.max(0, invAmt - paidAmt);
+            const lcurBal = Math.max(0, lcurOrg - lcurPaid);
             if (bal > 0.001) {
               const rowObj: any = {
                 inv_no: primaryInvNo,
@@ -821,9 +828,12 @@ export const getFinanceListData = async (
                 c_curr_code: ' ',
                 c_curr_amt: 0.0,
                 c_indicator_origin: 'N',
+                base_curr_code: companyBaseCurr,
                 c_curr_code_origin: hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin,
                 c_ex_rate_origin: hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin,
                 c_bal_amt_org: bal,
+                lcur_original_amount: lcurOrg,
+                lcur_outstanding: lcurBal,
                 job_no: null,
                 bl_no: null,
                 doc_ref: null,

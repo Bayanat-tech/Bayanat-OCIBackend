@@ -1298,6 +1298,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
       ac: ac_code ? String(ac_code).trim() : '',
       is_payment: isPayment ? 1 : 0,
       is_receipt: isReceipt ? 1 : 0,
+      base_curr: companyBaseCurr,
       exclude_doc_no: exclude_doc_no ? String(exclude_doc_no).trim() : null,
     };
     list.forEach((n, i) => (binds[`inv${i}`] = n.trim().toUpperCase()));
@@ -1311,8 +1312,10 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.doc_no AS inv_no,
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
+           NVL(h.curr_code, :base_curr) AS curr_code,
+           NVL(h.ex_rate, 1) AS ex_rate,
            CASE 
-             WHEN h.curr_code IS NOT NULL AND TRIM(h.curr_code) <> 'OMR' THEN
+             WHEN h.curr_code IS NOT NULL AND TRIM(UPPER(h.curr_code)) <> :base_curr THEN
                NVL((
                  SELECT MAX(ABS(NVL(invd.amount_origin, invd.amount)))
                  FROM TR_AC_INVDETAIL invd
@@ -1362,7 +1365,22 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                )))
            END AS original_amount,
            NVL((
-             SELECT SUM(ABS(d.lcur_amount)) 
+             SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
+             FROM TR_AC_INVDETAIL invd
+             WHERE invd.company_code = h.company_code
+               AND invd.doc_type     = h.doc_type
+               AND invd.doc_no       = h.doc_no
+               AND invd.indicator_origin = 'Y'
+           ), NVL((
+             SELECT ABS(NVL(d.lcur_amount, d.amount))
+             FROM TR_AC_DETAIL d
+             WHERE d.company_code = h.company_code
+               AND d.doc_type     = h.doc_type
+               AND d.doc_no       = h.doc_no
+               AND d.serial_no    = 9001
+           ), 0)) AS lcur_original_amount,
+           NVL((
+             SELECT SUM(ABS(d.lcur_amount))
              FROM TR_AC_INVDETAIL d 
              JOIN TR_AC_HEADER pay_h
                ON pay_h.company_code = d.company_code
@@ -1380,7 +1398,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
                AND NVL(d.indicator_origin, 'N') = 'N'
                AND (:exclude_doc_no IS NULL OR d.doc_no <> :exclude_doc_no)
-           ), 0) AS paid_amount
+           ), 0) AS lcur_paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
            AND (:is_receipt = 1 OR :is_payment = 1 OR :dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR h.div_code = :dc) 
@@ -1433,7 +1451,13 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
         }
 
         const org = Number(r.ORIGINAL_AMOUNT || 0);
-        const pd = Number(r.PAID_AMOUNT || 0);
+        const exRate = Number(r.EX_RATE || 1);
+        const currCode = String(r.CURR_CODE || companyBaseCurr).trim();
+        const isForeign = currCode && currCode.toUpperCase() !== companyBaseCurr;
+        const lcurOrg = Number(r.LCUR_ORIGINAL_AMOUNT || (org * exRate));
+        const lcurPd = Number(r.LCUR_PAID_AMOUNT || 0);
+        const lcurOut = Math.max(0, lcurOrg - lcurPd);
+        const pd = isForeign ? (lcurOrg > 0 ? (lcurPd / lcurOrg) * org : (exRate > 0 ? lcurPd / exRate : lcurPd)) : lcurPd;
         const out = Math.max(0, org - pd);
         const resObj = {
           inv_no: vendorBillNo,
@@ -1442,8 +1466,16 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
           original_amount: org,
           paid_amount: pd,
           outstanding_amount: out,
+          curr_code: currCode,
+          base_curr_code: companyBaseCurr,
+          ex_rate: exRate,
+          c_curr_code_origin: currCode,
+          c_ex_rate_origin: exRate,
+          lcur_original_amount: lcurOrg,
+          lcur_paid_amount: lcurPd,
+          lcur_outstanding: lcurOut,
           payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
-          is_fully_paid: out <= 0.001,
+          is_fully_paid: out <= 0.001 || lcurOut <= 0.001,
           is_cancelled: false,
         };
         if (r.INV_NO) {

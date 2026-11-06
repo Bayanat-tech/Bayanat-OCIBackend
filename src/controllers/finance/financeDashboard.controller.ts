@@ -404,16 +404,16 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       // Known currency symbols map (clean UTF-8)
       const KNOWN_SYMBOLS: Record<string, string> = {
         INR: "₹",
-        OMR: "ر.ع.",
-        AED: "د.إ",
+        OMR: "OMR",
+        AED: "AED",
         USD: "$",
         EUR: "€",
         GBP: "£",
-        SAR: "ر.س",
-        QAR: "ر.ق",
-        KWD: "د.ك",
-        KD: "د.ك",
-        BHD: "ب.د",
+        SAR: "SAR",
+        QAR: "QAR",
+        KWD: "KWD",
+        KD: "KWD",
+        BHD: "BHD",
         JPY: "¥",
         CNY: "¥",
         SGD: "S$",
@@ -421,8 +421,8 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
         AUD: "A$",
       };
 
-      if (!currencySymbol && KNOWN_SYMBOLS[currencyCode]) {
-        currencySymbol = KNOWN_SYMBOLS[currencyCode];
+      if (!currencySymbol || !/^[A-Za-z0-9$€£¥₹\s]+$/.test(currencySymbol.trim())) {
+        currencySymbol = KNOWN_SYMBOLS[currencyCode] || currencyCode;
       }
 
       // Decimals precision determination:
@@ -441,7 +441,7 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
     } catch (currencyError) {
       console.warn("Finance dashboard currency lookup unavailable:", currencyError);
       if (!currencyCode) currencyCode = "OMR";
-      if (!currencySymbol) currencySymbol = currencyCode === "INR" ? "₹" : (currencyCode === "OMR" ? "ر.ع." : currencyCode);
+      if (!currencySymbol) currencySymbol = currencyCode === "INR" ? "₹" : currencyCode;
       if (currencyDecimals == null) currencyDecimals = currencyCode === "OMR" ? 3 : 2;
     }
 
