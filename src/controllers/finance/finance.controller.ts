@@ -684,29 +684,56 @@ export const getFinanceListData = async (
                h.doc_no,
                h.ref_no,
                h.doc_date AS inv_date,
-               NVL((
-                 SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
-                 FROM TR_AC_INVDETAIL invd
-                 WHERE invd.company_code = h.company_code
-                   AND invd.doc_type     = h.doc_type
-                   AND invd.doc_no       = h.doc_no
-                   AND invd.indicator_origin = 'Y'
-               ), NVL((
-                 SELECT ABS(NVL(d.lcur_amount, d.amount))
-                 FROM TR_AC_DETAIL d
-                 WHERE d.company_code = h.company_code
-                   AND d.doc_type     = h.doc_type
-                   AND d.doc_no       = h.doc_no
-                   AND d.serial_no    = 9001
-               ), (
-                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
-                            SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
-                 FROM TR_AC_DETAIL d
-                 WHERE d.company_code = h.company_code
-                   AND d.doc_type     = h.doc_type
-                   AND d.doc_no       = h.doc_no
-                   AND d.serial_no    <> 9001
-               ))) AS inv_amt,
+               CASE 
+                 WHEN h.curr_code IS NOT NULL AND TRIM(h.curr_code) <> 'OMR' THEN
+                   NVL((
+                     SELECT MAX(NVL(invd.amount_origin, ABS(invd.amount)))
+                     FROM TR_AC_INVDETAIL invd
+                     WHERE invd.company_code = h.company_code
+                       AND invd.doc_type     = h.doc_type
+                       AND invd.doc_no       = h.doc_no
+                       AND invd.indicator_origin = 'Y'
+                   ), NVL((
+                     SELECT ABS(NVL(d.amount, d.lcur_amount))
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    = 9001
+                   ), (
+                     SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.amount, d.lcur_amount)) END),
+                                SUM(ABS(NVL(d.amount, d.lcur_amount))) / 2)
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    <> 9001
+                   )))
+                 ELSE
+                   NVL((
+                     SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+                     FROM TR_AC_INVDETAIL invd
+                     WHERE invd.company_code = h.company_code
+                       AND invd.doc_type     = h.doc_type
+                       AND invd.doc_no       = h.doc_no
+                       AND invd.indicator_origin = 'Y'
+                   ), NVL((
+                     SELECT ABS(NVL(d.lcur_amount, d.amount))
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    = 9001
+                   ), (
+                     SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                                SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    <> 9001
+                   )))
+               END AS inv_amt,
                h.curr_code AS c_curr_code_origin,
                h.ex_rate AS c_ex_rate_origin,
                h.div_code,

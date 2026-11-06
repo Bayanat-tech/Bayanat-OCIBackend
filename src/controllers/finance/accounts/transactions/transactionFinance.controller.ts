@@ -1311,29 +1311,56 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.doc_no AS inv_no,
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
-           NVL((
-             SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
-             FROM TR_AC_INVDETAIL invd
-             WHERE invd.company_code = h.company_code
-               AND invd.doc_type     = h.doc_type
-               AND invd.doc_no       = h.doc_no
-               AND invd.indicator_origin = 'Y'
-           ), NVL((
-             SELECT ABS(NVL(d.lcur_amount, d.amount))
-             FROM TR_AC_DETAIL d
-             WHERE d.company_code = h.company_code
-               AND d.doc_type     = h.doc_type
-               AND d.doc_no       = h.doc_no
-               AND d.serial_no    = 9001
-           ), (
-             SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
-                        SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
-             FROM TR_AC_DETAIL d
-             WHERE d.company_code = h.company_code
-               AND d.doc_type     = h.doc_type
-               AND d.doc_no       = h.doc_no
-               AND d.serial_no    <> 9001
-           ))) AS original_amount,
+           CASE 
+             WHEN h.curr_code IS NOT NULL AND TRIM(h.curr_code) <> 'OMR' THEN
+               NVL((
+                 SELECT MAX(ABS(NVL(invd.amount_origin, invd.amount)))
+                 FROM TR_AC_INVDETAIL invd
+                 WHERE invd.company_code = h.company_code
+                   AND invd.doc_type     = h.doc_type
+                   AND invd.doc_no       = h.doc_no
+                   AND invd.indicator_origin = 'Y'
+               ), NVL((
+                 SELECT ABS(NVL(d.amount, d.lcur_amount))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    = 9001
+               ), (
+                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.amount, d.lcur_amount)) END),
+                            SUM(ABS(NVL(d.amount, d.lcur_amount))) / 2)
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    <> 9001
+               )))
+             ELSE
+               NVL((
+                 SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
+                 FROM TR_AC_INVDETAIL invd
+                 WHERE invd.company_code = h.company_code
+                   AND invd.doc_type     = h.doc_type
+                   AND invd.doc_no       = h.doc_no
+                   AND invd.indicator_origin = 'Y'
+               ), NVL((
+                 SELECT ABS(NVL(d.lcur_amount, d.amount))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    = 9001
+               ), (
+                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                            SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    <> 9001
+               )))
+           END AS original_amount,
            NVL((
              SELECT SUM(ABS(d.lcur_amount)) 
              FROM TR_AC_INVDETAIL d 
