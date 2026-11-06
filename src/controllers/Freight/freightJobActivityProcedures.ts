@@ -72,9 +72,21 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
           job.other_booked_amount = otherBooked;
           job.trans_booked_amount = transBooked;
 
+          const hasOther = Number(job.has_other_cost || 0) > 0;
+          const hasAgent = Number(job.has_agent_cost || 0) > 0;
+          const hasTrans = Number(job.has_trans_cost || 0) > 0;
+
+          const otherRemaining = hasOther && otherBooked < 0.005;
+          const agentRemaining = hasAgent && agentBooked < 0.005;
+          const transRemaining = hasTrans && transBooked < 0.005;
+
           // A job is fully booked only if total booked amount covers the total expense
-          // and tolerance of 0.005 OMR
-          job.is_fully_booked = expense > 0 && bookedAmt >= (expense - 0.005);
+          // AND no individual expense component remains completely unbooked
+          const totalCovered = expense > 0 && bookedAmt >= (expense - 0.005);
+          job.is_fully_booked = totalCovered && !otherRemaining && !agentRemaining && !transRemaining;
+          job.has_unbooked_other = otherRemaining;
+          job.has_unbooked_agent = agentRemaining;
+          job.has_unbooked_trans = transRemaining;
           job.is_broker_booked = agentBooked > 0;
           job.is_other_cost_booked = otherBooked > 0;
         });
@@ -140,7 +152,7 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO, h.CANCELED
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.LCUR_AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO, h.CANCELED
            FROM TR_AC_DETAIL d
            JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
            WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')

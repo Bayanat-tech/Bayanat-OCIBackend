@@ -735,7 +735,7 @@ export const getFinanceListData = async (
                ), 0) AS amount
              FROM TR_AC_HEADER h
              WHERE h.company_code = :company_code
-               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR UPPER(:div_code) = 'ALL' OR h.div_code = :div_code)
+               AND (:is_receipt = 1 OR :is_payment = 1 OR :div_code IS NULL OR :div_code = '' OR :div_code = '*' OR UPPER(:div_code) = 'ALL' OR h.div_code = :div_code)
                AND (
                  h.ac_code = :ac_code
                  OR EXISTS (
