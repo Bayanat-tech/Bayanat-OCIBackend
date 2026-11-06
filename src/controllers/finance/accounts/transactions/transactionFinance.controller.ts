@@ -1311,29 +1311,56 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            h.doc_no AS inv_no,
            h.ref_no,
            NVL(h.canceled, 'N') AS canceled,
-           NVL((
-             SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
-             FROM TR_AC_INVDETAIL invd
-             WHERE invd.company_code = h.company_code
-               AND invd.doc_type     = h.doc_type
-               AND invd.doc_no       = h.doc_no
-               AND invd.indicator_origin = 'Y'
-           ), NVL((
-             SELECT ABS(NVL(d.lcur_amount, d.amount))
-             FROM TR_AC_DETAIL d
-             WHERE d.company_code = h.company_code
-               AND d.doc_type     = h.doc_type
-               AND d.doc_no       = h.doc_no
-               AND d.serial_no    = 9001
-           ), (
-             SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
-                        SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
-             FROM TR_AC_DETAIL d
-             WHERE d.company_code = h.company_code
-               AND d.doc_type     = h.doc_type
-               AND d.doc_no       = h.doc_no
-               AND d.serial_no    <> 9001
-           ))) AS original_amount,
+           CASE 
+             WHEN h.curr_code IS NOT NULL AND TRIM(h.curr_code) <> 'OMR' THEN
+               NVL((
+                 SELECT MAX(ABS(NVL(invd.amount_origin, invd.amount)))
+                 FROM TR_AC_INVDETAIL invd
+                 WHERE invd.company_code = h.company_code
+                   AND invd.doc_type     = h.doc_type
+                   AND invd.doc_no       = h.doc_no
+                   AND invd.indicator_origin = 'Y'
+               ), NVL((
+                 SELECT ABS(NVL(d.amount, d.lcur_amount))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    = 9001
+               ), (
+                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.amount, d.lcur_amount)) END),
+                            SUM(ABS(NVL(d.amount, d.lcur_amount))) / 2)
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    <> 9001
+               )))
+             ELSE
+               NVL((
+                 SELECT MAX(ABS(NVL(invd.lcur_amount, invd.amount_origin)))
+                 FROM TR_AC_INVDETAIL invd
+                 WHERE invd.company_code = h.company_code
+                   AND invd.doc_type     = h.doc_type
+                   AND invd.doc_no       = h.doc_no
+                   AND invd.indicator_origin = 'Y'
+               ), NVL((
+                 SELECT ABS(NVL(d.lcur_amount, d.amount))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    = 9001
+               ), (
+                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                            SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    <> 9001
+               )))
+           END AS original_amount,
            NVL((
              SELECT SUM(ABS(d.lcur_amount)) 
              FROM TR_AC_INVDETAIL d 
@@ -1356,7 +1383,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            ), 0) AS paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
-           AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR h.div_code = :dc) 
+           AND (:is_receipt = 1 OR :is_payment = 1 OR :dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR h.div_code = :dc) 
            AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
              SELECT 1 FROM TR_AC_DETAIL d2 
              WHERE d2.company_code = h.company_code 
@@ -1460,7 +1487,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              ON h.company_code = inv.company_code
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
-             AND (:dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR inv.div_code = :dc) 
+             AND (:is_receipt = 1 OR :is_payment = 1 OR :dc IS NULL OR :dc = '' OR :dc = '*' OR UPPER(:dc) = 'ALL' OR inv.div_code = :dc) 
              AND NVL(h.canceled, 'N') = 'N'
              AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
              AND (
