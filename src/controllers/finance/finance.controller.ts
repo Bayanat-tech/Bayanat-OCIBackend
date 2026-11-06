@@ -671,6 +671,17 @@ export const getFinanceListData = async (
         const isInvoicePI = voucherType === "PI";
         const isInvoiceSI = ["SI", "SV"].includes(voucherType);
 
+        const baseCurrResult = await connection.execute(
+          `SELECT BASE_CURR_CODE
+           FROM MS_AC_SETUP
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:company_code))
+             AND ROWNUM = 1`,
+          { company_code: req.user.company_code },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const baseCurrRow = baseCurrResult.rows?.[0] as { BASE_CURR_CODE?: string } | undefined;
+        const companyBaseCurr = String(baseCurrRow?.BASE_CURR_CODE || "").trim().toUpperCase();
+
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
         const knownDocNos = new Set<string>();
