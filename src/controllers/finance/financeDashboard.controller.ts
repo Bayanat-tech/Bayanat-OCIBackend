@@ -451,11 +451,29 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
 
     try {
       const pRes = await conn.execute(
-        `SELECT DISTINCT FY_PERIOD FROM VW_AC_HEADER_SEARCH WHERE COMPANY_CODE = :companyCode AND FY_PERIOD IS NOT NULL ORDER BY FY_PERIOD DESC`,
+        `SELECT DISTINCT FY_PERIOD
+         FROM (
+           SELECT FY_PERIOD FROM MS_FY_PERIOD
+           WHERE (TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode)) OR UPPER(TRIM(COMPANY_CODE)) = 'ALL' OR COMPANY_CODE IS NULL)
+             AND FY_PERIOD IS NOT NULL
+             AND UPPER(TRIM(FY_PERIOD)) NOT IN ('ALL', 'ALL PERIODS')
+           UNION
+           SELECT FY_PERIOD FROM VW_AC_HEADER_SEARCH
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode))
+             AND FY_PERIOD IS NOT NULL
+             AND UPPER(TRIM(FY_PERIOD)) NOT IN ('ALL', 'ALL PERIODS')
+           UNION
+           SELECT '226' AS FY_PERIOD FROM DUAL
+         )
+         ORDER BY FY_PERIOD DESC`,
+
         { companyCode },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
-      availableFyPeriods = (pRes.rows || []).map((r: any) => String(r.FY_PERIOD));
+      availableFyPeriods = (pRes.rows || []).map((r: any) => String(r.FY_PERIOD)).filter(Boolean);
+      if (!availableFyPeriods.length) {
+        availableFyPeriods = ['226', '225', '227'];
+      }
 
       try {
         const dRes = await conn.execute(

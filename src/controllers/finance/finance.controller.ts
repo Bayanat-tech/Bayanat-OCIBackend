@@ -698,7 +698,7 @@ export const getFinanceListData = async (
                CASE 
                  WHEN h.curr_code IS NOT NULL AND TRIM(UPPER(h.curr_code)) <> :base_curr THEN
                    NVL((
-                     SELECT MAX(NVL(invd.amount_origin, ABS(invd.amount)))
+                     SELECT MAX(NVL(ABS(invd.amount), invd.amount_origin))
                      FROM TR_AC_INVDETAIL invd
                      WHERE invd.company_code = h.company_code
                        AND invd.doc_type     = h.doc_type
@@ -722,7 +722,7 @@ export const getFinanceListData = async (
                    )))
                  ELSE
                    NVL((
-                     SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
+                     SELECT MAX(NVL(ABS(invd.lcur_amount), invd.amount_origin))
                      FROM TR_AC_INVDETAIL invd
                      WHERE invd.company_code = h.company_code
                        AND invd.doc_type     = h.doc_type
