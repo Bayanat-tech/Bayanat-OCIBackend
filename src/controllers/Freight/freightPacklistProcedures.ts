@@ -349,7 +349,7 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_rate: numberValue(pack.rate ?? pack.RATE),
         p_amount:
           (numberValue(pack.charge_wt ?? pack.CHARGE_WT ?? pack.CHARGEABLE_WT) ?? 0)
-          * (numberValue(pack.rate ?? pack.RATE) ?? 0),
+          * (numberValue(pack.rate ?? pack.RATE) ?? 0)  || numberValue(pack.amount ?? pack.AMOUNT),
         p_remarks: value(pack.remarks ?? pack.REMARKS),
         p_handling_info: value(pack.handling_info ?? pack.HANDLING_INFO),
         p_agent_name: value(pack.agent_name ?? pack.AGENT_NAME),
@@ -357,8 +357,10 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_agent_country: value(pack.agent_country ?? pack.AGENT_COUNTRY),
         p_executed_on: toDate(pack.executed_on ?? pack.EXECUTED_ON),
         p_executed_by: value(pack.executed_by ?? pack.EXECUTED_BY),
-        p_frt_chgs_master: numberValue(pack.frt_chgs_master ?? pack.FRT_CHGS_MASTER),
-        p_frt_chgs_house: numberValue(pack.frt_chgs_house ?? pack.FRT_CHGS_HOUSE),
+        // p_frt_chgs_master: numberValue(pack.frt_chgs_master ?? pack.FRT_CHGS_MASTER),
+        // p_frt_chgs_house: numberValue(pack.frt_chgs_house ?? pack.FRT_CHGS_HOUSE),
+        p_frt_chgs_master: value(pack.frt_chgs_master ?? pack.FRT_CHGS_MASTER),
+        p_frt_chgs_house: value(pack.frt_chgs_house ?? pack.FRT_CHGS_HOUSE),
         p_user_id: value(pack.user_id ?? pack.USER_ID ?? req.body.user_id ?? req.body.USER_ID),
         p_packlist_no_out: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
         p_seq_number_out: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 40 },
@@ -385,6 +387,26 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         }
       );
     }
+
+        await connection.execute(
+      `UPDATE TI_JOB
+          SET doc_ref = NVL(:p_doc_ref, doc_ref),
+              place_receipt = NVL(:p_place_receipt, place_receipt),
+              place_delivery = NVL(:p_place_delivery, place_delivery),
+              payableat = NVL(:p_payableat, payableat)
+        WHERE company_code = :p_company_code
+          AND prin_code = :p_prin_code
+          AND job_no = :p_job_no`,
+      {
+        p_doc_ref: value(pack.doc_ref ?? pack.DOC_REF),
+        p_place_receipt: value(pack.place_receipt ?? pack.PLACE_RECEIPT),
+        p_place_delivery: value(pack.place_delivery ?? pack.PLACE_DELIVERY),
+        p_payableat: value(pack.payableat ?? pack.PAYABLEAT),
+        p_company_code: value(pack.company_code ?? pack.COMPANY_CODE),
+        p_prin_code: value(pack.prin_code ?? pack.PRIN_CODE),
+        p_job_no: value(pack.job_no ?? pack.JOB_NO),
+      }
+    );
 
     if (hasContainerPayload) {
       const companyCode = value(pack.company_code ?? pack.COMPANY_CODE);
