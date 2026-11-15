@@ -421,6 +421,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
           const menuTreeQuery = `
             SELECT * FROM SEC_MODULE_DATA 
             WHERE SERIAL_NO IN (${placeholders})
+              AND NVL(IS_ACTIVE, 'Y') = 'Y'
             ORDER BY APP_CODE, NVL(POSITION, 999999), SERIAL_NO
           `;
 

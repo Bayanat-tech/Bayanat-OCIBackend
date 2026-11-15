@@ -111,8 +111,9 @@ function titleFor(docType: string): string {
     DN: "Debit Note",
     CN: "Credit Note",
     JV: "Journal Voucher",
-    RJV: "Reverse Journal Voucher",
+    RJV: "Provisional / Reverse Journal Voucher",
     EJV: "Year End JV",
+    PJV: "PDC Journal Voucher",
   };
   return map[docType] || `${docType} Document`;
 }
@@ -473,7 +474,7 @@ function renderFinanceBody(
   docType: string,
   printUser = ""
 ): string {
-  if (['JV','RJV','EJV'].includes(docType)) return renderJournalBody(data,docType);
+  if (['JV','RJV','EJV','PJV'].includes(docType)) return renderJournalBody(data,docType);
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
   const baseSign = -Number(details.find(d=>Number(d.serial_no)===9001)?.sign_ind || (['BP','CP','PI','PO','CN'].includes(docType)?-1:1));
@@ -772,7 +773,7 @@ function buildReportSheet(
   data: Awaited<ReturnType<typeof loadReportData>>,
   docType: string
 ) {
-  if (['JV','RJV','EJV'].includes(docType)) {
+  if (['JV','RJV','EJV','PJV'].includes(docType)) {
     const t=journalFigures(data);
     const rows:any[][]=[[data.company.company_name || '',titleFor(docType),data.header.doc_no,t.currency],[],['Line','Account','Description','Debit','Credit'],...data.details.map(d=>[d.serial_no,d.ac_code,d.ac_name || d.remarks,Number(d.sign_ind)>0?amount(d.lcur_amount):0,Number(d.sign_ind)<0?amount(d.lcur_amount):0]),['','','Total',t.dr,t.cr],['','','Difference',t.dr-t.cr],[],['GST line','Direction','Supplier state','Place of supply','HSN / SAC','CGST','SGST / UTGST','IGST'],...data.gstLines.map(g=>[g.serial_no,String(g.tax_direction)+' / '+String(g.treatment_label || g.tax_treatment || ''),g.supplier_state,g.place_of_supply,g.hsn_sac,g.cgst_amt,g.sgst_amt,g.igst_amt])];
     const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:10},{wch:18},{wch:40},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18}];return ws;
