@@ -240,17 +240,86 @@ export async function sendTrackerStageEmail(
       console.warn("[TrackerNotification] Alert CC lookup notice:", ccErr);
     }
 
+    let directSent = false;
+    if (subject && htmlContent && emailUser && emailPass) {
+      try {
+        await transporter.sendMail({
+          from: emailUser,
+          to: targetEmail,
+          cc: ccEmails.length > 0 ? ccEmails.join(", ") : undefined,
+          subject,
+          html: htmlContent,
+        });
+        directSent = true;
+        console.log(`[TrackerNotification] Direct email dispatched for Job ${payload.jobNo} (${payload.status}) to ${targetEmail}`);
+      } catch (directErr) {
+        console.warn(`[TrackerNotification] Direct SMTP send notice:`, directErr);
+      }
+    }
+
+    // 5. Queue into Bayanat ERP NOTIFICATION_EMAIL_INFO for scheduler audit & delivery
     if (subject && htmlContent) {
-      await transporter.sendMail({
-        from: emailUser,
-        to: targetEmail,
-        cc: ccEmails.length > 0 ? ccEmails.join(", ") : undefined,
-        subject,
-        html: htmlContent,
-      });
-      console.log(`[TrackerNotification] Notification email dispatched for Job ${payload.jobNo} (${payload.status}) to ${targetEmail}`);
+      try {
+        const ccStr = ccEmails.length > 0 ? ccEmails.join(", ") : null;
+        await connection.execute(
+          `INSERT INTO NOTIFICATION_EMAIL_INFO (
+             COMPANY_CODE, TXN_NO, EMAIL_FROM, EMAIL_TO, EMAIL_CC, MAIL_BODY, SUBJECT, EMAIL_SENT
+           ) VALUES (
+             :comp,
+             NVL((SELECT NVL(MAX(TXN_NO), 0) + 1 FROM NOTIFICATION_EMAIL_INFO WHERE COMPANY_CODE = :comp), 1),
+             :efrom,
+             :eto,
+             :ecc,
+             :body,
+             :subj,
+             :sent
+           )`,
+          {
+            comp: payload.companyCode,
+            efrom: emailUser || "freight-tracker@bayanat.om",
+            eto: targetEmail,
+            ecc: ccStr,
+            body: htmlContent,
+            subj: subject,
+            sent: directSent ? "Y" : "N",
+          },
+          { autoCommit: true }
+        );
+        console.log(`[TrackerNotification] Queued into NOTIFICATION_EMAIL_INFO for Job ${payload.jobNo} (sent=${directSent ? 'Y' : 'N'})`);
+      } catch (queueErr: any) {
+        console.warn("[TrackerNotification] NOTIFICATION_EMAIL_INFO queue warning:", queueErr?.message || queueErr);
+      }
+
+      // 6. Log in-app notification in TRK_NOTIFICATIONS
+      try {
+        const notifCategory = payload.status === "ON_HOLD" ? "HOLD_ALERT" : payload.status === "COMPLETED" ? "STAGE_ADVANCED" : "STAGE_UPDATE";
+        const notifDesc = payload.status === "ON_HOLD"
+          ? `Stage ${payload.taskType} placed on hold (${payload.holdReason || 'Pending clearance'}).`
+          : payload.status === "COMPLETED"
+          ? `Stage ${payload.taskType} completed by ${payload.actorId || 'User'}.`
+          : `Stage ${payload.taskType} resumed by ${payload.actorId || 'User'}.`;
+
+        await connection.execute(
+          `INSERT INTO TRK_NOTIFICATIONS (
+             NOTIFICATION_ID, COMPANY_CODE, PRIN_CODE, JOB_NO, RECIPIENT_ID, CHANNEL, CATEGORY, TITLE, MESSAGE, IS_READ, CREATED_DT
+           ) VALUES (
+             RAWTOHEX(SYS_GUID()), :comp, :prin, :job, 'ALL', 'IN_APP', :cat, :title, :msg, 'N', SYSDATE
+           )`,
+          {
+            comp: payload.companyCode,
+            prin: payload.prinCode,
+            job: payload.jobNo,
+            cat: notifCategory,
+            title: subject,
+            msg: notifDesc,
+          },
+          { autoCommit: true }
+        );
+      } catch (notifErr: any) {
+        console.warn("[TrackerNotification] TRK_NOTIFICATIONS insert notice:", notifErr?.message || notifErr);
+      }
     }
   } catch (emailErr: any) {
-    console.warn(`[TrackerNotification] Failed to send email for Job ${payload.jobNo}:`, emailErr?.message || emailErr);
+    console.warn(`[TrackerNotification] Failed to process notification for Job ${payload.jobNo}:`, emailErr?.message || emailErr);
   }
 }
