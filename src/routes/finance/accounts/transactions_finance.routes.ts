@@ -124,6 +124,8 @@ import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from
 import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
 import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../../controllers/ALMS/PurchaseRequestReports";
 import { getPrRegisterFormReportExcel, getPrRegisterFormReportHtml } from "../../../controllers/ALMS/PRFormReport";
+import { getCreditRequestReportExcel, getCreditRequestReportHtml } from "../../../controllers/ALMS/Creditrequestreports";
+import { getCRListingReportExcel, getCRListingReportHtml } from "../../../controllers/ALMS/CRListingReport";
 
 
 
@@ -235,6 +237,15 @@ router.post('/reports/PR_Register_Details/excel', getPrRegisterDetailReportExcel
 //Purchase request form Report Routes
 router.post('/reports/PR_FormReport/html', getPrRegisterFormReportHtml);
 router.post('/reports/PR_FormReport/excel', getPrRegisterFormReportExcel);
+
+
+//Credit Request Report Routes
+router.post('/reports/CreditRequestReport/html', getCreditRequestReportHtml);
+  router.post('/reports/CreditRequestReport/excel', getCreditRequestReportExcel);  
+
+  // Credit Request Listing Report Routes
+router.post('/reports/CRListingReport/html', getCRListingReportHtml);
+  router.post('/reports/CRListingReport/excel', getCRListingReportExcel);  
 
 
 
