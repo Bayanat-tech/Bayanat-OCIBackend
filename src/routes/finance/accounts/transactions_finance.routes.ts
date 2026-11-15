@@ -62,6 +62,18 @@ import { getBalanceSheetDrilldownAc, getBalanceSheetDrilldownAcExcel, getBalance
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
+import {
+  getSalesRegisterReport,
+  exportSalesRegisterExcel,
+  getPurchaseRegisterReport,
+  exportPurchaseRegisterExcel,
+  getDayBookReport,
+  exportDayBookExcel,
+  getTransactionListingReport,
+  exportTransactionListingExcel,
+  getLedgerBasicReport,
+  exportLedgerBasicExcel,
+} from "../../../controllers/finance/accounts/accounts-report/accountTransactionReports.controller";
 // import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 // Initialize Express router
 import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
@@ -182,7 +194,23 @@ router.post('/report/balancesheet/drilldown/detail/excel', getBalanceSheetDrilld
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
-router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport)
+router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
+
+// ── Accounts Transaction Reports (Sales Register, Purchase Register, Day Book, Transaction Listing, Ledger Basic) ──
+router.post('/reports/sales-register/html', getSalesRegisterReport);
+router.post('/reports/sales-register/excel', exportSalesRegisterExcel);
+
+router.post('/reports/purchase-register/html', getPurchaseRegisterReport);
+router.post('/reports/purchase-register/excel', exportPurchaseRegisterExcel);
+
+router.post('/reports/day-book/html', getDayBookReport);
+router.post('/reports/day-book/excel', exportDayBookExcel);
+
+router.post('/reports/transaction-listing/html', getTransactionListingReport);
+router.post('/reports/transaction-listing/excel', exportTransactionListingExcel);
+
+router.post('/reports/ledger-basic/html', getLedgerBasicReport);
+router.post('/reports/ledger-basic/excel', exportLedgerBasicExcel);
 
 
 // ── Profit & Loss ─────────────────────────────────────────────────────────────
