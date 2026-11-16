@@ -493,7 +493,7 @@ export const procBulkAccountEntry = async (
               DOC_NO: header.doc_no || '0',
               DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
               AC_CODE: header.ac_code,
-              AC_PAYEE: header.ac_payee,
+              AC_PAYEE: header.ac_payee ? String(header.ac_payee).slice(0, 400) : null,
               BANK_AC_CODE: header.bank_ac_code,
               REMARKS: header.remarks,
               CURR_CODE: header.curr_code,
@@ -533,7 +533,9 @@ export const procBulkAccountEntry = async (
                 ? new Date(header.ref_date || header.inv_date || header.invoice_date)
                 : null,
               REF_DOC_NO: header.ref_doc_no || null,
-              PARTY_NAME: header.party_name || header.ac_name || null,
+              PARTY_NAME: (header.party_name || header.ac_name)
+                ? String(header.party_name || header.ac_name).slice(0, 400)
+                : null,
               PARTY_ADDRESS: header.party_address || null,
               PARTY_PHONE: header.party_phone || null,
               PARTY_FAX: header.party_fax || null,
