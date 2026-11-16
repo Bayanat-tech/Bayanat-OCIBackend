@@ -81,8 +81,8 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 2): string {
   const n = Number(value);
-  if (!Number.isFinite(n) || n === 0) return "—";
-  return n.toLocaleString("en-US", {
+  const safe = Number.isFinite(n) ? n : 0;
+  return safe.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -169,7 +169,7 @@ async function loadAdjConfirmData(
   }
 }
 
-// ─── CSS — Adjust Confirmation theme (aligned with FREIGHT_COLORS) ───────────
+// ─── CSS ───────────────
 
 const ADJ_CONFIRM_EXTRA_CSS = `
   * {
@@ -177,118 +177,24 @@ const ADJ_CONFIRM_EXTRA_CSS = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #00378c;
-  }
-
-  .section-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin-bottom: 7px;
-    padding-bottom: 4px;
-    border-bottom: 1.5px solid #00378c;
-  }
-  .field-row {
-    display: flex;
-    align-items: baseline;
-    padding: 3.5px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
+  .doc-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0 12px 0; }
+  .doc-title-row h1 { margin: 0; font-size: 18px; font-weight: 800; color: #00378c; }
+  .section-label { font-size: 9.5px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 4px; border-bottom: 1.5px solid #00378c; }
+  .field-row { display: flex; align-items: baseline; padding: 3.5px 0; border-bottom: 1px solid #f1f5f9; }
   .field-row:last-child { border-bottom: none; }
-  .f-label {
-    font-size: 10px;
-    color: #64748b;
-    min-width: 128px;
-    padding-right: 8px;
-    text-align: right;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .f-value {
-    font-size: 11px;
-    font-weight: 600;
-    color: #0f172a;
-  }
+  .f-label { font-size: 10px; color: #64748b; min-width: 128px; padding-right: 8px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .f-value { font-size: 11px; font-weight: 600; color: #0f172a; }
   .nil { font-weight: 400; color: #94a3b8; }
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 32px;
-    margin-bottom: 14px;
-  }
-
-  .status-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-    padding: 8px 14px;
-    border-radius: 4px;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-  }
-  .status-banner.pending {
-    background: #fef2f2;
-    border-color: #fecaca;
-  }
-  .status-banner .sb-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: #166534;
-  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
+  .status-banner { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding: 8px 14px; border-radius: 4px; background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .status-banner.pending { background: #fef2f2; border-color: #fecaca; }
+  .status-banner .sb-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #166534; }
   .status-banner.pending .sb-label { color: #991b1b; }
-  .status-banner .sb-date {
-    font-size: 10.5px;
-    color: #4b5563;
-  }
-
-  .items-title {
-    font-size: 10px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin: 4px 0 8px;
-    padding-bottom: 4px;
-    border-bottom: 2px solid #00378c;
-  }
-
-  /* Dark navy table header — matches Stock Summary */
-  table.adj-items-table thead th {
-    background: #00378c !important;
-    color: #ffffff !important;
-    padding: 7px 6px;
-    font-size: 9px;
-    font-weight: 700;
-    text-align: left;
-    border-top: 1px solid #002a6b;
-    border-bottom: 1px solid #002a6b;
-    white-space: nowrap;
-    box-shadow: inset 0 0 0 1000px #00378c;
-  }
-  table.adj-items-table thead th.c-center,
-  table.adj-items-table thead th.c-num { text-align: center; }
-  table.adj-items-table tbody td {
-    padding: 6px;
-    font-size: 10.5px;
-    border: 1px solid #e2e8f0;
-    vertical-align: top;
-  }
+  .status-banner .sb-date { font-size: 10.5px; color: #4b5563; }
+  .items-title { font-size: 10px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #00378c; }
+  table.adj-items-table thead th { background: #00378c !important; color: #ffffff !important; padding: 7px 6px; font-size: 9px; font-weight: 700; text-align: left; border-top: 1px solid #002a6b; border-bottom: 1px solid #002a6b; white-space: nowrap; box-shadow: inset 0 0 0 1000px #00378c; }
+  table.adj-items-table thead th.c-center, table.adj-items-table thead th.c-num { text-align: center; }
+  table.adj-items-table tbody td { padding: 6px; font-size: 10.5px; border: 1px solid #e2e8f0; vertical-align: top; }
   table.adj-items-table .item-row td { background: #fff; }
   .c-num { text-align: center; color: #64748b; width: 26px; }
   .c-center { text-align: center; }
@@ -297,83 +203,19 @@ const ADJ_CONFIRM_EXTRA_CSS = `
   .prod-name { display: block; font-size: 9.5px; color: #64748b; margin-top: 1px; }
   .c-qty { text-align: right; white-space: nowrap; }
   .uom { font-size: 9px; color: #94a3b8; }
-  .adj-type-pill {
-    display: inline-block;
-    padding: 1.5px 7px;
-    border-radius: 10px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .status-pill {
-    display: inline-block;
-    padding: 1.5px 8px;
-    border-radius: 10px;
-    background: #f1f5f9;
-    color: #64748b;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .status-pill.confirmed {
-    background: #f0fdf4;
-    color: #166534;
-  }
-  table.adj-items-table .sub-row td {
-    background: #f8fafc;
-    border-top: none;
-    padding: 4px 6px 6px;
-  }
-  .sub-item {
-    display: inline-block;
-    font-size: 9.5px;
-    color: #334155;
-    margin-right: 26px;
-  }
-  .sub-label {
-    display: block;
-    font-size: 8.5px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-  }
-
+  .adj-type-pill { display: inline-block; padding: 1.5px 7px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; font-size: 9px; font-weight: 700; }
+  .status-pill { display: inline-block; padding: 1.5px 8px; border-radius: 10px; background: #f1f5f9; color: #64748b; font-size: 9px; font-weight: 700; }
+  .status-pill.confirmed { background: #f0fdf4; color: #166534; }
+  table.adj-items-table .sub-row td { background: #f8fafc; border-top: none; padding: 4px 6px 6px; }
+  .sub-item { display: inline-block; font-size: 9.5px; color: #334155; margin-right: 26px; }
+  .sub-label { display: block; font-size: 8.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
   .remarks-box { margin-top: 14px; }
-  .remarks-text {
-    font-size: 10.5px;
-    color: #334155;
-    padding: 8px 0 0;
-    min-height: 18px;
-  }
-
-  .sign-block {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0 24px;
-    margin-top: 28px;
-    page-break-inside: avoid;
-  }
-  .sign-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: 22px;
-  }
-  .sign-sub {
-    font-size: 8.5px;
-    color: #94a3b8;
-    margin: 14px 0 2px;
-  }
-  .sign-line {
-    border-bottom: 1px solid #94a3b8;
-    height: 1px;
-  }
-
-  @media print {
-    .sub-row, .item-row { page-break-inside: avoid; }
-  }
+  .remarks-text { font-size: 10.5px; color: #334155; padding: 8px 0 0; min-height: 18px; }
+  .sign-block { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 24px; margin-top: 28px; page-break-inside: avoid; }
+  .sign-label { font-size: 9.5px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 22px; }
+  .sign-sub { font-size: 8.5px; color: #94a3b8; margin: 14px 0 2px; }
+  .sign-line { border-bottom: 1px solid #94a3b8; height: 1px; }
+  @media print { .sub-row, .item-row { page-break-inside: avoid; } }
 `;
 
 // ─── HTML Body Renderer ───────────────────────────────────────────────────────
@@ -390,7 +232,7 @@ function renderAdjConfirmBody(
     </div>`;
 
   const qtyCell = (uom: unknown, qty: unknown) =>
-    uom || Number(qty) ? `${escapeHtml(numFmt(qty, 2))} <span class="uom">${escapeHtml(uom)}</span>` : "—";
+    `${escapeHtml(numFmt(qty, 2))} <span class="uom">${escapeHtml(uom)}</span>`;
 
   const detailRows = details.map((d, i) => {
     const confirmed = isY(d.detail_confirmed);
@@ -499,7 +341,7 @@ function renderAdjConfirmBody(
   `;
 }
 
-// ─── Excel builder (navy theme — matches Stock Summary) ───────────────────────
+// ─── Excel builder ────────────────────────────────────────────────────────────
 
 const STYLE_ID = {
   default:        0,
@@ -514,7 +356,6 @@ const STYLE_ID = {
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
-
 interface XlCell { v: unknown; s: number }
 
 function xc(v: unknown, style: StyleKey): XlCell {
@@ -522,16 +363,16 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
-  const NCOLS = 8;
+  const NCOLS = 10;
   const skip  = null;
 
   type Row = (XlCell | null)[];
   const rows: Row[] = [];
 
-  rows.push([xc(`WMS Adjustment Confirmation Report — Adj No ${text(header.adj_no)}`, "header"), skip, skip, skip, skip, skip, skip, skip]);
+  rows.push([xc(`WMS Adjustment Confirmation Report — Adj No ${text(header.adj_no)}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  rows.push([xc("ADJUSTMENT INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip, skip]);
+  rows.push([xc("ADJUSTMENT INFORMATION", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
 
   const headerConfirmed = isY(header.header_confirmed);
   const leftInfo: [string, unknown][] = [
@@ -547,22 +388,25 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
     const [ll, lv] = leftInfo[i]  ?? ["", ""];
     const [rl, rv] = rightInfo[i] ?? ["", ""];
-    rows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip, skip]);
+    rows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip, skip, skip, skip]);
   }
 
-  rows.push([xc("Remarks", "label"), xc(header.remarks, "value"), skip, skip, skip, skip, skip, skip]);
+  rows.push([xc("Remarks", "label"), xc(header.remarks, "value"), ...Array(NCOLS - 2).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  rows.push([xc("ADJUSTMENT ITEMS", "sectionTitle"), skip, skip, skip, skip, skip, skip, skip]);
+  rows.push([xc("ADJUSTMENT ITEMS", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push([
     xc("No.", "tableHeader"), xc("Site", "tableHeader"), xc("Location", "tableHeader"),
     xc("Product", "tableHeader"), xc("Job No", "tableHeader"), xc("Lot No", "tableHeader"),
     xc("Doc Ref", "tableHeader"), xc("Adj Type", "tableHeader"),
+    xc("Qty P.UOM", "tableHeader"), xc("Qty L.UOM", "tableHeader"),
+    xc("Status", "tableHeader"),
   ]);
 
   details.forEach((d, i) => {
     const confirmed = isY(d.detail_confirmed);
     const cellStyle: StyleKey = confirmed ? "cellConfirmed" : "cellPending";
+    
     rows.push([
       xc(i + 1, cellStyle),
       xc(d.site_code, cellStyle),
@@ -572,20 +416,19 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
       xc(d.lot_no, cellStyle),
       xc(d.doc_ref, cellStyle),
       xc(d.adj_type, cellStyle),
+      xc(`${numFmt(d.qty_puom)} ${text(d.p_uom)}`, cellStyle),
+      xc(`${numFmt(d.qty_luom)} ${text(d.l_uom)}`, cellStyle),
+      xc(confirmed ? "Confirmed" : "Pending", cellStyle),
     ]);
+    
     rows.push([
-      xc(`Qty P.UOM: ${numFmt(d.qty_puom)} ${text(d.p_uom)}`, "subInfo"),
-      xc(`Qty L.UOM: ${numFmt(d.qty_luom)} ${text(d.l_uom)}`, "subInfo"),
-      skip,
       xc(`Origin: ${text(d.country_name) || "—"}`, "subInfo"),
-      skip,
       xc(`Manufacturer: ${text(d.manu_name) || "—"}`, "subInfo"),
-      skip,
-      xc(confirmed ? "Confirmed" : "Pending", "subInfo"),
+      skip, skip, skip, skip, skip, skip, skip, skip,
     ]);
   });
 
-  const COL_WIDTHS = [10, 12, 14, 30, 12, 12, 14, 12];
+  const COL_WIDTHS = [5, 7, 12, 25, 12, 12, 14, 10, 12, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
@@ -643,7 +486,6 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // Navy theme styles matching Stock Summary
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">

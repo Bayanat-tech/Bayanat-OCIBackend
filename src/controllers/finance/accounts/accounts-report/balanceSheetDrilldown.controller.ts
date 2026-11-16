@@ -241,6 +241,12 @@ const DRILLDOWN_EXTRA_CSS = `
   .balance-pos { color: #0f172a; }
   .balance-neg { color: #991b1b; }
 
+  .doc-link-wrap { display: inline-flex; align-items: center; gap: 4px; }
+  .doc-open-link { color: #00378c; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .doc-open-link:hover { color: #0b4ca1; }
+  .doc-screen-btn { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 3px; background: #e2e8f0; border: 1px solid #cbd5e1; color: #1e293b; font-size: 10px; line-height: 1; font-weight: 700; cursor: pointer; padding: 0; transition: all 0.15s ease; }
+  .doc-screen-btn:hover { background: #00378c; color: #ffffff; border-color: #00378c; }
+
   tr.total-row td {
     background: #eff6ff !important;
     border-top: 2px solid #0b4ca1 !important;
@@ -736,11 +742,20 @@ function renderDetailBody(rows: ReportRow[], title: string): string {
       acCredit += credit;
       const balClass = runBalance < 0 ? "balance-neg" : "balance-pos";
 
+      const docTypeStr = escapeHtml(r.doc_type);
+      const docNoStr = escapeHtml(String(r.doc_no ?? ""));
+      const docCellHtml = docNoStr
+        ? `<span class="doc-link-wrap">
+            <a href="javascript:void(0)" class="doc-open-link" title="Preview ${docTypeStr} ${docNoStr} (Audit View)" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">${docNoStr}</a>
+            <button type="button" class="doc-screen-btn" title="Open directly in ${docTypeStr} operational screen" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT_SCREEN', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">↗</button>
+          </span>`
+        : "-";
+
       bodyHtml += `
         <tr class="item-row">
           <td class="center mono">${escapeHtml(r.ac_code)}</td>
-          <td class="center">${escapeHtml(r.doc_type)}</td>
-          <td class="center">${escapeHtml(String(r.doc_no ?? ""))}</td>
+          <td class="center">${docTypeStr}</td>
+          <td class="center">${docCellHtml}</td>
           <td class="center">${escapeHtml(dateText(r.doc_date))}</td>
           <td class="center">${escapeHtml(String(r.cheque_no ?? ""))}</td>
           <td class="center">${escapeHtml(dateText(r.cheque_date))}</td>

@@ -87,22 +87,20 @@ function escapeXml(value: unknown): string {
     .replace(/'/g, "&apos;");
 }
 
-function numFmt(value: unknown, decimals = 2): string {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n === 0) return "—";
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
 function qtyDisplay(value: unknown): string {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "0";
+  const cleanedStr = String(value ?? "").replace(/[^0-9.]/g, "").trim();
+  if (cleanedStr === "") return "0.00";
+  const n = Number(cleanedStr);
+  if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+// Strip every hyphen / dash variant from a UOM value
+function uomDisplay(value: unknown): string {
+  return text(value).replace(/[-–—]/g, "").trim();
 }
 
 function isConfirmed(value: unknown): boolean {
@@ -218,10 +216,7 @@ async function loadAdjustmentData(
   }
 }
 
-// ─── CSS — Stock Adjustment theme (aligned with FREIGHT_COLORS) ───────────────
-//
-//   navy     = #00378c  (title, section labels, table header, item title)
-//   navyDeep = #002a6b  (table header borders)
+// ─── CSS ───────────────
 
 const STOCK_ADJUSTMENT_EXTRA_CSS = `
   * {
@@ -229,118 +224,24 @@ const STOCK_ADJUSTMENT_EXTRA_CSS = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #00378c;
-  }
-
-  .section-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin-bottom: 7px;
-    padding-bottom: 4px;
-    border-bottom: 1.5px solid #00378c;
-  }
-  .field-row {
-    display: flex;
-    align-items: baseline;
-    padding: 3.5px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
+  .doc-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0 12px 0; }
+  .doc-title-row h1 { margin: 0; font-size: 18px; font-weight: 800; color: #00378c; }
+  .section-label { font-size: 9.5px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 4px; border-bottom: 1.5px solid #00378c; }
+  .field-row { display: flex; align-items: baseline; padding: 3.5px 0; border-bottom: 1px solid #f1f5f9; }
   .field-row:last-child { border-bottom: none; }
-  .f-label {
-    font-size: 10px;
-    color: #64748b;
-    min-width: 128px;
-    padding-right: 8px;
-    text-align: right;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .f-value {
-    font-size: 11px;
-    font-weight: 600;
-    color: #0f172a;
-  }
+  .f-label { font-size: 10px; color: #64748b; min-width: 128px; padding-right: 8px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .f-value { font-size: 11px; font-weight: 600; color: #0f172a; }
   .nil { font-weight: 400; color: #94a3b8; }
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 32px;
-    margin-bottom: 14px;
-  }
-
-  .status-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-    padding: 8px 14px;
-    border-radius: 4px;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-  }
-  .status-banner.pending {
-    background: #fef2f2;
-    border-color: #fecaca;
-  }
-  .status-banner .sb-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: #166534;
-  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
+  .status-banner { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding: 8px 14px; border-radius: 4px; background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .status-banner.pending { background: #fef2f2; border-color: #fecaca; }
+  .status-banner .sb-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #166534; }
   .status-banner.pending .sb-label { color: #991b1b; }
-  .status-banner .sb-date {
-    font-size: 10.5px;
-    color: #4b5563;
-  }
-
-  .items-title {
-    font-size: 10px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    margin: 4px 0 8px;
-    padding-bottom: 4px;
-    border-bottom: 2px solid #00378c;
-  }
-
-  /* Dark navy table header — matches Stock Summary */
-  table.adj-items-table thead th {
-    background: #00378c !important;
-    color: #ffffff !important;
-    padding: 7px 6px;
-    font-size: 9px;
-    font-weight: 700;
-    text-align: left;
-    border-top: 1px solid #002a6b;
-    border-bottom: 1px solid #002a6b;
-    white-space: nowrap;
-    box-shadow: inset 0 0 0 1000px #00378c;
-  }
-  table.adj-items-table thead th.c-center,
-  table.adj-items-table thead th.c-num { text-align: center; }
-  table.adj-items-table tbody td {
-    padding: 6px;
-    font-size: 10.5px;
-    border: 1px solid #e2e8f0;
-    vertical-align: top;
-  }
+  .status-banner .sb-date { font-size: 10.5px; color: #4b5563; }
+  .items-title { font-size: 10px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #00378c; }
+  table.adj-items-table thead th { background: #00378c !important; color: #ffffff !important; padding: 7px 6px; font-size: 9px; font-weight: 700; text-align: left; border-top: 1px solid #002a6b; border-bottom: 1px solid #002a6b; white-space: nowrap; box-shadow: inset 0 0 0 1000px #00378c; }
+  table.adj-items-table thead th.c-center, table.adj-items-table thead th.c-num { text-align: center; }
+  table.adj-items-table tbody td { padding: 6px; font-size: 10.5px; border: 1px solid #e2e8f0; vertical-align: top; }
   table.adj-items-table .item-row td { background: #fff; }
   .c-num { text-align: center; color: #64748b; width: 26px; }
   .c-center { text-align: center; }
@@ -348,83 +249,19 @@ const STOCK_ADJUSTMENT_EXTRA_CSS = `
   .c-prod { min-width: 120px; }
   .prod-code { display: block; font-weight: 700; color: #0f172a; }
   .prod-name { display: block; font-size: 9.5px; color: #64748b; margin-top: 1px; }
-  .adj-type-pill {
-    display: inline-block;
-    padding: 1.5px 7px;
-    border-radius: 10px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .status-pill {
-    display: inline-block;
-    padding: 1.5px 8px;
-    border-radius: 10px;
-    background: #f1f5f9;
-    color: #64748b;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .status-pill.confirmed {
-    background: #f0fdf4;
-    color: #166534;
-  }
-  table.adj-items-table .sub-row td {
-    background: #f8fafc;
-    border-top: none;
-    padding: 4px 6px 6px;
-  }
-  .sub-item {
-    display: inline-block;
-    font-size: 9.5px;
-    color: #334155;
-    margin-right: 26px;
-  }
-  .sub-label {
-    display: block;
-    font-size: 8.5px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-  }
-
+  .adj-type-pill { display: inline-block; padding: 1.5px 7px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; font-size: 9px; font-weight: 700; }
+  .status-pill { display: inline-block; padding: 1.5px 8px; border-radius: 10px; background: #f1f5f9; color: #64748b; font-size: 9px; font-weight: 700; }
+  .status-pill.confirmed { background: #f0fdf4; color: #166534; }
+  table.adj-items-table .sub-row td { background: #f8fafc; border-top: none; padding: 4px 6px 6px; }
+  .sub-item { display: inline-block; font-size: 9.5px; color: #334155; margin-right: 26px; }
+  .sub-label { display: block; font-size: 8.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
   .remarks-box { margin-top: 14px; }
-  .remarks-text {
-    font-size: 10.5px;
-    color: #334155;
-    padding: 8px 0 0;
-    min-height: 18px;
-  }
-
-  .sign-block {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0 24px;
-    margin-top: 28px;
-    page-break-inside: avoid;
-  }
-  .sign-label {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #00378c;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: 22px;
-  }
-  .sign-sub {
-    font-size: 8.5px;
-    color: #94a3b8;
-    margin: 14px 0 2px;
-  }
-  .sign-line {
-    border-bottom: 1px solid #94a3b8;
-    height: 1px;
-  }
-
-  @media print {
-    .sub-row, .item-row { page-break-inside: avoid; }
-  }
+  .remarks-text { font-size: 10.5px; color: #334155; padding: 8px 0 0; min-height: 18px; }
+  .sign-block { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 24px; margin-top: 28px; page-break-inside: avoid; }
+  .sign-label { font-size: 9.5px; font-weight: 700; color: #00378c; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 22px; }
+  .sign-sub { font-size: 8.5px; color: #94a3b8; margin: 14px 0 2px; }
+  .sign-line { border-bottom: 1px solid #94a3b8; height: 1px; }
+  @media print { .sub-row, .item-row { page-break-inside: avoid; } }
 `;
 
 // ─── HTML Body Renderer ───────────────────────────────────────────────────────
@@ -449,7 +286,9 @@ function renderAdjustmentBody(
   const detailRows = rows.map((d, i) => {
     const confirmed = isConfirmed(d.detail_confirmed);
     const statusText = detailStatus(d.detail_confirmed);
-    const statusClass = confirmed ? "confirmed" : statusText ? "not-confirmed" : "empty";
+
+    const pUom = uomDisplay(d.p_uom);
+    const lUom = uomDisplay(d.l_uom) || pUom;
 
     return `
     <tr class="item-row">
@@ -464,8 +303,8 @@ function renderAdjustmentBody(
       <td>${escapeHtml(text(d.lot_no).trim())}</td>
       <td>${escapeHtml(text(d.doc_ref).trim())}</td>
       <td class="c-center"><span class="adj-type-pill">${escapeHtml(text(d.adj_type).trim())}</span></td>
-      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_puom))}</td>
-      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_luom))}</td>
+      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_puom))} ${escapeHtml(pUom)}</td>
+      <td class="c-right">${escapeHtml(qtyDisplay(d.qty_luom))} ${escapeHtml(lUom)}</td>
       <td class="c-center">
         <span class="status-pill${confirmed ? " confirmed" : ""}">${escapeHtml(statusText)}</span>
       </td>
@@ -552,7 +391,7 @@ function renderAdjustmentBody(
   `;
 }
 
-// ─── Excel builder (navy theme — matches Stock Summary) ───────────────────────
+// ─── Excel builder ────────────────────────────────────────────────────────────
 
 const STYLE_ID = {
   default:        0,
@@ -569,7 +408,6 @@ const STYLE_ID = {
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
-
 interface XlCell { v: unknown; s: number }
 
 function xc(v: unknown, style: StyleKey): XlCell {
@@ -589,11 +427,9 @@ function buildExcelBuffer(
   type Row = (XlCell | null)[];
   const rows: Row[] = [];
 
-  // Title
   rows.push([xc(`Stock Adjustment Report — Adj No ${text(r.adj_no) || adjNo}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // Adjustment Information section
   rows.push([xc("ADJUSTMENT INFORMATION", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
 
   const headerConfirmed = isConfirmed(r.header_confirmed);
@@ -620,10 +456,8 @@ function buildExcelBuffer(
   rows.push([xc("Remarks", "label"), xc(text(r.remarks).trim(), "value"), ...Array(NCOLS - 2).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // Items section
   rows.push([xc("ADJUSTMENT ITEMS", "sectionTitle"), ...Array(NCOLS - 1).fill(skip)]);
 
-  // Table header - two rows
   rows.push([
     xc("No.", "tableHeader"),
     xc("Site", "tableHeader"),
@@ -639,10 +473,10 @@ function buildExcelBuffer(
     xc("Qty2", "tableHeader"),
   ]);
 
-  // Data rows
   for (const d of reportRows) {
     const confirmed = isConfirmed(d.detail_confirmed);
     const cellStyle: StyleKey = confirmed ? "cellConfirmed" : "cellPending";
+    
     rows.push([
       xc(parseInt(text(d.adj_serialno), 10) || "", cellStyle),
       xc(text(d.site_code).trim(), cellStyle),
@@ -657,7 +491,7 @@ function buildExcelBuffer(
       xc(text(d.l_uom).trim(), cellStyle),
       xc(Number(d.qty_luom) || 0, cellStyle),
     ]);
-    // Sub-row: product name + status
+    
     rows.push([
       xc("", "subInfo"),
       xc("", "subInfo"),
@@ -667,7 +501,7 @@ function buildExcelBuffer(
       xc(detailStatus(d.detail_confirmed), "subInfo"),
       skip, skip, skip, skip, skip, skip,
     ]);
-    // Country / Manufacturer
+    
     rows.push([
       xc("", "subInfo"),
       xc("Country of Origin", "subInfo"),
