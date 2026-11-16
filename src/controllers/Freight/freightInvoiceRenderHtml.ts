@@ -720,7 +720,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       letter-spacing: 0.5px;
     }
 
-    /* SUMMARY CARDS: Increased width for Customer Details, decreased for Document Details */
+    /* SUMMARY CARDS - WIDER CUSTOMER DETAILS (57.5%) & COMPACT DOCUMENT DETAILS (42.5%) */
     .summary {
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
@@ -995,7 +995,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       justify-content: flex-end;
     }
     .sign-space {
-      height: 44px;
+      height: 38px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1006,7 +1006,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       border-radius: 4px;
       background: rgba(248, 250, 252, 0.7);
       margin-bottom: 2px;
-      height: 42px;
+      height: 38px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1278,7 +1278,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       </div>
     </div>
 
-    <!-- DUAL SIGNATURES WITH SPACE FOR CUSTOMER AND AUTHORISED SIGNATURE + STAMP -->
+    <!-- DUAL SIGNATURES WITH DEDICATED SPACE FOR CUSTOMER AND AUTHORISED SIGNATURE + STAMP -->
     <div class="sign">
       <div class="sign-block">
         <div class="sign-space"></div>
@@ -1286,7 +1286,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       </div>
       <div class="sign-block">
         <div class="sign-space stamp-box">
-          ${meta.stampDataUrl ? `<img src="${esc(meta.stampDataUrl)}" style="max-height: 38px; max-width: 120px; object-fit: contain;" alt="Stamp" />` : `Company Stamp &amp; Signature`}
+          ${meta.stampDataUrl ? `<img src="${esc(meta.stampDataUrl)}" style="max-height: 34px; max-width: 120px; object-fit: contain;" alt="Stamp" />` : `Authorised Signature &amp; Company Stamp`}
         </div>
         <div class="line">Authorised Signature ( &amp; Company Stamp )</div>
       </div>
