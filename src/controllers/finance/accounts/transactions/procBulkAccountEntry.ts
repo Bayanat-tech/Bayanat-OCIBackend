@@ -406,8 +406,8 @@ export const procBulkAccountEntry = async (
              WHERE d.company_code = h.company_code
                AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
                AND (
-                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
-                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
+                 (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN', 'EJV'))
+                 OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN', 'EJV'))
                  OR (h.doc_type NOT IN ('PI', 'PO', 'SI', 'SV', 'IV'))
                )
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
@@ -628,6 +628,7 @@ export const procBulkAccountEntry = async (
             EX_RATE: d.ex_rate,
             EX_RATE_ORIGIN: d.ex_rate_origin,
             CURR_CODE_ORIGIN: d.curr_code_origin,
+            AMOUNT_ORIGIN: Number(d.amount_origin ?? d.amount ?? 0),
             INDICATOR_ORIGIN: oneChar(
               d.indicator_origin,
               (header.doc_type === 'SI' || header.doc_type === 'PI' || header.doc_type === 'SV' || header.doc_type === 'PO') ? 'Y' : 'N'

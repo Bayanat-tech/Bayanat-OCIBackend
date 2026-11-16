@@ -36,10 +36,18 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
     try {
       if (rows.length > 0 && companyCode) {
         const piSummary = await connection.execute(
-          `SELECT JOB_NO, COUNT(*) AS PI_LINE_COUNT, SUM(AMOUNT) AS PI_BOOKED_AMOUNT, MAX(DOC_NO) AS LAST_PI_NO
-           FROM TR_AC_DETAIL
-           WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'PI' AND JOB_NO IS NOT NULL
-           GROUP BY JOB_NO`,
+          `SELECT d.JOB_NO,
+                  COUNT(*) AS PI_LINE_COUNT,
+                  SUM(NVL(d.LCUR_AMOUNT, d.AMOUNT)) AS PI_BOOKED_AMOUNT,
+                  MAX(d.DOC_NO) AS LAST_PI_NO,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%AGENT%' OR UPPER(d.REMARKS) LIKE '%BROKER%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS AGENT_BOOKED_AMOUNT,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%OTHER%' OR UPPER(d.REMARKS) LIKE '%ACTUAL%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS OTHER_BOOKED_AMOUNT,
+                  SUM(CASE WHEN UPPER(d.REMARKS) LIKE '%TRANS%' THEN NVL(d.LCUR_AMOUNT, d.AMOUNT) ELSE 0 END) AS TRANS_BOOKED_AMOUNT
+           FROM TR_AC_DETAIL d
+           JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND d.JOB_NO IS NOT NULL
+             AND NVL(h.CANCELED, 'N') <> 'Y'
+           GROUP BY d.JOB_NO`,
           { cc: companyCode },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
@@ -53,10 +61,34 @@ export const frtJobActivityJobList = async (req: Request, res: Response): Promis
           const piInfo = piMap.get(jNo);
           const expense = Number(job.expense || job.EXPENSE || 0);
           const bookedAmt = Number(piInfo?.PI_BOOKED_AMOUNT || 0);
+          const agentBooked = Number(piInfo?.AGENT_BOOKED_AMOUNT || 0);
+          const otherBooked = Number(piInfo?.OTHER_BOOKED_AMOUNT || 0);
+          const transBooked = Number(piInfo?.TRANS_BOOKED_AMOUNT || 0);
+
           job.pi_booked_amount = bookedAmt;
           job.pi_line_count = Number(piInfo?.PI_LINE_COUNT || 0);
           job.last_pi_no = piInfo?.LAST_PI_NO || null;
-          job.is_fully_booked = expense > 0 && bookedAmt >= expense;
+          job.agent_booked_amount = agentBooked;
+          job.other_booked_amount = otherBooked;
+          job.trans_booked_amount = transBooked;
+
+          const hasOther = Number(job.has_other_cost || 0) > 0;
+          const hasAgent = Number(job.has_agent_cost || 0) > 0;
+          const hasTrans = Number(job.has_trans_cost || 0) > 0;
+
+          const otherRemaining = hasOther && otherBooked < 0.005;
+          const agentRemaining = hasAgent && agentBooked < 0.005;
+          const transRemaining = hasTrans && transBooked < 0.005;
+
+          // A job is fully booked only if total booked amount covers the total expense
+          // AND no individual expense component remains completely unbooked
+          const totalCovered = expense > 0 && bookedAmt >= (expense - 0.005);
+          job.is_fully_booked = totalCovered && !otherRemaining && !agentRemaining && !transRemaining;
+          job.has_unbooked_other = otherRemaining;
+          job.has_unbooked_agent = agentRemaining;
+          job.has_unbooked_trans = transRemaining;
+          job.is_broker_booked = agentBooked > 0;
+          job.is_other_cost_booked = otherBooked > 0;
         });
       }
     } catch (piErr) {
@@ -120,10 +152,11 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
     try {
       if (companyCode && jobNo) {
         const piRes = await connection.execute(
-          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO
+          `SELECT d.DOC_NO, d.DOC_DATE, d.AC_CODE, d.AMOUNT, d.LCUR_AMOUNT, d.REMARKS, d.JOB_NO, h.REF_NO AS DOC_REFNO, h.CANCELED
            FROM TR_AC_DETAIL d
-           LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
-           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')`,
+           JOIN TR_AC_HEADER h ON h.COMPANY_CODE = d.COMPANY_CODE AND h.DOC_TYPE = d.DOC_TYPE AND h.DOC_NO = d.DOC_NO
+           WHERE d.COMPANY_CODE = :cc AND d.DOC_TYPE = 'PI' AND (d.JOB_NO = :job_no OR d.REMARKS LIKE '%' || :job_no || '%')
+             AND NVL(h.CANCELED, 'N') <> 'Y'`,
           { cc: companyCode, job_no: jobNo },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
@@ -133,6 +166,7 @@ export const frtJobActivityGet = async (req: Request, res: Response): Promise<vo
           `SELECT DISTINCT h.DOC_TYPE, h.DOC_NO, h.DOC_DATE, h.REF_NO, h.JOB_NO, h.PARTY_NAME
            FROM TR_AC_HEADER h
            WHERE h.COMPANY_CODE = :cc AND h.DOC_TYPE IN ('IV', 'SI')
+             AND NVL(h.CANCELED, 'N') <> 'Y'
              AND (
                TRIM(h.JOB_NO) = :job_no
                OR TRIM(h.REF_NO) = :job_no

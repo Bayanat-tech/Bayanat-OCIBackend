@@ -403,6 +403,9 @@ async function renderHtml(
       var CODE_FIELD    = ${escapeJs(CODE_FIELD_MAP[config.drillLevel!] ?? config.codeField)};
 
       document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
+        tr.style.cursor = "pointer";
+        tr.addEventListener("mouseenter", function () { tr.style.background = "#eff6ff"; });
+        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var code = tr.getAttribute("data-code");
           window.parent.postMessage({

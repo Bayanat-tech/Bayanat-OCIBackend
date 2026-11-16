@@ -307,7 +307,17 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const clientTel = first.prin_telno1 || "";
   const clientFax = first.prin_faxno1 || "";
   const clientTaxRegNo = first.prin_trn_no || meta.clientVatNo || "";
-  const remarks = first.onl_remrks || first.remarks || "";
+  const candidateRemarks = [
+    first.onl_remrks,
+    first.remarks,
+    getProp(shipment, "pack_remarks"),
+    getProp(shipment, "job_remarks"),
+    getProp(shipment, "remarks"),
+  ];
+  const distinctRemarks = candidateRemarks
+    .map((s) => (s == null ? "" : String(s).trim()))
+    .filter((s, idx, arr) => s.length > 0 && arr.indexOf(s) === idx);
+  const remarks = distinctRemarks.join("\n");
 
   // Shipment / Job Mode Header
   const rawMode = String(getProp(shipment, "transport_mode") || first.transport_mode || "S").toUpperCase();
@@ -948,7 +958,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         </div>
         <div class="underlined-field">e-Mail : ${esc(clientEmail)}</div>
         <div class="underlined-field">Tax Reg No. : ${esc(clientTaxRegNo)}</div>
-        <div class="underlined-field">Remarks : ${esc(remarks)}</div>
+        <div class="underlined-field" style="white-space: pre-line;">Remarks : ${esc(remarks)}</div>
       </div>
 
       <!-- RIGHT: METADATA TABLE -->
@@ -1037,7 +1047,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
           <td colspan="2"><strong>HBL No:</strong> &nbsp;${esc(hblNo)}</td>
         </tr>
         <tr>
-          <td colspan="4"><strong>Remarks:</strong> &nbsp;${esc(remarks)}</td>
+          <td colspan="4" style="white-space: pre-line;"><strong>Remarks:</strong> &nbsp;${esc(remarks)}</td>
         </tr>
       </table>
     </div>

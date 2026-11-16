@@ -73,7 +73,7 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
           h.invoice_no, nvl(h.invno_prefixed, h.invoice_no) as invno_prefixed,
           h.invoice_date, h.from_date, h.to_date, h.curr_code, h.inv_amount,
           h.ex_rate,
-          h.creditdays, h.salesman_code, h.remarks as onl_remrks, h.div_code,
+          h.creditdays, h.salesman_code, h.remarks, coalesce(h.remarks, h.onl_remrks) as onl_remrks, h.div_code,
           d.srno, d.act_code, nvl(d.inv_desc, ma.activity) as inv_desc,
           ma.activity, mag.act_group_name, mag.activity_group_code,
           nvl(d.quantity, 1) as quantity, d.bill_rate, d.bill,
@@ -279,6 +279,30 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
       }
     }
 
+    // Resolve invoice header remarks if not already present
+    let headerRemarks = "";
+    try {
+      const hRemRes = await connection.execute(
+        `SELECT remarks, onl_remrks FROM (
+           SELECT remarks, onl_remrks FROM TN_INVOICE WHERE company_code = :company_code AND (invoice_no = :invoice_no OR invno_prefixed = :invoice_no)
+           UNION ALL
+           SELECT remarks, CAST(NULL AS VARCHAR2(200)) FROM TN_INVOICE_CONSOLE WHERE company_code = :company_code AND invoice_no = :invoice_no
+         ) WHERE (remarks IS NOT NULL OR onl_remrks IS NOT NULL) AND ROWNUM = 1`,
+        { company_code, invoice_no },
+        { outFormat }
+      );
+      if (hRemRes.rows && hRemRes.rows.length > 0) {
+        headerRemarks = hRemRes.rows[0].REMARKS || hRemRes.rows[0].remarks || hRemRes.rows[0].ONL_REMRKS || hRemRes.rows[0].onl_remrks || "";
+      }
+    } catch (_) {}
+
+    if (headerRemarks && rows.length > 0) {
+      for (const r of rows) {
+        if (!r.remarks) r.remarks = headerRemarks;
+        if (!r.onl_remrks) r.onl_remrks = headerRemarks;
+      }
+    }
+
     // Normalize divisionInfo
     if (divisionInfo) {
       const normDiv: any = {};
@@ -308,12 +332,31 @@ export const frtInvoiceReportHtml = async (req: Request, res: Response): Promise
              j.job_no, j.transport_mode, j.job_type, j.place_receipt, j.place_delivery,
              j.doc_ref, j.hawb, j.description1, j.vessel_name, j.voyage_no, j.confirm_date,
              j.curr_code as job_curr_code, j.ex_rate as job_ex_rate,
+             j.remarks as job_remarks,
              p.no_of_packings, p.net_wt, p.gross_wt, p.volume, p.container_no,
              p.po_no, p.issue_date, p.bl_date, p.bl_no, p.prod_description,
-             p.consignee_name, p.consignee_address, p.remarks as pack_remarks
+             p.consignee_name, p.consignee_address, p.pack_remarks
            FROM TI_JOB j
-           LEFT JOIN TF_PACKLIST p 
-             ON p.company_code = j.company_code AND p.job_no = j.job_no
+           LEFT JOIN (
+             SELECT 
+               company_code, job_no,
+               SUM(nvl(no_of_packings, 0)) as no_of_packings,
+               SUM(nvl(net_wt, 0)) as net_wt,
+               SUM(nvl(gross_wt, 0)) as gross_wt,
+               SUM(nvl(volume, 0)) as volume,
+               MAX(container_no) as container_no,
+               MAX(po_no) as po_no,
+               MAX(issue_date) as issue_date,
+               MAX(bl_date) as bl_date,
+               MAX(bl_no) as bl_no,
+               MAX(prod_description) as prod_description,
+               MAX(consignee_name) as consignee_name,
+               MAX(consignee_address) as consignee_address,
+               MAX(remarks) as pack_remarks
+             FROM TF_PACKLIST
+             WHERE company_code = :company_code AND job_no = :job_no
+             GROUP BY company_code, job_no
+           ) p ON p.company_code = j.company_code AND p.job_no = j.job_no
           WHERE j.company_code = :company_code AND j.job_no = :job_no AND ROWNUM = 1`,
           { company_code, job_no: targetJobNo },
           { outFormat }

@@ -404,16 +404,16 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       // Known currency symbols map (clean UTF-8)
       const KNOWN_SYMBOLS: Record<string, string> = {
         INR: "₹",
-        OMR: "ر.ع.",
-        AED: "د.إ",
+        OMR: "OMR",
+        AED: "AED",
         USD: "$",
         EUR: "€",
         GBP: "£",
-        SAR: "ر.س",
-        QAR: "ر.ق",
-        KWD: "د.ك",
-        KD: "د.ك",
-        BHD: "ب.د",
+        SAR: "SAR",
+        QAR: "QAR",
+        KWD: "KWD",
+        KD: "KWD",
+        BHD: "BHD",
         JPY: "¥",
         CNY: "¥",
         SGD: "S$",
@@ -421,8 +421,8 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
         AUD: "A$",
       };
 
-      if (!currencySymbol && KNOWN_SYMBOLS[currencyCode]) {
-        currencySymbol = KNOWN_SYMBOLS[currencyCode];
+      if (!currencySymbol || !/^[A-Za-z0-9$€£¥₹\s]+$/.test(currencySymbol.trim())) {
+        currencySymbol = KNOWN_SYMBOLS[currencyCode] || currencyCode;
       }
 
       // Decimals precision determination:
@@ -441,7 +441,7 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
     } catch (currencyError) {
       console.warn("Finance dashboard currency lookup unavailable:", currencyError);
       if (!currencyCode) currencyCode = "OMR";
-      if (!currencySymbol) currencySymbol = currencyCode === "INR" ? "₹" : (currencyCode === "OMR" ? "ر.ع." : currencyCode);
+      if (!currencySymbol) currencySymbol = currencyCode === "INR" ? "₹" : currencyCode;
       if (currencyDecimals == null) currencyDecimals = currencyCode === "OMR" ? 3 : 2;
     }
 
@@ -451,11 +451,29 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
 
     try {
       const pRes = await conn.execute(
-        `SELECT DISTINCT FY_PERIOD FROM VW_AC_HEADER_SEARCH WHERE COMPANY_CODE = :companyCode AND FY_PERIOD IS NOT NULL ORDER BY FY_PERIOD DESC`,
+        `SELECT DISTINCT FY_PERIOD
+         FROM (
+           SELECT FY_PERIOD FROM MS_FY_PERIOD
+           WHERE (TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode)) OR UPPER(TRIM(COMPANY_CODE)) = 'ALL' OR COMPANY_CODE IS NULL)
+             AND FY_PERIOD IS NOT NULL
+             AND UPPER(TRIM(FY_PERIOD)) NOT IN ('ALL', 'ALL PERIODS')
+           UNION
+           SELECT FY_PERIOD FROM VW_AC_HEADER_SEARCH
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode))
+             AND FY_PERIOD IS NOT NULL
+             AND UPPER(TRIM(FY_PERIOD)) NOT IN ('ALL', 'ALL PERIODS')
+           UNION
+           SELECT '226' AS FY_PERIOD FROM DUAL
+         )
+         ORDER BY FY_PERIOD DESC`,
+
         { companyCode },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
-      availableFyPeriods = (pRes.rows || []).map((r: any) => String(r.FY_PERIOD));
+      availableFyPeriods = (pRes.rows || []).map((r: any) => String(r.FY_PERIOD)).filter(Boolean);
+      if (!availableFyPeriods.length) {
+        availableFyPeriods = ['226', '225', '227'];
+      }
 
       try {
         const dRes = await conn.execute(

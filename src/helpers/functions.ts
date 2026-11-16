@@ -107,6 +107,8 @@ export const buildTree = (
     const POSITION = Number(row.POSITION ?? row.position ?? Number.MAX_SAFE_INTEGER);
 
     if (!APP_CODE) return;
+    const IS_ACTIVE = menuValue(row.IS_ACTIVE ?? row.is_active);
+    if (IS_ACTIVE === "N") return;
     const appId =
       getPermSerial(APP_CODE) ||
       (ROW_SERIAL ? String(ROW_SERIAL) : safeId([APP_CODE]));

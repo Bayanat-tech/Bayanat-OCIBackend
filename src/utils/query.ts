@@ -33,6 +33,7 @@ SELECT
   app_code 
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level1)) IS NULL OR LTRIM(RTRIM(level1)) = ' ' OR LENGTH(LTRIM(RTRIM(level1))) = 0)
+  AND NVL(is_active, 'Y') = 'Y'
 
 UNION ALL
 
@@ -44,6 +45,7 @@ SELECT
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level1)) IS NOT NULL AND LTRIM(RTRIM(level1)) != ' ')
   AND (LTRIM(RTRIM(level2)) IS NULL OR LTRIM(RTRIM(level2)) = ' ' OR LENGTH(LTRIM(RTRIM(level2))) = 0)
+  AND NVL(is_active, 'Y') = 'Y'
 
 UNION ALL
 
@@ -55,6 +57,7 @@ SELECT
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level2)) IS NOT NULL AND LTRIM(RTRIM(level2)) != ' ')
   AND (LTRIM(RTRIM(level3)) IS NULL OR LTRIM(RTRIM(level3)) = ' ' OR LENGTH(LTRIM(RTRIM(level3))) = 0)
+  AND NVL(is_active, 'Y') = 'Y'
 
 UNION ALL
 
@@ -65,6 +68,7 @@ SELECT
   app_code 
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
+  AND NVL(is_active, 'Y') = 'Y'
 `;
 
 export const getChequePaymentInvoiceDetail = `
@@ -78,7 +82,9 @@ SELECT
   1 AS sign_ind,
   inv.ac_code,
   inv.company_code,
-  SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) AS inv_amt,
+  SUM(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(ABS(inv.amount), ABS(inv.lcur_amount)) ELSE 0 END) AS inv_amt,
+  SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) AS lcur_original_amount,
+  (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) AS lcur_outstanding,
   ' ' AS c_curr_code,
   0.0 AS c_curr_amt,
   'N' AS c_indicator_origin,

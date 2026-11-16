@@ -671,6 +671,17 @@ export const getFinanceListData = async (
         const isInvoicePI = voucherType === "PI";
         const isInvoiceSI = ["SI", "SV"].includes(voucherType);
 
+        const baseCurrResult = await connection.execute(
+          `SELECT BASE_CURR_CODE
+           FROM MS_AC_SETUP
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:company_code))
+             AND ROWNUM = 1`,
+          { company_code: req.user.company_code },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const baseCurrRow = baseCurrResult.rows?.[0] as { BASE_CURR_CODE?: string } | undefined;
+        const companyBaseCurr = String(baseCurrRow?.BASE_CURR_CODE || "").trim().toUpperCase();
+
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
         const knownDocNos = new Set<string>();
@@ -680,33 +691,60 @@ export const getFinanceListData = async (
         try {
           const headerInvoicesResult = await connection.execute(
             `SELECT 
-               h.doc_no AS inv_no,
+               NVL(h.ref_no, h.doc_no) AS inv_no,
                h.doc_no,
                h.ref_no,
                h.doc_date AS inv_date,
-               NVL((
-                 SELECT MAX(NVL(invd.amount_origin, ABS(invd.lcur_amount)))
-                 FROM TR_AC_INVDETAIL invd
-                 WHERE invd.company_code = h.company_code
-                   AND invd.doc_type     = h.doc_type
-                   AND invd.doc_no       = h.doc_no
-                   AND invd.indicator_origin = 'Y'
-               ), NVL((
-                 SELECT ABS(NVL(d.lcur_amount, d.amount))
-                 FROM TR_AC_DETAIL d
-                 WHERE d.company_code = h.company_code
-                   AND d.doc_type     = h.doc_type
-                   AND d.doc_no       = h.doc_no
-                   AND d.serial_no    = 9001
-               ), (
-                 SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
-                            SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
-                 FROM TR_AC_DETAIL d
-                 WHERE d.company_code = h.company_code
-                   AND d.doc_type     = h.doc_type
-                   AND d.doc_no       = h.doc_no
-                   AND d.serial_no    <> 9001
-               ))) AS inv_amt,
+               CASE 
+                 WHEN h.curr_code IS NOT NULL AND TRIM(UPPER(h.curr_code)) <> :base_curr THEN
+                   NVL((
+                     SELECT MAX(NVL(ABS(invd.amount), invd.amount_origin))
+                     FROM TR_AC_INVDETAIL invd
+                     WHERE invd.company_code = h.company_code
+                       AND invd.doc_type     = h.doc_type
+                       AND invd.doc_no       = h.doc_no
+                       AND invd.indicator_origin = 'Y'
+                   ), NVL((
+                     SELECT ABS(NVL(d.amount, d.lcur_amount))
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    = 9001
+                   ), (
+                     SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.amount, d.lcur_amount)) END),
+                                SUM(ABS(NVL(d.amount, d.lcur_amount))) / 2)
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    <> 9001
+                   )))
+                 ELSE
+                   NVL((
+                     SELECT MAX(NVL(ABS(invd.lcur_amount), invd.amount_origin))
+                     FROM TR_AC_INVDETAIL invd
+                     WHERE invd.company_code = h.company_code
+                       AND invd.doc_type     = h.doc_type
+                       AND invd.doc_no       = h.doc_no
+                       AND invd.indicator_origin = 'Y'
+                   ), NVL((
+                     SELECT ABS(NVL(d.lcur_amount, d.amount))
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    = 9001
+                   ), (
+                     SELECT NVL(SUM(CASE WHEN d.ac_code = h.ac_code THEN ABS(NVL(d.lcur_amount, d.amount)) END),
+                                SUM(ABS(NVL(d.lcur_amount, d.amount))) / 2)
+                     FROM TR_AC_DETAIL d
+                     WHERE d.company_code = h.company_code
+                       AND d.doc_type     = h.doc_type
+                       AND d.doc_no       = h.doc_no
+                       AND d.serial_no    <> 9001
+                   )))
+               END AS inv_amt,
                h.curr_code AS c_curr_code_origin,
                h.ex_rate AS c_ex_rate_origin,
                h.div_code,
@@ -735,8 +773,17 @@ export const getFinanceListData = async (
                ), 0) AS amount
              FROM TR_AC_HEADER h
              WHERE h.company_code = :company_code
-               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR h.div_code = :div_code)
-               AND h.ac_code      = :ac_code
+               AND (:div_code IS NULL OR :div_code = '' OR :div_code = '*' OR UPPER(:div_code) = 'ALL' OR h.div_code = :div_code)
+               AND (
+                 h.ac_code = :ac_code
+                 OR EXISTS (
+                   SELECT 1 FROM TR_AC_DETAIL d2 
+                   WHERE d2.company_code = h.company_code 
+                     AND d2.doc_type = h.doc_type 
+                     AND d2.doc_no = h.doc_no 
+                     AND d2.ac_code = :ac_code
+                 )
+               )
                AND NVL(h.canceled, 'N') = 'N'
                AND (
                  (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV', 'IV'))
@@ -754,6 +801,7 @@ export const getFinanceListData = async (
               is_payment: isPayment ? 1 : 0,
               is_invoice_pi: isInvoicePI ? 1 : 0,
               is_invoice_si: isInvoiceSI ? 1 : 0,
+              base_curr: companyBaseCurr,
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
@@ -769,8 +817,14 @@ export const getFinanceListData = async (
             if (primaryInvNo) { knownKeys.add(primaryInvNo.toUpperCase()); }
 
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
-            const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
+            const exRate = Number(hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin || 1);
+            const currCode = String(hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin || companyBaseCurr).trim();
+            const isForeign = currCode && currCode.toUpperCase() !== companyBaseCurr;
+            const lcurPaid = Number(hRow.AMOUNT || hRow.amount || 0);
+            const lcurOrg = Number((invAmt * exRate).toFixed(3));
+            const paidAmt = isForeign ? (exRate > 0 ? Number((lcurPaid / exRate).toFixed(3)) : lcurPaid) : lcurPaid;
             const bal = Math.max(0, invAmt - paidAmt);
+            const lcurBal = Math.max(0, lcurOrg - lcurPaid);
             if (bal > 0.001) {
               const rowObj: any = {
                 inv_no: primaryInvNo,
@@ -785,9 +839,12 @@ export const getFinanceListData = async (
                 c_curr_code: ' ',
                 c_curr_amt: 0.0,
                 c_indicator_origin: 'N',
+                base_curr_code: companyBaseCurr,
                 c_curr_code_origin: hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin,
                 c_ex_rate_origin: hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin,
                 c_bal_amt_org: bal,
+                lcur_original_amount: lcurOrg,
+                lcur_outstanding: lcurBal,
                 job_no: null,
                 bl_no: null,
                 doc_ref: null,

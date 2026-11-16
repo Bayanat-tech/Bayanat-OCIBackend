@@ -123,16 +123,18 @@ export const upsertPrepaid = async (req: Request, res: Response): Promise<void> 
     console.log("Oracle Object:", objInstance);
 
     // ✅ Execute procedure with explicit binding
-    await connection.execute(
+    // await connection.execute(
+    const result = await connection.execute(
       `BEGIN
-         PROC_UPSERT_AC_PREPAID(:p_data);
+         PROC_UPSERT_AC_PREPAID(:p_data, :p_doc_no);
        END;`,
       {
         p_data: {
           val: objInstance,
           dir: oracledb.BIND_IN,
           type: "TR_AC_PREPAID_OBJ"
-        }
+        },
+        p_doc_no: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
       }
     );
 
@@ -140,7 +142,8 @@ export const upsertPrepaid = async (req: Request, res: Response): Promise<void> 
 
     res.json({
       success: true,
-      message: "Prepaid record saved successfully"
+      message: "Prepaid record saved successfully",
+      doc_no: (result.outBinds as any).p_doc_no
     });
 
   } catch (err: any) {
