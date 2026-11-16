@@ -227,6 +227,12 @@ const DRILLDOWN_EXTRA_CSS = `
   table.data-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
   .balance-neg { color: #b91c1c; }
 
+  .doc-link-wrap { display: inline-flex; align-items: center; gap: 4px; }
+  .doc-open-link { color: #00378c; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .doc-open-link:hover { color: #0b4ca1; }
+  .doc-screen-btn { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 3px; background: #e2e8f0; border: 1px solid #cbd5e1; color: #1e293b; font-size: 10px; line-height: 1; font-weight: 700; cursor: pointer; padding: 0; transition: all 0.15s ease; }
+  .doc-screen-btn:hover { background: #00378c; color: #ffffff; border-color: #00378c; }
+
   /* ── Print ─────────────────────────────────────────────────────── */
   @media print {
     /* print the background fills + white-on-blue text exactly as on screen */
@@ -751,10 +757,19 @@ export const getPnlDrilldownL3 = async (
       totalCredit  += credit;
 
       const balClass = runBalance < 0 ? " balance-neg strong" : "";
+      const docTypeStr = escapeHtml(text(r.doc_type));
+      const docNoStr = escapeHtml(text(r.doc_no ?? ""));
+      const docCellHtml = docNoStr
+        ? `<span class="doc-link-wrap">
+            <a href="javascript:void(0)" class="doc-open-link" title="Preview ${docTypeStr} ${docNoStr} (Audit View)" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">${docNoStr}</a>
+            <button type="button" class="doc-screen-btn" title="Open directly in ${docTypeStr} operational screen" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT_SCREEN', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">↗</button>
+          </span>`
+        : "-";
+
       return `<tr>
         <td class="center code">${escapeHtml(text(r.ac_code ?? acCode))}</td>
-        <td class="center">${escapeHtml(text(r.doc_type))}</td>
-        <td class="center">${escapeHtml(text(r.doc_no ?? ""))}</td>
+        <td class="center">${docTypeStr}</td>
+        <td class="center">${docCellHtml}</td>
         <td class="center">${escapeHtml(dateText(r.doc_date))}</td>
         <td class="center">${escapeHtml(text(r.cheque_no ?? ""))}</td>
         <td class="center">${escapeHtml(dateText(r.cheque_date))}</td>
