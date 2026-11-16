@@ -720,10 +720,10 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       letter-spacing: 0.5px;
     }
 
-    /* SUMMARY CARDS */
+    /* SUMMARY CARDS: Increased width for Customer Details, decreased for Document Details */
     .summary {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
       gap: 6px;
       margin: 0 0 4px 0;
     }
@@ -980,18 +980,45 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       margin-bottom: 1px;
     }
 
-    /* DUAL SIGNATURES */
+    /* DUAL SIGNATURES WITH DEDICATED STAMP & SIGNING AREA */
     .sign {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      margin-top: 10px;
+      gap: 36px;
+      margin-top: 6px;
       margin-bottom: 4px;
       page-break-inside: avoid;
     }
+    .sign-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .sign-space {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .stamp-box {
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      background: rgba(248, 250, 252, 0.7);
+      margin-bottom: 2px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
     .sign .line {
       border-top: 1px solid #94a3b8;
-      padding-top: 2.5px;
+      padding-top: 3px;
       text-align: center;
       font-size: 8.5px;
       font-weight: 700;
@@ -1251,10 +1278,18 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       </div>
     </div>
 
-    <!-- DUAL SIGNATURES -->
+    <!-- DUAL SIGNATURES WITH SPACE FOR CUSTOMER AND AUTHORISED SIGNATURE + STAMP -->
     <div class="sign">
-      <div class="line">Customer's Signature</div>
-      <div class="line">Authorised Signature</div>
+      <div class="sign-block">
+        <div class="sign-space"></div>
+        <div class="line">Customer's Signature</div>
+      </div>
+      <div class="sign-block">
+        <div class="sign-space stamp-box">
+          ${meta.stampDataUrl ? `<img src="${esc(meta.stampDataUrl)}" style="max-height: 38px; max-width: 120px; object-fit: contain;" alt="Stamp" />` : `Company Stamp &amp; Signature`}
+        </div>
+        <div class="line">Authorised Signature ( &amp; Company Stamp )</div>
+      </div>
     </div>
 
     <!-- LEGAL DISCLAIMER -->
