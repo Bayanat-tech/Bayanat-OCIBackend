@@ -173,7 +173,7 @@ static async confirmAdjDetail(data: {
   P_COMPANY_CODE: string;
   P_PRIN_CODE: string;
   P_ADJ_NO: number;
-  P_USERID: string;       // 👈 add
+  P_USERID: string;       
   P_ADJ_SERIALNO: string;
 }): Promise<void> {
   try {
@@ -183,7 +183,7 @@ static async confirmAdjDetail(data: {
         P_COMPANY_CODE: data.P_COMPANY_CODE,
         P_PRIN_CODE: data.P_PRIN_CODE,
         P_ADJ_NO: data.P_ADJ_NO,
-        P_USERID: data.P_USERID,            // 👈 add
+        P_USERID: data.P_USERID,            
         P_ADJ_SERIALNO: data.P_ADJ_SERIALNO,
       }
     );
