@@ -6,6 +6,7 @@ import { proc_build_dynamic_del_PAMS } from "../../controllers/PAMS/proc_build_d
 import { proc_build_dynamic_ins_upd_PAMS } from "../../controllers/PAMS/proc_build_dynamic_ins_upd_PAMS";
 import { proc_populate_ms_eam_dept_kpi } from "../../controllers/PAMS/proc_populate_ms_eam_dept_kpi";
 import { updateAppraisalRatings } from "../../controllers/PAMS/ems_appraisal_task_dtl_update";
+import { getEmployeeListingReportHtml } from "../../controllers/PAMS/Employeelistingreport";
 
 
 const router = express.Router();
@@ -37,6 +38,11 @@ router.post(
 router.post(
   "/update-ratings",
   updateAppraisalRatings
+);
+
+router.post(
+  "/reports/EmployeeListingReport/html",
+  getEmployeeListingReportHtml
 );
 
 export default router;
