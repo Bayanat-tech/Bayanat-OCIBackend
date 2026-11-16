@@ -185,14 +185,17 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
       }
       if (!exRate || exRate <= 0) exRate = currCode === "OMR" ? 1 : 1;
 
+      const remarks = value(req.body.invoiceHeader?.[0]?.remarks ?? req.body.invoiceHeader?.[0]?.REMARKS);
       try {
         await connection.execute(
           `UPDATE TN_INVOICE 
               SET curr_code = :curr_code, 
-                  ex_rate = :ex_rate 
+                  ex_rate = :ex_rate,
+                  remarks = COALESCE(:remarks, remarks),
+                  onl_remrks = COALESCE(:remarks, onl_remrks)
             WHERE company_code = :company_code 
               AND (invoice_no = :invoice_no OR invno_prefixed = :invoice_no)`,
-          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { curr_code: currCode, ex_rate: exRate, remarks, company_code: companyCode, invoice_no: invoiceNo },
           { autoCommit: true }
         );
       } catch (updErr) {
@@ -203,10 +206,11 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
         await connection.execute(
           `UPDATE TN_INVOICE_CONSOLE 
               SET curr_code = :curr_code, 
-                  ex_rate = :ex_rate 
+                  ex_rate = :ex_rate,
+                  remarks = COALESCE(:remarks, remarks)
             WHERE company_code = :company_code 
               AND invoice_no = :invoice_no`,
-          { curr_code: currCode, ex_rate: exRate, company_code: companyCode, invoice_no: invoiceNo },
+          { curr_code: currCode, ex_rate: exRate, remarks, company_code: companyCode, invoice_no: invoiceNo },
           { autoCommit: true }
         );
         await connection.execute(

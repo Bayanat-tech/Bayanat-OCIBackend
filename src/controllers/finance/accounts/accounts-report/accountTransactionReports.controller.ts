@@ -128,11 +128,59 @@ const COMMON_TABLE_CSS = `
     color: #64748b;
     font-size: 13px;
   }
+  .doc-link-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-open-link {
+    color: #00378c;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .doc-open-link:hover {
+    color: #0b4ca1;
+  }
+  .doc-screen-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+  }
+  .doc-screen-btn:hover {
+    background: #00378c;
+    color: #ffffff;
+    border-color: #00378c;
+  }
   @media print {
     table.data-table th { background: #1e3a5f !important; color: #fff !important; }
     tbody tr { break-inside: avoid; }
+    .doc-screen-btn { display: none !important; }
   }
 `;
+
+function renderDocCell(docType: unknown, docNo: unknown): string {
+  const dt = escapeHtml(docType);
+  const dn = escapeHtml(docNo);
+  if (!dn) return "-";
+  return `
+    <span class="doc-link-wrap">
+      <a href="javascript:void(0)" class="doc-open-link" title="Preview ${dt} ${dn} (Audit View)" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT', docType: '${dt}', docNo: '${dn}' }, '*');">${dn}</a>
+      <button type="button" class="doc-screen-btn" title="Open directly in ${dt} operational screen" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT_SCREEN', docType: '${dt}', docNo: '${dn}' }, '*');">↗</button>
+    </span>`;
+}
 
 async function getConnection(req: RequestWithUser | Request): Promise<oracledb.Connection> {
   const loginid = (req as any).user?.loginid || req.body?.loginid || "ADMIN";
@@ -255,7 +303,7 @@ export const getSalesRegisterReport = async (req: Request, res: Response): Promi
           <tr>
             <td class="center">${idx + 1}</td>
             <td class="center"><strong>${escapeHtml(r.doc_type)}</strong></td>
-            <td><strong>${escapeHtml(r.doc_no)}</strong></td>
+            <td>${renderDocCell(r.doc_type, r.doc_no)}</td>
             <td class="center">${formatDateStr(r.doc_date)}</td>
             <td>${escapeHtml(r.ac_code)} - ${escapeHtml(r.ac_name)}</td>
             <td>${escapeHtml(r.ref_no || "-")}${r.ref_date ? ` (${formatDateStr(r.ref_date)})` : ""}</td>
@@ -472,7 +520,7 @@ export const getPurchaseRegisterReport = async (req: Request, res: Response): Pr
           <tr>
             <td class="center">${idx + 1}</td>
             <td class="center"><strong>${escapeHtml(r.doc_type)}</strong></td>
-            <td><strong>${escapeHtml(r.doc_no)}</strong></td>
+            <td>${renderDocCell(r.doc_type, r.doc_no)}</td>
             <td class="center">${formatDateStr(r.doc_date)}</td>
             <td>${escapeHtml(r.ac_code)} - ${escapeHtml(r.ac_name)}</td>
             <td>${escapeHtml(r.ref_no || "-")}${r.ref_date ? ` (${formatDateStr(r.ref_date)})` : ""}</td>
@@ -658,7 +706,7 @@ export const getDayBookReport = async (req: Request, res: Response): Promise<voi
           <tr>
             <td class="center">${idx + 1}</td>
             <td class="center">${formatDateStr(r.doc_date)}</td>
-            <td><strong>${escapeHtml(r.trans_no || `${r.doc_type}/${r.doc_no}`)}</strong></td>
+            <td>${renderDocCell(r.doc_type, r.doc_no)}</td>
             <td class="center">${escapeHtml(r.div_code || "-")}</td>
             <td><strong>${escapeHtml(r.party_name || "-")}</strong></td>
             <td>${escapeHtml(r.ac_code)} - ${escapeHtml(r.ac_name)}</td>
@@ -892,7 +940,7 @@ export const getTransactionListingReport = async (req: Request, res: Response): 
           <tr>
             <td class="center">${idx + 1}</td>
             <td class="center"><strong>${escapeHtml(r.doc_type)}</strong></td>
-            <td><strong>${escapeHtml(r.doc_no)}</strong></td>
+            <td>${renderDocCell(r.doc_type, r.doc_no)}</td>
             <td class="center">${formatDateStr(r.doc_date)}</td>
             <td>${escapeHtml(r.ac_code)} - ${escapeHtml(r.ac_name)}</td>
             <td>${r.bank_name ? `${escapeHtml(r.bank_ac_code)} - ${escapeHtml(r.bank_name)}` : "-"}</td>
@@ -1118,7 +1166,7 @@ export const getLedgerBasicReport = async (req: Request, res: Response): Promise
           tableBodyHtml += `
             <tr>
               <td class="center"><strong>${escapeHtml(r.doc_type)}</strong></td>
-              <td>${escapeHtml(r.doc_no)}</td>
+              <td>${renderDocCell(r.doc_type, r.doc_no)}</td>
               <td class="center">${formatDateStr(r.doc_date)}</td>
               <td>${escapeHtml(r.cheque_no || "-")}${r.cheque_date ? ` (${formatDateStr(r.cheque_date)})` : ""}</td>
               <td>${escapeHtml(r.bank_ac_name || "-")}</td>

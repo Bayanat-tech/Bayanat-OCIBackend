@@ -533,6 +533,91 @@ const DRILLDOWN_EXTRA_CSS = `
     align-items: center;
     gap: 6px;
   }
+  .drill-nav-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin: 6px 0 10px 0;
+    gap: 10px;
+  }
+  .btn-drill-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #00378c;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    transition: background 0.15s ease-in-out;
+  }
+  .btn-drill-back:hover {
+    background: #002663;
+  }
+  .drill-nav-level {
+    font-size: 11px;
+    color: #475569;
+    font-weight: 500;
+  }
+  .doc-link-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+  }
+  .doc-open-link {
+    color: #00378c;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .doc-open-link:hover {
+    color: #0b4ca1;
+  }
+  .doc-screen-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+  }
+  .doc-screen-btn:hover {
+    background: #00378c;
+    color: #ffffff;
+    border-color: #00378c;
+  }
+  .doc-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 10px;
+  }
+  .txn-row:hover {
+    background-color: #f0fdf4 !important;
+    cursor: pointer;
+  }
   table.data-table th.right { text-align: right; }
   table.data-table td.mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -617,6 +702,28 @@ function buildDrillScript(
   </script>`;
 }
 
+function buildDetailTxnScript(): string {
+  return `
+  <script>
+    (function () {
+      document.querySelectorAll("tbody tr.txn-row").forEach(function (tr) {
+        tr.addEventListener("click", function (e) {
+          if (e.target && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
+          var docType = tr.getAttribute("data-doc-type");
+          var docNo   = tr.getAttribute("data-doc-no");
+          if (docType && docNo) {
+            window.parent.postMessage({
+              type:    "OPEN_DOCUMENT",
+              docType: docType,
+              docNo:   docNo,
+            }, "*");
+          }
+        });
+      });
+    })();
+  </script>`;
+}
+
 /**
  * Builds the report body: title block + optional drill hint + table + end marker.
  */
@@ -627,16 +734,31 @@ function buildBodyHtml(opts: {
   username: string;
   tableHtml: string;
   drillLevel: DrillLevel;
+  canGoBack?: boolean;
 }): string {
-  const { title, tableHtml, drillLevel } = opts;
+  const { title, tableHtml, drillLevel, canGoBack = true } = opts;
   const drillHint = drillLevel
     ? `<div class="drill-hint no-print">
          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
          Click any row to drill down
        </div>`
+    : `<div class="drill-hint no-print" style="background:#f0fdf4; border-color:#bbf7d0; color:#166534">
+         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+         Click any row or Doc No to open the voucher document in a new window
+       </div>`;
+
+  const navToolbar = canGoBack
+    ? `<div class="drill-nav-toolbar no-print">
+         <button type="button" class="btn-drill-back" onclick="window.parent.postMessage({ type: 'DRILL_BACK' }, '*')">
+           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+           Back to Previous Level
+         </button>
+         <span class="drill-nav-level">${escapeHtml(title)}</span>
+       </div>`
     : "";
 
   return `
+    ${navToolbar}
     <div class="report-title-block">
       <div class="report-title">${escapeHtml(title)}</div>
     </div>
@@ -672,8 +794,10 @@ async function buildDrilldownPage(opts: {
     endLabel: "End of report",
   });
   const bodyHtml =
-    buildBodyHtml({ title, fromDate, toDate, username, tableHtml, drillLevel }) +
-    buildDrillScript(drillLevel, companyCode, fromDate, toDate, divisionCode);
+    buildBodyHtml({ title, fromDate, toDate, username, tableHtml, drillLevel, canGoBack: true }) +
+    (drillLevel
+      ? buildDrillScript(drillLevel, companyCode, fromDate, toDate, divisionCode)
+      : buildDetailTxnScript());
 
   return buildReportDocument({
     title,
@@ -1239,11 +1363,19 @@ export const getDrilldownDetail = async (req: RequestWithUser, res: Response): P
         acCredit    += credit;
 
         const balClass = runBalance < 0 ? "balance-neg" : "balance-pos";
+        const docTypeStr = escapeHtml(r.doc_type);
+        const docNoStr   = escapeHtml(String(r.doc_no ?? ""));
+
         bodyHtml += `
-          <tr>
+          <tr class="txn-row" data-doc-type="${docTypeStr}" data-doc-no="${docNoStr}" title="Click to view voucher preview (Audit View)">
             <td class="center mono">${escapeHtml(r.ac_code)}</td>
-            <td class="center">${escapeHtml(r.doc_type)}</td>
-            <td class="center">${escapeHtml(String(r.doc_no ?? ""))}</td>
+            <td class="center"><span class="doc-badge">${docTypeStr}</span></td>
+            <td class="center font-bold">
+              <span class="doc-link-wrap">
+                <a href="javascript:void(0)" class="doc-open-link" title="Preview ${docTypeStr} ${docNoStr} (Audit View)" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">${docNoStr}</a>
+                <button type="button" class="doc-screen-btn" title="Open directly in ${docTypeStr} operational screen" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT_SCREEN', docType: '${docTypeStr}', docNo: '${docNoStr}' }, '*');">↗</button>
+              </span>
+            </td>
             <td class="center">${escapeHtml(dateText(r.doc_date))}</td>
             <td class="center">${escapeHtml(String(r.cheque_no ?? ""))}</td>
             <td class="center">${escapeHtml(dateText(r.cheque_date))}</td>

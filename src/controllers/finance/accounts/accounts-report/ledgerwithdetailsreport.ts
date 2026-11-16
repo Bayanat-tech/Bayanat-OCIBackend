@@ -166,6 +166,43 @@ const LEDGER_DETAILS_EXTRA_CSS = `
   table.data-table col.c7 { width: 11%; }  /* Debit */
   table.data-table col.c8 { width: 11%; }  /* Credit */
   table.data-table col.c9 { width: 10%; }  /* Balance */
+
+  .doc-link-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-open-link {
+    color: #00378c;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .doc-open-link:hover {
+    color: #0b4ca1;
+  }
+  .doc-screen-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+  }
+  .doc-screen-btn:hover {
+    background: #00378c;
+    color: #ffffff;
+    border-color: #00378c;
+  }
 `;
 
 export const getLedgerWithDetailsReport = async (
@@ -330,7 +367,10 @@ export const getLedgerWithDetailsReport = async (
                 ${salesmanLine ? `<span class="cell-sub">${salesmanLine}</span>` : ""}
               </td>
               <td>
-                <span class="cell-main">${text(r.doc_no || "")}</span>
+                <span class="cell-main doc-link-wrap">
+                  <a href="javascript:void(0)" class="doc-open-link" title="Preview ${text(r.doc_type || "")} ${text(r.doc_no || "")} (Audit View)" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT', docType: '${text(r.doc_type || "")}', docNo: '${text(r.doc_no || "")}' }, '*');">${text(r.doc_no || "")}</a>
+                  <button type="button" class="doc-screen-btn" title="Open directly in ${text(r.doc_type || "")} operational screen" onclick="event.stopPropagation(); window.parent.postMessage({ type: 'OPEN_DOCUMENT_SCREEN', docType: '${text(r.doc_type || "")}', docNo: '${text(r.doc_no || "")}' }, '*');">↗</button>
+                </span>
               </td>
               <td class="center">
                 <span class="cell-main">${formatDateStr(r.doc_date)}</span>
