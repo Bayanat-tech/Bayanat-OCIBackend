@@ -1,5 +1,6 @@
 // freightInvoiceRenderHtml.ts - Dedicated HTML invoice template generator for Freight Module
 // Redesigned to match the professional Tax Purchase Invoice layout (modern card headers, soft blue tables, dual signatures, running footer)
+// Optimized for strict 1-page A4 print fit with support for up to 8-10 activities without page overflow
 
 export interface FreightInvoiceRow {
   prin_code: string | null;
@@ -380,9 +381,9 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     if (expmt === "N") {
       vatLabel = "NT";
     } else if (expmt === "Z" || (vatPercNum === 0 && String(desc).toUpperCase().includes("PORT"))) {
-      vatLabel = "0.00%";
+      vatLabel = "0%";
     } else if (expmt === "S" || vatPercNum > 0) {
-      vatLabel = `${vatPercNum > 0 ? vatPercNum : 5.00}%`;
+      vatLabel = `${vatPercNum > 0 ? vatPercNum : 5}%`;
     }
 
     return `
@@ -440,7 +441,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   const fullAddressLine1 = "P.O.Box 112, Postal Code 111";
   const fullAddressLine2 = "Wadi Kabir, Muscat, Oman";
   const tel = getProp(divisionInfo, "phone") || getProp(companyInfo, "contact_number") || getProp(companyInfo, "tel_no") || first.phone || "+968 71557267";
-  const fax = getProp(divisionInfo, "fax") || getProp(companyInfo, "fax_no") || first.fax || "+968 24399333";
+  const fax = getProp(divisionInfo, "fax") || getProp(companyInfo, "fax_no") || first.fax || "";
   const email = getProp(divisionInfo, "email") || getProp(companyInfo, "email") || first.email || "info@mhdlogistics.com";
 
   // Payment terms
@@ -448,7 +449,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 
   const logoUrl = getProp(companyInfo, "company_logo") || getProp(divisionInfo, "comp_logo") || "https://objectstorage.me-dubai-1.oraclecloud.com/n/axpnrpp1t5qs/b/app-dev-bucket-test/o/JASRALOGO%2FMHDLLOGO.png";
   const safePdfFileName = ("TAX_INVOICE_" + (invoiceNo || "FF_INVOICE")).replace(/[^a-zA-Z0-9_-]/g, "_") + ".pdf";
-  const printUser = (first.user_id || meta.user_id || meta.userName || "mhdl_bts").trim();
+  const printUser = (first.user_id || meta.user_id || meta.userName || "MHDL_BTS").trim();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -463,7 +464,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   <style>
     @page {
       size: A4 portrait;
-      margin: 6mm 8mm 6mm 8mm;
+      margin: 4mm 6mm 4mm 6mm;
     }
     * {
       box-sizing: border-box;
@@ -476,8 +477,8 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       background-color: #f1f5f9;
       color: #1e293b;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      font-size: 10px;
-      line-height: 1.3;
+      font-size: 9px;
+      line-height: 1.25;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -491,7 +492,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       z-index: 1000;
       background: #0f172a;
       color: #ffffff;
-      padding: 10px 24px;
+      padding: 8px 20px;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
       display: flex;
       align-items: center;
@@ -501,28 +502,28 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .toolbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .toolbar-badge {
       background: #0b4ca1;
       color: #ffffff;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 3px 8px;
+      padding: 2.5px 7px;
       border-radius: 4px;
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
     .toolbar-inv-no {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #f8fafc;
       letter-spacing: 0.5px;
     }
     .toolbar-client {
-      font-size: 12px;
+      font-size: 11px;
       color: #94a3b8;
-      max-width: 320px;
+      max-width: 300px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -530,16 +531,16 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
     .btn-action {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      font-size: 12px;
+      gap: 6px;
+      font-size: 11.5px;
       font-weight: 600;
-      padding: 7px 14px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      border-radius: 5px;
       cursor: pointer;
       border: none;
       transition: all 0.15s ease;
@@ -552,7 +553,6 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .btn-download-pdf:hover {
       background: #093c80;
-      box-shadow: 0 3px 8px rgba(11, 76, 161, 0.5);
     }
     .btn-print {
       background: #334155;
@@ -569,25 +569,24 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .btn-close:hover {
       color: #ffffff;
-      border-color: #64748b;
       background: rgba(255, 255, 255, 0.05);
     }
 
     /* INVOICE PAPER VIEWPORT */
     .invoice-viewport {
-      padding: 20px 12px 40px 12px;
+      padding: 14px 8px 30px 8px;
       display: flex;
       justify-content: center;
     }
     .doc-shell {
       width: 100%;
-      max-width: 780px;
+      max-width: 202mm;
       background: #ffffff;
-      padding: 20px 24px 18px 24px;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+      padding: 12px 14px 10px 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       box-sizing: border-box;
       position: relative;
-      border-radius: 4px;
+      border-radius: 3px;
       margin: 0 auto;
     }
 
@@ -627,27 +626,27 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       }
     }
 
-    /* COMPANY MASTHEAD (MATCHING PURCHASE INVOICE) */
+    /* COMPANY MASTHEAD */
     .company-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       width: 100%;
       box-sizing: border-box;
-      padding: 0 0 10px 0;
+      padding: 0 0 5px 0;
       margin: 0 0 4px 0;
       border-bottom: 1.5px solid #cbd5e1;
     }
     .company-logo-wrap {
       flex: 0 0 auto;
-      max-width: 220px;
+      max-width: 180px;
       display: flex;
       align-items: center;
     }
     .company-logo {
-      max-height: 58px;
-      max-width: 210px;
+      max-height: 46px;
+      max-width: 180px;
       object-fit: contain;
       display: block;
     }
@@ -657,46 +656,45 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       min-width: 0;
     }
     .company-name {
-      font-size: 19px;
+      font-size: 17px;
       font-weight: 800;
       color: #0f172a;
-      margin: 0 0 3px 0;
-      line-height: 1.2;
+      margin: 0 0 2px 0;
+      line-height: 1.15;
       letter-spacing: -0.2px;
     }
     .company-address {
-      font-size: 10.5px;
+      font-size: 9px;
       color: #64748b;
-      line-height: 1.4;
+      line-height: 1.35;
       margin: 0;
     }
     .company-address-line {
       display: block;
     }
-    .company-trn-line {
-      font-size: 10.5px;
+    .company-trn-inline {
       font-weight: 700;
-      color: #475569;
-      margin: 4px 0 8px 0;
+      color: #0f172a;
+      margin-top: 1px;
     }
 
-    /* DOCUMENT TITLE ROW WITH ORIGINAL BADGE */
+    /* DOCUMENT TITLE ROW */
     .doc-title-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
-      gap: 16px;
-      margin: 0 0 8px 0;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 4px 0;
     }
     .doc-heading {
       display: flex;
       align-items: baseline;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 5px;
     }
     .doc-heading h1 {
       margin: 0;
-      font-size: 13.5px;
+      font-size: 12px;
       font-weight: 800;
       line-height: 1.2;
       color: #0f172a;
@@ -704,34 +702,34 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .doc-title-row .doc-sub {
       margin: 0;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       line-height: 1.2;
       color: #0b4ca1;
     }
     .doc-badge {
       flex-shrink: 0;
-      padding: 3.5px 12px;
-      border-radius: 6px;
+      padding: 2px 9px;
+      border-radius: 4px;
       background: #e8f0fa;
       border: 1px solid #b8d0ea;
-      font-size: 10.5px;
+      font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
       color: #0b4ca1;
       letter-spacing: 0.5px;
     }
 
-    /* SUMMARY CARDS (CUSTOMER DETAILS & DOCUMENT DETAILS) */
+    /* SUMMARY CARDS */
     .summary {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 10px;
-      margin: 0 0 8px 0;
+      gap: 6px;
+      margin: 0 0 4px 0;
     }
     .box {
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
+      border-radius: 4px;
       min-width: 0;
       width: 100%;
       background: #ffffff;
@@ -740,36 +738,37 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     }
     .box h2 {
       margin: 0;
-      padding: 6px 10px;
-      font-size: 10.5px;
+      padding: 3.5px 7px;
+      font-size: 9px;
       font-weight: 700;
       color: #0b4ca1;
       background: #e8f0fa;
       border-bottom: 1px solid #cbd5e1;
       text-transform: capitalize;
+      line-height: 1.2;
     }
     .box-body {
-      padding: 8px 10px;
+      padding: 4px 7px;
       min-width: 0;
       width: 100%;
       box-sizing: border-box;
     }
     .party-name {
-      font-size: 11px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #0f172a;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .party-line {
-      font-size: 10px;
+      font-size: 8.5px;
       color: #64748b;
-      line-height: 1.45;
+      line-height: 1.35;
     }
     .meta {
       display: grid;
-      grid-template-columns: 27mm minmax(0, 1fr);
-      gap: 3px 6px;
-      font-size: 10px;
+      grid-template-columns: 24mm minmax(0, 1fr);
+      gap: 1.5px 5px;
+      font-size: 8.5px;
     }
     .label {
       color: #64748b;
@@ -782,49 +781,51 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
 
     /* SHIPMENT DETAILS BOX */
     .shipment-box {
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     .shipment-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 5px 8px;
-      font-size: 10px;
+      gap: 2.5px 5px;
+      font-size: 8.5px;
+      padding: 3.5px 7px;
     }
     .shipment-cell {
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 0.5px;
     }
     .shipment-cell.span-2 { grid-column: span 2; }
     .shipment-cell.span-all { grid-column: 1 / -1; }
-    .shipment-cell .label { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; }
-    .shipment-cell .value { font-size: 10px; color: #1e293b; font-weight: 600; }
+    .shipment-cell .label { font-size: 7.5px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .shipment-cell .value { font-size: 8.5px; color: #1e293b; font-weight: 600; }
 
     /* DATA TABLE */
     table.data-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #cbd5e1;
-      border-radius: 6px;
+      border-radius: 4px;
       overflow: hidden;
-      font-size: 10px;
-      margin-bottom: 8px;
+      font-size: 8.5px;
+      margin-bottom: 4px;
     }
     table.data-table th {
       background: #e8f0fa;
       color: #0b4ca1;
       font-weight: 700;
-      padding: 6px 6px;
+      padding: 3.5px 4px;
       border: 1px solid #cbd5e1;
-      font-size: 10px;
+      font-size: 8.5px;
       line-height: 1.2;
     }
     table.data-table td {
-      padding: 5px 6px;
+      padding: 2.5px 4px;
       border: 1px solid #e2e8f0;
       vertical-align: middle;
       color: #1e293b;
-      font-size: 9.5px;
+      font-size: 8.5px;
+      line-height: 1.2;
     }
     table.data-table tr:nth-child(even) td {
       background: #f8fafc;
@@ -834,29 +835,30 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       font-weight: 700;
       color: #0b4ca1;
       text-transform: uppercase;
+      font-size: 8.5px;
     }
     table.data-table td.desc span {
       display: block;
-      margin-top: 1px;
       color: #64748b;
-      font-size: 9px;
+      font-size: 7.5px;
     }
     table.data-table .center { text-align: center; }
     table.data-table .left { text-align: left; }
     table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     table.data-table .strong { font-weight: 700; color: #0f172a; }
 
-    /* BOTTOM SECTION: REMARKS, WORDS & TOTALS */
+    /* BOTTOM SECTION: REMARKS, WORDS & TOTALS (STRICTLY SNUG - NO VERTICAL EXPANSION) */
     .bottom-section {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: 12px;
-      margin-bottom: 8px;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 8px;
+      margin-bottom: 4px;
+      align-items: flex-start;
     }
     .vat-legend {
-      font-size: 9px;
+      font-size: 8px;
       color: #64748b;
-      margin-bottom: 5px;
+      margin-bottom: 2px;
     }
     .legend-badge {
       font-weight: 700;
@@ -865,52 +867,60 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
     .words-card {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
-      margin-bottom: 5px;
+      border-radius: 4px;
+      padding: 3px 6px;
+      margin-bottom: 2px;
     }
     .words-label {
-      font-size: 9px;
+      font-size: 7.5px;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .words-text {
-      font-size: 10px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #0f172a;
-      line-height: 1.3;
+      line-height: 1.25;
       text-transform: uppercase;
     }
     .remarks {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
+      border-radius: 4px;
+      padding: 3px 6px;
       color: #334155;
-      font-size: 9.5px;
-      line-height: 1.35;
+      font-size: 8px;
+      line-height: 1.25;
       white-space: pre-wrap;
     }
 
+    /* COMPACT SNUG TOTALS TABLE (NO EXTRA STRETCH) */
     .totals-wrap {
       display: flex;
       justify-content: flex-end;
+      align-items: flex-start;
     }
     .totals {
-      width: 100%;
+      width: 250px;
       border-collapse: separate;
       border-spacing: 0;
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
+      border-radius: 4px;
       overflow: hidden;
+      height: auto !important;
+    }
+    .totals tr {
+      height: auto !important;
     }
     .totals td {
-      padding: 5px 8px;
+      padding: 3px 6px;
       border-bottom: 1px solid #e2e8f0;
-      font-size: 10px;
+      font-size: 8.5px;
+      line-height: 1.2;
       color: #334155;
+      vertical-align: middle;
     }
     .totals tr:last-child td { border-bottom: 0; }
     .totals .num {
@@ -922,46 +932,47 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       background: #e8f0fa;
       color: #0b4ca1;
       font-weight: 700;
-      font-size: 10.5px;
+      font-size: 9.5px;
+      padding: 4px 6px;
     }
 
     /* BANK DETAILS & PAYMENT TERMS */
     .bank-terms-container {
       display: grid;
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.35fr);
-      gap: 10px;
-      margin-bottom: 8px;
+      gap: 6px;
+      margin-bottom: 4px;
     }
     .terms-card {
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 9.5px;
-      line-height: 1.4;
+      border-radius: 4px;
+      padding: 3.5px 6px;
+      font-size: 8px;
+      line-height: 1.3;
       color: #334155;
       background: #ffffff;
     }
     .terms-title {
       font-weight: 700;
       color: #0b4ca1;
-      margin-bottom: 2px;
-      font-size: 9.5px;
+      margin-bottom: 1px;
+      font-size: 8px;
       text-transform: uppercase;
     }
     .bank-card {
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 9px;
-      line-height: 1.35;
+      border-radius: 4px;
+      padding: 3.5px 6px;
+      font-size: 8px;
+      line-height: 1.25;
       color: #334155;
       background: #ffffff;
     }
     .bank-card-title {
       font-weight: 700;
       color: #0b4ca1;
-      font-size: 9.5px;
-      margin-bottom: 2px;
+      font-size: 8px;
+      margin-bottom: 1px;
     }
     .bank-name-strong {
       font-weight: 700;
@@ -969,45 +980,45 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       margin-bottom: 1px;
     }
 
-    /* DUAL SIGNATURES (MATCHING PURCHASE INVOICE) */
+    /* DUAL SIGNATURES */
     .sign {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      margin-top: 24px;
-      margin-bottom: 12px;
+      gap: 40px;
+      margin-top: 10px;
+      margin-bottom: 4px;
       page-break-inside: avoid;
     }
     .sign .line {
       border-top: 1px solid #94a3b8;
-      padding-top: 5px;
+      padding-top: 2.5px;
       text-align: center;
-      font-size: 10px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #334155;
     }
 
     /* LEGAL DISCLAIMER & RUNNING FOOTER */
     .legal-notice {
-      font-size: 8.5px;
+      font-size: 7px;
       color: #64748b;
       text-align: center;
-      line-height: 1.3;
-      margin-bottom: 4px;
-      padding: 3px 6px;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      padding: 1.5px 3px;
       border-top: 1px dashed #cbd5e1;
     }
     .report-footer {
       width: 100%;
       box-sizing: border-box;
       border-top: 1px solid #e2e8f0;
-      padding-top: 4px;
+      padding-top: 2px;
       margin-top: 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      font-size: 9.5px;
+      gap: 8px;
+      font-size: 8px;
       color: #64748b;
     }
     .report-footer .footer-left,
@@ -1027,15 +1038,15 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
   </div>
   <div class="toolbar-actions">
     <button id="btn-dl-pdf" onclick="downloadAsPdf()" class="btn-action btn-download-pdf" title="Directly Download PDF">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Download PDF</span>
     </button>
     <button onclick="window.print()" class="btn-action btn-print" title="Open Print Dialog">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       <span>Print Invoice</span>
     </button>
     <button onclick="window.close()" class="btn-action btn-close" title="Close Preview">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       <span>Close</span>
     </button>
   </div>
@@ -1053,13 +1064,12 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       <div class="company-name-block">
         <h1 class="company-name">${esc(displayName)}</h1>
         <p class="company-address">
-          <span class="company-address-line">${esc(fullAddressLine1)}</span>
-          <span class="company-address-line">${esc(fullAddressLine2)}</span>
-          <span class="company-address-line">Tel: ${esc(tel)} &nbsp;|&nbsp; Fax: ${esc(fax)} &nbsp;|&nbsp; e-Mail: ${esc(email)}</span>
+          <span class="company-address-line">${esc(fullAddressLine1)}, ${esc(fullAddressLine2)}</span>
+          <span class="company-address-line">Tel: ${esc(tel)} ${fax ? `&nbsp;|&nbsp; Fax: ${esc(fax)}` : ""} &nbsp;|&nbsp; e-Mail: ${esc(email)}</span>
+          <span class="company-address-line company-trn-inline">TRN: ${esc(companyTaxRegNo)}</span>
         </p>
       </div>
     </div>
-    <div class="company-trn-line">TRN: ${esc(companyTaxRegNo)}</div>
 
     <!-- DOCUMENT TITLE ROW -->
     <div class="doc-title-row">
@@ -1080,10 +1090,10 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
           ${billToAddressLines.map((line) => `<div class="party-line">${esc(line)}</div>`).join("")}
           <div class="party-line">
             ${clientTel ? `<span>Tel: ${esc(clientTel)}</span>` : ""}
-            ${clientFax ? `<span style="margin-left: 12px;">Fax: ${esc(clientFax)}</span>` : ""}
+            ${clientFax ? `<span style="margin-left: 10px;">Fax: ${esc(clientFax)}</span>` : ""}
           </div>
           ${clientEmail ? `<div class="party-line">e-Mail: ${esc(clientEmail)}</div>` : ""}
-          <div class="party-line" style="margin-top: 3px; font-weight: 600; color: #1e293b;">
+          <div class="party-line" style="margin-top: 2px; font-weight: 600; color: #1e293b;">
             Tax Reg No. : ${esc(clientTaxRegNo || "—")}
           </div>
         </div>
@@ -1183,7 +1193,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         </tr>
       </thead>
       <tbody>
-        ${itemRowsHtml || `<tr><td colspan="8" class="center" style="padding: 16px; color: #94a3b8;">No billable lines found</td></tr>`}
+        ${itemRowsHtml || `<tr><td colspan="8" class="center" style="padding: 10px; color: #94a3b8;">No billable lines found</td></tr>`}
       </tbody>
     </table>
 
@@ -1202,7 +1212,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         ${remarks ? `
         <div class="remarks">
           <strong>Remarks:</strong>
-          <div style="margin-top: 2px;">${esc(remarks)}</div>
+          <div style="margin-top: 1px;">${esc(remarks)}</div>
         </div>` : ""}
       </div>
 
@@ -1229,7 +1239,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
       <div class="terms-card">
         <div class="terms-title">Payment Terms & Notice</div>
         <div>• Payment due within <strong>${creditDays} days</strong> from the Date of Invoice.</div>
-        <div style="margin-top: 3px;">• Invoice deemed correct if no query reaches <strong>${esc(displayName)}</strong> within 7 days of the Invoice date.</div>
+        <div style="margin-top: 2px;">• Invoice deemed correct if no query reaches <strong>${esc(displayName)}</strong> within 7 days of the Invoice date.</div>
       </div>
 
       <div class="bank-card">
@@ -1237,7 +1247,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         <div class="bank-name-strong">${esc(bank1Name)}</div>
         ${(bank1AcNo || bank1Iban) ? `<div>${[bank1AcNo, bank1Iban].filter(Boolean).map(esc).join(" &nbsp;|&nbsp; ")}</div>` : ""}
         ${bank1Swift ? `<div>${esc(bank1Swift)}</div>` : ""}
-        ${(bank2AcNo || bank2Iban || bank2Swift) ? `<div style="margin-top: 4px; padding-top: 3px; border-top: 1px dashed #e2e8f0; color: #475569;">${[bank2AcNo, bank2Iban, bank2Swift].filter(Boolean).map(esc).join(" &nbsp;|&nbsp; ")}</div>` : ""}
+        ${(bank2AcNo || bank2Iban || bank2Swift) ? `<div style="margin-top: 3px; padding-top: 2px; border-top: 1px dashed #e2e8f0; color: #475569;">${[bank2AcNo, bank2Iban, bank2Swift].filter(Boolean).map(esc).join(" &nbsp;|&nbsp; ")}</div>` : ""}
       </div>
     </div>
 
@@ -1273,7 +1283,7 @@ export function buildFreightInvoiceHtmlMHDL(rows: FreightInvoiceRow[], meta: Fre
         btn.disabled = true;
       }
       var opt = {
-        margin:       [6, 8, 6, 8],
+        margin:       [4, 6, 4, 6],
         filename:     filename,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
