@@ -17,7 +17,7 @@ export function leavePermissions(row: LeaveRecord, actor: string) {
   const terminal = ['REJECTED', 'CANCEL', 'CANCELLED', 'CANCELED'].includes(norm(row.LAST_ACTION));
   const creator = norm(row.CREATED_BY || row.CREATE_USER) === norm(actor);
   const assigned = norm(row.NEXT_ACTION_BY) === norm(actor);
-  const resume = !yes(row.FINAL_APPROVED) && Boolean(row.ACTUAL_RESUME_DATE) && !yes(row.RESUME_DATE_APPROVED) && norm(row.IMMEDIATE_SUPERVISOR) === norm(actor);
+  const resume = yes(row.FINAL_APPROVED) && Boolean(row.ACTUAL_RESUME_DATE) && !yes(row.RESUME_DATE_APPROVED) && norm(row.IMMEDIATE_SUPERVISOR) === norm(actor);
   const eligible = Boolean(actor) && !terminal && (((assigned || (creator && norm(row.LAST_ACTION) === 'SAVEASDRAFT')) && !yes(row.FINAL_APPROVED)) || resume);
   return {
     mode: eligible ? resume ? 'resumption' : creator ? 'resubmit' : 'approval' : 'view',

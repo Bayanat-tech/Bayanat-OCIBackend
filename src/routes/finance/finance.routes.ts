@@ -53,6 +53,14 @@ import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRol
 import { insUpdHrEmpLanguages } from "../../controllers/HR/insUpdHrEmpLanguages";
 import { insUpdHrEmployeeDependants } from "../../controllers/HR/insUpdHrEmployeeDependants";
 import { UpdHrEmployeeDetail } from "../../controllers/HR/UpdHrEmpoyeeDetail";
+import {
+  getUnallocatedBills,
+  allocateUnallocatedInvoices,
+  getAssetDepreciationExceptions,
+  getAllocationsList,
+  getAllocationDetails,
+  cancelAllocation,
+} from "../../controllers/finance/unallocatedInvoice.controller";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -332,28 +340,6 @@ router.post(
 // import transactionsRoutes from "../finance/accounts/transactions_finance.routes";
 // const router = express.Router();
 
-// Get finance master data
-router.get(
-  "/:master",
-  // authenticate the user using the jwt token
-  passport.authenticate("jwt", { session: false }),
-  // check if the user has the necessary permissions
-  checkUserAuthorization,
-  // call the getFinanceListData function to handle the request
-  getFinanceListData
-);
-
-// // Define routes for finance master data
-// router.use(
-//   "/master",
-//   // authenticate the user using the jwt token
-//   passport.authenticate("jwt", { session: false }),
-//   // check if the user has the necessary permissions
-//   checkUserAuthorization,
-//   // call the masterRoutes to handle the request
-//   masterRoutes
-// );
-
 // Define routes for finance transactions data
 router.use(
   "/transactions",
@@ -372,7 +358,60 @@ router.post(
 );
 router.post("/insUpdMsApproverLevels", insUpdMsApproverLevels);
 router.post("/insSecRoleFunctionAccessUser", insSecRoleFunctionAccessUser); 
- export default router;
+
+// Unallocated Invoice Allocation routes (PowerBuilder uo_ac_unallocatedinv_allocate)
+router.get(
+  "/unallocated-bills",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getUnallocatedBills
+);
+router.post(
+  "/allocate-invoices",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  allocateUnallocatedInvoices
+);
+router.get(
+  "/asset-depreciation/exceptions",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAssetDepreciationExceptions
+);
+router.get(
+  "/allocations/list",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAllocationsList
+);
+router.get(
+  "/allocations/:docNo",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAllocationDetails
+);
+router.post(
+  "/allocations/cancel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  cancelAllocation
+);
+
+// Fallback parameter route for finance master data (must be defined AFTER specific routes)
+router.get(
+  "/:master",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFinanceListData
+);
+
+export default router;
 
 
 

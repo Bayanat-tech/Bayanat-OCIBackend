@@ -69,17 +69,66 @@ export const getFinanceListData = async (
                   ac_name: "ac_name",
                   party_name: "ac_name",
                   ref_no: "ref_no",
+                  ref_doc_no: "ref_doc_no",
                   ac_payee: "ac_payee",
                   cheque_no: "cheque_no",
                   canceled: "canceled",
                   cancelled: "canceled",
                   status: "canceled",
                   doc_status: "canceled",
+                  auto_reverse: "auto_reverse",
+                  unreversed_only: "unreversed_only",
                 };
                 const dbField = columnMap[field_name];
                 if (!dbField) return;
 
                 const safeParam = `${dbField.replace(/\W/g, "")}_${gi}_${ci}`;
+
+                if (dbField === "auto_reverse") {
+                  const normVal = String(field_value).trim().toUpperCase();
+                  if (normVal === "Y") {
+                    groupClauses.push(`EXISTS (
+                      SELECT 1 FROM tr_ac_header h 
+                      WHERE h.company_code = source.company_code 
+                        AND h.doc_type = source.doc_type 
+                        AND h.doc_no = source.doc_no 
+                        AND UPPER(NVL(h.auto_reverse, 'N')) = 'Y'
+                    )`);
+                  } else if (normVal === "N") {
+                    groupClauses.push(`EXISTS (
+                      SELECT 1 FROM tr_ac_header h 
+                      WHERE h.company_code = source.company_code 
+                        AND h.doc_type = source.doc_type 
+                        AND h.doc_no = source.doc_no 
+                        AND UPPER(NVL(h.auto_reverse, 'N')) = 'N'
+                    )`);
+                  }
+                  return;
+                }
+
+                if (dbField === "unreversed_only") {
+                  groupClauses.push(`(source.ref_doc_no IS NULL 
+                    AND NOT UPPER(NVL(source.remarks, ' ')) LIKE '%(AUTO REVERSE%'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM tr_ac_header rev 
+                      WHERE rev.company_code = source.company_code 
+                        AND rev.doc_type = 'RJV' 
+                        AND (TO_CHAR(rev.ref_doc_no) = TO_CHAR(source.doc_no) OR TO_CHAR(rev.ref_no) = TO_CHAR(source.doc_no))
+                        AND UPPER(NVL(rev.canceled, 'N')) = 'N'
+                    ))`);
+                  return;
+                }
+
+                if (dbField === "ref_doc_no") {
+                  const normVal = String(field_value).trim();
+                  if (normVal.toUpperCase() === "NULL" || normVal === "") {
+                    groupClauses.push(`source.ref_doc_no IS NULL`);
+                  } else {
+                    groupClauses.push(`UPPER(TO_CHAR(source.ref_doc_no)) = UPPER(:${safeParam})`);
+                    binds[safeParam] = normVal;
+                  }
+                  return;
+                }
 
                 if (dbField === "canceled") {
                   const normVal = String(field_value).trim().toUpperCase();
