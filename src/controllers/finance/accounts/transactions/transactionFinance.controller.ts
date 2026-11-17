@@ -2186,6 +2186,26 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
       { cc: req.user.company_code, dt: h.doc_type, dn: doc_no, lu: req.user.loginid }
     );
     await finalizeLegacyPosting(conn, req, h.doc_type, String(doc_no));
+
+    // PowerBuilder SP_AUTO_CREATE_JV compliance: Mark AUTO_REVERSE = 'Y' on reversal & source provisional JV
+    if (h.doc_type === 'RJV') {
+      try {
+        await conn.execute(
+          `UPDATE TR_AC_HEADER SET AUTO_REVERSE = 'Y' WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'RJV' AND (DOC_NO = :dn OR TO_CHAR(DOC_NO) = :dn)`,
+          { cc: req.user.company_code, dn: String(doc_no) }
+        );
+        const refDoc = String(h.ref_doc_no || (req.body as any).ref_no || '').trim();
+        if (refDoc) {
+          await conn.execute(
+            `UPDATE TR_AC_HEADER SET AUTO_REVERSE = 'Y' WHERE COMPANY_CODE = :cc AND DOC_TYPE IN ('RJV', 'PJV') AND (DOC_NO = :rn OR TO_CHAR(DOC_NO) = :rn)`,
+            { cc: req.user.company_code, rn: refDoc }
+          );
+        }
+      } catch (revErr) {
+        console.warn('Failed to update AUTO_REVERSE flags on RJV creation:', revErr);
+      }
+    }
+
     await conn.commit();
 
     console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);

@@ -53,6 +53,14 @@ import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRol
 import { insUpdHrEmpLanguages } from "../../controllers/HR/insUpdHrEmpLanguages";
 import { insUpdHrEmployeeDependants } from "../../controllers/HR/insUpdHrEmployeeDependants";
 import { UpdHrEmployeeDetail } from "../../controllers/HR/UpdHrEmpoyeeDetail";
+import {
+  getUnallocatedBills,
+  allocateUnallocatedInvoices,
+  getAssetDepreciationExceptions,
+  getAllocationsList,
+  getAllocationDetails,
+  cancelAllocation,
+} from "../../controllers/finance/unallocatedInvoice.controller";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -372,7 +380,52 @@ router.post(
 );
 router.post("/insUpdMsApproverLevels", insUpdMsApproverLevels);
 router.post("/insSecRoleFunctionAccessUser", insSecRoleFunctionAccessUser); 
- export default router;
+
+// Unallocated Invoice Allocation routes (PowerBuilder uo_ac_unallocatedinv_allocate)
+router.get(
+  "/unallocated-bills",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getUnallocatedBills
+);
+router.post(
+  "/allocate-invoices",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  allocateUnallocatedInvoices
+);
+router.get(
+  "/asset-depreciation/exceptions",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAssetDepreciationExceptions
+);
+router.get(
+  "/allocations/list",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAllocationsList
+);
+router.get(
+  "/allocations/:docNo",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAllocationDetails
+);
+router.post(
+  "/allocations/cancel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  cancelAllocation
+);
+
+export default router;
 
 
 
