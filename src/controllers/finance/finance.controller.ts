@@ -107,13 +107,15 @@ export const getFinanceListData = async (
                 }
 
                 if (dbField === "unreversed_only") {
-                  groupClauses.push(`(source.ref_doc_no IS NULL AND NOT EXISTS (
-                    SELECT 1 FROM tr_ac_header rev 
-                    WHERE rev.company_code = source.company_code 
-                      AND rev.doc_type = 'RJV' 
-                      AND rev.ref_doc_no = source.doc_no 
-                      AND UPPER(NVL(rev.canceled, 'N')) = 'N'
-                  ))`);
+                  groupClauses.push(`(source.ref_doc_no IS NULL 
+                    AND NOT UPPER(NVL(source.remarks, ' ')) LIKE '%(AUTO REVERSE%'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM tr_ac_header rev 
+                      WHERE rev.company_code = source.company_code 
+                        AND rev.doc_type = 'RJV' 
+                        AND (TO_CHAR(rev.ref_doc_no) = TO_CHAR(source.doc_no) OR TO_CHAR(rev.ref_no) = TO_CHAR(source.doc_no))
+                        AND UPPER(NVL(rev.canceled, 'N')) = 'N'
+                    ))`);
                   return;
                 }
 
