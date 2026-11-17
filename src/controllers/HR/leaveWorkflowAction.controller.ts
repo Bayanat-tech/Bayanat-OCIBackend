@@ -27,10 +27,13 @@ async function context(req: RequestWithUser) {
 export async function getLeaveWorkflowRequest(req: RequestWithUser, res: Response): Promise<void> {
   try {
     const { actor, row, binds } = await context(req);
+    // console.log('actor',actor,'row',row,'binds',binds);
     const related = [row.CREATED_BY, row.CREATE_USER, row.NEXT_ACTION_BY, row.IMMEDIATE_SUPERVISOR, row.DEPT_HEAD, row.HOD].some(value => String(value ?? '').trim() === actor);
+    // console.log('related',related);
     if (!related) {
       const history = await QueryExecutor.executeRawQuery(`SELECT COUNT(*) N FROM LEAVE_REQUEST_FLOW_HISTRY
         WHERE COMPANY_CODE=:company AND REQUEST_NUMBER=:request AND (UPDATED_BY=:actor OR NEXT_ACTION_BY=:actor)`, { ...binds, actor });
+        // console.log('history',history);
       if (!Number(history.rows?.[0]?.N)) throw fail('This leave request is not part of your workflow.', 403);
     }
     res.json({ success: true, data: decorateLeave(row, actor) });

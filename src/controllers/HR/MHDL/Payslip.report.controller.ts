@@ -5,6 +5,7 @@ import { QueryExecutor } from "../../../database/QueryExecutor";
 // ─── Types ────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
+type Binds = Record<string, any>;
 
 interface ReqParams {
   loginid:    string;
@@ -15,7 +16,7 @@ interface ReqParams {
 
 interface IPaySlipHeader {
   employee_id: string;
-  alternate_id:string;
+  alternate_id: string;
   rpt_name: string;
   desg_name: string;
   div_name: string;
@@ -25,8 +26,8 @@ interface IPaySlipHeader {
   payment_mode: string;
   salary_acct_no: string;
   bank_name?: string;
-  pay_month: string;
-  pay_year: string;
+  pay_month: number | string;
+  pay_year: number | string;
   curr_name: string;
   company_code?: string;
   div_code?: string;
@@ -82,8 +83,9 @@ function formatCurrency(amount: number | undefined): string {
 }
 
 const MONTH_ABBRS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-function getMonthAbbr(monthNum: string): string {
-  return MONTH_ABBRS[parseInt(monthNum, 10) - 1] || monthNum || "";
+function getMonthAbbr(monthNum: string | number): string {
+  const s = String(monthNum ?? "");
+  return MONTH_ABBRS[parseInt(s, 10) - 1] || s;
 }
 
 // ─── Param extraction ───────────────────────────────────────────────────────
@@ -118,10 +120,9 @@ function isAllowedYear(year: string): boolean {
 // ─── Permission check ───────────────────────────────────────────────────────
 
 // async function hasPayslipPermission(loginid: string, employeeId: string): Promise<boolean> {
-//     console.log('log6',loginid === employeeId)
 //   if (!loginid || !employeeId) return false;
 //   if (loginid === employeeId) return true;
-
+//
 //   const sql = `
 //     SELECT DISTINCT *
 //     FROM (
@@ -156,97 +157,136 @@ interface PayslipData {
 
 const HISTORY_SOURCE_FLAG = "P";
 
+async function runQuery(sql: string, binds: Binds): Promise<ReportRow[]> {
+  const result = await QueryExecutor.executeRawQuery(sql, binds);
+  return normalize((result.rows as any[]) || []);
+}
+
+// Try the primary query; if it returns no rows, try the fallback (if any)
+async function queryWithFallback(
+  label: string,
+  primary: { sql: string; binds: Binds },
+  fallback?: { sql: string; binds: Binds }
+): Promise<ReportRow[]> {
+  const rows = await runQuery(primary.sql, primary.binds);
+  if (rows.length > 0 || !fallback) return rows;
+
+  console.log(`[payslip] ${label}: current-month view empty, falling back to history view`);
+  return runQuery(fallback.sql, fallback.binds);
+}
+
 async function loadPayslipData(employeeId: string, month: string, year: string): Promise<PayslipData | null> {
-  const headerSql =  `SELECT DISTINCT * FROM VW_BOHC_PAYSLIP_HDR WHERE EMPLOYEE_ID = :employeeId AND PAY_MONTH = :month AND PAY_YEAR = :year`;
-  const bindheaderParams = {employeeId: employeeId ,month: month ,year: year}
-  const headerResult = await QueryExecutor.executeRawQuery(headerSql,bindheaderParams);
-  const headerRows = normalize((headerResult.rows as any[]) || []);
-  const header: IPaySlipHeader | undefined = headerRows[0] as IPaySlipHeader | undefined;
+  const headerSql = `SELECT DISTINCT * FROM VW_BOHC_PAYSLIP_HDR WHERE EMPLOYEE_ID = :employeeId AND PAY_MONTH = :month AND PAY_YEAR = :year`;
+  const headerRows = await runQuery(headerSql, { employeeId, month, year });
+  const header = headerRows[0] as IPaySlipHeader | undefined;
   if (!header) return null;
-  console.log('header',header)
 
   const { payrollMonth: liveMonth, payrollYear: liveYear } = getLivePayrollPeriod();
   const isCurrentMonthView = parseInt(month, 10) === liveMonth && parseInt(year, 10) === liveYear;
 
-  const earningsSql = isCurrentMonthView
-    ? `SELECT DISTINCT PAY_COMP_ID, PAY_COMP_DESC, PAY_COMP_AMT, SORT_ORDER
+  // ── Current-month queries ──
+  const currentBinds: Binds = { employeeId, month, year };
+
+  const currentEarningsSql = `SELECT DISTINCT PAY_COMP_ID, PAY_COMP_DESC, PAY_COMP_AMT, SORT_ORDER
        FROM VW_CURRENTMONTH_EARNING
        WHERE EMPLOYEE_ID = :employeeId AND PAY_MONTH = :month AND PAY_YEAR = :year
-       ORDER BY SORT_ORDER`
-    : `SELECT PAY_COMP_ID, PAY_COMP_AMT, ARREARS, COMPANY_CODE, PAY_COMP_DESC, SORT_ORDER,
-              MUTLI_CURR_SALDISBURSE, QUOTE_CURR, ADDN_CURR, DTL_CURR, BASE_CURR
+       ORDER BY SORT_ORDER`;
+
+  const currentDeductionsSql = `SELECT DISTINCT PAY_COMP_ID, PAY_COMP_DESC, PAY_COMP_AMT, SORT_ORDER
+       FROM VW_CURRENTMONTH_DEDUCTION
+       WHERE EMPLOYEE_ID = :employeeId AND PAY_MONTH = :month AND PAY_YEAR = :year
+       ORDER BY SORT_ORDER`;
+
+  const currentAttendanceSql = `SELECT ATTEND_TYPE, NO_OF_DAYS, ATTEND_DESC
+       FROM VW_CURRENTMONTH_ATTENDANCE
+       WHERE EMPLOYEE_ID = :employeeId AND COMPANY_CODE = :companyCode AND PAY_MONTH = :month AND PAY_YEAR = :year`;
+
+  const currentVisaSql = `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO
+       FROM VW_CURRENTMONTH_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`;
+
+  // ── History queries ──
+  const historyBinds: Binds = {
+    employeeId,
+    month,
+    year,
+    deptCode: header.dept_code,
+    sourceFlag: HISTORY_SOURCE_FLAG,
+  };
+
+  const historyEarningsSql = `SELECT PAY_COMP_ID, PAY_COMP_AMT, ARREARS, COMPANY_CODE, PAY_COMP_DESC, SORT_ORDER, QUOTE_CURR
        FROM VW_HISTORY_EARNING
        WHERE PAY_MONTH = :month AND PAY_YEAR = :year AND DEPT_CODE = :deptCode
        AND SOURCE_FLAG = :sourceFlag AND EMPLOYEE_ID = :employeeId
        ORDER BY SORT_ORDER`;
 
-  const deductionsSql = isCurrentMonthView
-    ? `SELECT DISTINCT PAY_COMP_ID, PAY_COMP_DESC, PAY_COMP_AMT, SORT_ORDER
-       FROM VW_CURRENTMONTH_DEDUCTION
-       WHERE EMPLOYEE_ID = :employeeId AND PAY_MONTH = :month AND PAY_YEAR = :year
-       ORDER BY SORT_ORDER`
-    : `SELECT PAY_COMP_ID, PAY_COMP_AMT, ARREARS, COMPANY_CODE, PAY_COMP_DESC, SORT_ORDER,
-              MUTLI_CURR_SALDISBURSE, QUOTE_CURR, ADDN_CURR, DTL_CURR, BASE_CURR
+  const historyDeductionsSql = `SELECT PAY_COMP_ID, PAY_COMP_AMT, ARREARS, COMPANY_CODE, PAY_COMP_DESC, SORT_ORDER, QUOTE_CURR
        FROM VW_HISTORY_DEDUCTION
        WHERE PAY_MONTH = :month AND PAY_YEAR = :year AND DEPT_CODE = :deptCode
        AND SOURCE_FLAG = :sourceFlag AND EMPLOYEE_ID = :employeeId
        ORDER BY SORT_ORDER`;
 
-  const attendanceSql = isCurrentMonthView
-    ? `SELECT ATTEND_TYPE, NO_OF_DAYS, ATTEND_DESC
-       FROM VW_CURRENTMONTH_ATTENDANCE
-       WHERE EMPLOYEE_ID = :employeeId AND COMPANY_CODE = :companyCode AND PAY_MONTH = :month AND PAY_YEAR = :year`
-    : `SELECT ATTEND_TYPE, NO_OF_DAYS, ATTEND_DESC
+  const historyAttendanceSql = `SELECT ATTEND_TYPE, NO_OF_DAYS, ATTEND_DESC
        FROM VW_HISTORY_ATTENDANCE
        WHERE EMPLOYEE_ID = :employeeId AND COMPANY_CODE = :companyCode AND PAY_MONTH = :month AND PAY_YEAR = :year`;
 
-  const visaExpirySql = isCurrentMonthView
-    ? `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO FROM VW_CURRENTMONTH_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`
-    : `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO FROM VW_HISTORY_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`;
+  const historyVisaSql = `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO
+       FROM VW_HISTORY_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`;
 
-const earnDedBinds = isCurrentMonthView
-  ? { employeeId, month, year }
-  : {
-      employeeId,
-      month,
-      year,
-      deptCode: header.dept_code,
-      sourceFlag: HISTORY_SOURCE_FLAG,
-    }
+  const attendBinds: Binds = { employeeId, companyCode: header.company_code, month, year };
+  const visaBinds: Binds = { employeeId };
 
-  const [earningsResult, deductionsResult, attendanceResult, visaExpiryResult] = await Promise.all([
-    QueryExecutor.executeRawQuery(earningsSql, earnDedBinds),
-    QueryExecutor.executeRawQuery(deductionsSql, earnDedBinds),
-    QueryExecutor.executeRawQuery(attendanceSql, { employeeId, companyCode: header.company_code, month, year }),
-    QueryExecutor.executeRawQuery(visaExpirySql, { employeeId }),
+  // Live month: current view first, history as fallback.
+  // Any other month: history only.
+  const pick = (
+    label: string,
+    cur: { sql: string; binds: Binds },
+    hist: { sql: string; binds: Binds }
+  ) =>
+    isCurrentMonthView
+      ? queryWithFallback(label, cur, hist)
+      : queryWithFallback(label, hist);
+
+  const [earningsRows, deductionsRows, attendanceRows, visaRows] = await Promise.all([
+    pick("earnings",
+      { sql: currentEarningsSql, binds: currentBinds },
+      { sql: historyEarningsSql, binds: historyBinds }),
+    pick("deductions",
+      { sql: currentDeductionsSql, binds: currentBinds },
+      { sql: historyDeductionsSql, binds: historyBinds }),
+    pick("attendance",
+      { sql: currentAttendanceSql, binds: attendBinds },
+      { sql: historyAttendanceSql, binds: attendBinds }),
+    pick("visa",
+      { sql: currentVisaSql, binds: visaBinds },
+      { sql: historyVisaSql, binds: visaBinds }),
   ]);
 
-  // Logo: try the employee's division, then fall back to division '10'
+  console.log("[payslip] counts", {
+    isCurrentMonthView,
+    earnings: earningsRows.length,
+    deductions: deductionsRows.length,
+    attendance: attendanceRows.length,
+    visa: visaRows.length,
+  });
+
+  // Logo
   let logoUrl: string | null = null;
   if (header.div_code) {
-    const primary = await QueryExecutor.executeRawQuery(
+    const primaryRows = await runQuery(
       `SELECT COMPANY_LOGO AS LOGO_URL FROM MS_COMPANY WHERE COMPANY_CODE = :COMPANY_CODE`,
       { COMPANY_CODE: header.company_code }
     );
-    const primaryRows = normalize((primary.rows as any[]) || []);
     if (primaryRows[0]?.logo_url) {
       logoUrl = primaryRows[0].logo_url;
-    } else {
-      // const fallback = await QueryExecutor.executeRawQuery(
-      //   `SELECT COMPANY_LOGO AS LOGO_URL FROM MS_COMPANY WHERE DIV_CODE = '10'`,
-      //   {}
-      // );
-      // const fallbackRows = normalize((fallback.rows as any[]) || []);
-      // if (fallbackRows[0]?.logo_url) logoUrl = fallbackRows[0].logo_url;
     }
   }
 
   return {
     header,
-    earnings: normalize((earningsResult.rows as any[]) || []) as IPayComponent[],
-    deductions: normalize((deductionsResult.rows as any[]) || []) as IPayComponent[],
-    attendance: normalize((attendanceResult.rows as any[]) || []) as IAttendanceRow[],
-    visaExpiry: (normalize((visaExpiryResult.rows as any[]) || []) as IVisaExpiryRow[])[0],
+    earnings: earningsRows as IPayComponent[],
+    deductions: deductionsRows as IPayComponent[],
+    attendance: attendanceRows as IAttendanceRow[],
+    visaExpiry: visaRows[0] as IVisaExpiryRow | undefined,
     logoUrl,
   };
 }
@@ -313,9 +353,9 @@ function renderPayslipContent(data: PayslipData): string {
           ${renderLabelValue("Currency", header.curr_name)}
           ${renderLabelValue("Bank Name", header.bank_name)}
           ${renderLabelValue("Account No.", header.salary_acct_no)}
-          ${renderLabelValue("Mode of Payment", 
-            header.payment_mode === 'B' ? 'Bank Transfer' : 
-            header.payment_mode === 'C' ? 'Cash' : 
+          ${renderLabelValue("Mode of Payment",
+            header.payment_mode === 'B' ? 'Bank Transfer' :
+            header.payment_mode === 'C' ? 'Cash' :
             header.payment_mode
           )}
           ${renderLabelValue("Ref JV Doc No", header.ref_jv_doc_no)}
@@ -389,11 +429,11 @@ function renderMessagePage(title: string, message: string, isError: boolean): st
 }
 
 function buildPayslipDocument(contentHtml: string, embed = false): string {
-    const pdfLibs = embed ? "" : `
+  const pdfLibs = embed ? "" : `
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>`;
 
-    const actionBar = embed ? "" : `
+  const actionBar = embed ? "" : `
         <div class="no-print" style="margin-bottom:1rem;display:flex;justify-content:flex-end;gap:0.5rem;">
         <button onclick="window.print()" style="border:1px solid #d1d5db;background:#fff;padding:0.5rem 0.75rem;border-radius:6px;cursor:pointer;">Print</button>
         <button onclick="exportPayslipToPDF()" style="border:1px solid #d1d5db;background:#fff;padding:0.5rem 0.75rem;border-radius:6px;cursor:pointer;">Download PDF</button>
@@ -480,12 +520,13 @@ ${pdfLibs}
 </html>`;
 }
 
-   function formatDate(v: unknown): string {
-     if (!v) return "";
-     const d = new Date(v as any);
-     if (isNaN(d.getTime()) || d.getFullYear() <= 1900) return "";
-     return `${String(d.getDate()).padStart(2, "0")}-${MONTH_ABBRS[d.getMonth()]}-${d.getFullYear()}`;
-   }
+function formatDate(v: unknown): string {
+  if (!v) return "";
+  const d = new Date(v as any);
+  if (isNaN(d.getTime()) || d.getFullYear() <= 1900) return "";
+  return `${String(d.getDate()).padStart(2, "0")}-${MONTH_ABBRS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
 // ─── Route handler ──────────────────────────────────────────────────────────
 // GET /hr/reports/payslip?employeeId=..&month=..&year=..
 
@@ -518,23 +559,24 @@ export const getPayslipReportHtml = async (req: RequestWithUser, res: Response):
     //   return;
     // }
 
-    const data = await loadPayslipData(params.employeeId, params.month, params.year);
-      if (!data) {
-        const embed = ["1", "true"].includes(text(req.query.embed));
-        if (embed) {
-          // the React page reads this and shows it in the toast and preview
-          res.status(404).json({ success: false, message: "No data found for the selected employee and pay period." });
-        } else {
-          res.status(200).send(renderMessagePage(
-            "No Data Found",
-            "No payslip data was found for the selected employee, month, and year.",
-            false
-          ));
-        }
-        return;
-      }
     const embed = ["1", "true"].includes(text(req.query.embed));
-    const html = buildPayslipDocument(renderPayslipContent(data),embed);
+    const data = await loadPayslipData(params.employeeId, params.month, params.year);
+
+    if (!data) {
+      if (embed) {
+        // the React page reads this and shows it in the toast and preview
+        res.status(404).json({ success: false, message: "No data found for the selected employee and pay period." });
+      } else {
+        res.status(200).send(renderMessagePage(
+          "No Data Found",
+          "No payslip data was found for the selected employee, month, and year.",
+          false
+        ));
+      }
+      return;
+    }
+
+    const html = buildPayslipDocument(renderPayslipContent(data), embed);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);

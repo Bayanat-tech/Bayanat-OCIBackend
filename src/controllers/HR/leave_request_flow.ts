@@ -306,7 +306,7 @@ export const leaveRequestFlow = async (
           const hasResumeDates = !!dutyResumeDate && !!actualResumeDate;
 
           try {
-            if (dutyResumeDate && actualResumeDate) {
+            if (dutyResumeDate && actualResumeDate && row.RESUME_DATE_APPROVED === 'YES') {
               console.log("Sending resume dates update to HR API:", savedRequestNumber);
               await HrService.updateLeaveResume({
                 requestNumber: savedRequestNumber,
