@@ -49,6 +49,11 @@ export class TenantManager {
       console.log(`  - User: ${process.env.ORACLE_USER}`);
       console.log(`  - Connection: ${process.env.ORACLE_CONNECTION_STRING}`);
       
+      // High-performance buffer sizing for large financial data sets and reports
+      oracledb.fetchArraySize = 1000;
+      oracledb.prefetchRows = 1000;
+      oracledb.maxRows = 100000;
+
       this.centralPool = await oracledb.createPool({
         user: process.env.ORACLE_USER!,
         password: process.env.ORACLE_PASSWORD!,
