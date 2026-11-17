@@ -340,11 +340,7 @@ function formatCell(value: unknown, fmt: Fmt = "text"): string {
   }
 }
 
-// ─── Layout CSS – identical to the Visa Expiry / Freight "Enquiry List" PDF ──
-// Sizes: company 16px, title 18px, filter strip 10.5px, table text 10.5px, footer 9px.
-// Colours: navy #00378c header, #fafcfe rows (ALL rows same, no tint),
-//          #e2e8f0 row lines, #dbe4f0 total row.
-// Used with fontMode: "native".
+
 
 const EXTRA_CSS = `
   @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
@@ -365,28 +361,28 @@ const EXTRA_CSS = `
   /* Letterhead – navy rule under the header */
   .company-header {
     border-bottom: 2px solid #00378c;
-    padding: 0 0 10px 0;
-    margin: 0 0 8px 0;
+    padding: 0 0 6px 0;
+    margin: 0 0 6px 0;
   }
-  .company-name       { font-size: 16px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
-  .company-address    { font-size: 9.5px; line-height: 1.4; }
-  .company-logo-wrap  { max-width: 180px; }
-  .company-logo       { max-height: 56px; max-width: 180px; }
+  .company-name       { font-size: 13px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 8px; line-height: 1.3; }
+  .company-logo-wrap  { max-width: 140px; }
+  .company-logo       { max-height: 42px; max-width: 140px; }
 
   /* Title + filter strip */
   h1.report-title {
-    margin: 28px 0 14px 0;
-    font-size: 18px;
+    margin: 16px 0 8px 0;
+    font-size: 15px;
     font-weight: 700;
     color: #00378c !important;
   }
-  .applied-filters { font-size: 10.5px; margin-bottom: 28px; }
+  .applied-filters { font-size: 9px; margin-bottom: 16px; }
 
   /* Data table */
   table.data-table {
     width: 100%;
     table-layout: fixed;
-    font-size: 10.5px;
+    font-size: 9px;
     margin-top: 0;
     border-collapse: collapse;
   }
@@ -408,8 +404,8 @@ const EXTRA_CSS = `
     background: #00378c !important;
     color: #ffffff !important;
     font-weight: 700;
-    font-size: 10.5px;
-    padding: 12px 6px;
+    font-size: 9px;
+    padding: 8px 5px;
     border: 0 !important;
     text-transform: none;
     white-space: normal !important;
@@ -418,9 +414,9 @@ const EXTRA_CSS = `
   /* Data rows – every row same colour */
   table.data-table tbody tr.data-row td {
     background: #fafcfe !important;
-    font-size: 10.5px;
+    font-size: 9px;
     font-weight: 400;
-    padding: 9px 6px;
+    padding: 6px 5px;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b;
     vertical-align: top;
@@ -435,7 +431,7 @@ const EXTRA_CSS = `
 
   /* Stacked multi-field cells (first line bold, others smaller with label) */
   table.data-table td .line-main { font-weight: 600; color: #1e293b; }
-  table.data-table td .line-sub  { color: #475569; margin-top: 2px; font-size: 10px; }
+  table.data-table td .line-sub  { color: #475569; margin-top: 2px; font-size: 8.5px; }
   table.data-table td .line-lbl  { color: #64748b; font-weight: 600; }
 
   /* Total row – shaded, bold navy, right aligned */
@@ -443,15 +439,15 @@ const EXTRA_CSS = `
     background: #dbe4f0 !important;
     color: #00378c !important;
     font-weight: 700;
-    font-size: 10.5px;
-    padding: 9px 8px;
+    font-size: 9px;
+    padding: 6px 7px;
     text-align: right;
     border-bottom: 1px solid #cbd5e1 !important;
   }
 
   /* Empty state */
   table.data-table tbody tr.empty-row td {
-    padding: 20px;
+    padding: 14px;
     text-align: center;
     color: #64748b;
     background: #fafcfe !important;
@@ -462,7 +458,7 @@ const EXTRA_CSS = `
     width: 100% !important;
     max-width: 100% !important;
     padding-right: 2px;
-    font-size: 9px;
+    font-size: 8px;
     overflow: visible !important;
     overflow-wrap: anywhere;
     word-break: break-word;
@@ -472,7 +468,7 @@ const EXTRA_CSS = `
   @media print {
     table.data-table thead { display: table-header-group; }
     table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
-    .report-footer { font-size: 9px; }
+    .report-footer { font-size: 8px; }
   }
 `;
 
