@@ -214,6 +214,12 @@ const BANK_EXTRA_CSS = `
     border-bottom: 2px solid #0b4ca1 !important;
   }
 
+  /* --- NEW: Force center alignment for specific columns --- */
+  table.data-table th.center,
+  table.data-table td.center {
+    text-align: center !important;
+  }
+
   table.data-table td {
     padding: 5px 6px;
     vertical-align: middle;
@@ -288,6 +294,7 @@ function renderBody(rows: ReportRow[], filtersHtml: string): string {
       return `
         <tr>
           <td class="center">${escapeHtml(r.bank_code)}</td>
+          <td>${escapeHtml(r.bank_name)}</td>
           <td class="center">${escapeHtml(r.country_code)}</td>
           <td>${escapeHtml(r.bank_addr1)}</td>
           <td class="center">${
