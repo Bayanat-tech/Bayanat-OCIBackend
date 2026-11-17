@@ -340,28 +340,6 @@ router.post(
 // import transactionsRoutes from "../finance/accounts/transactions_finance.routes";
 // const router = express.Router();
 
-// Get finance master data
-router.get(
-  "/:master",
-  // authenticate the user using the jwt token
-  passport.authenticate("jwt", { session: false }),
-  // check if the user has the necessary permissions
-  checkUserAuthorization,
-  // call the getFinanceListData function to handle the request
-  getFinanceListData
-);
-
-// // Define routes for finance master data
-// router.use(
-//   "/master",
-//   // authenticate the user using the jwt token
-//   passport.authenticate("jwt", { session: false }),
-//   // check if the user has the necessary permissions
-//   checkUserAuthorization,
-//   // call the masterRoutes to handle the request
-//   masterRoutes
-// );
-
 // Define routes for finance transactions data
 router.use(
   "/transactions",
@@ -423,6 +401,14 @@ router.post(
   checkUserAuthorization,
   tenantContextMiddleware,
   cancelAllocation
+);
+
+// Fallback parameter route for finance master data (must be defined AFTER specific routes)
+router.get(
+  "/:master",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFinanceListData
 );
 
 export default router;

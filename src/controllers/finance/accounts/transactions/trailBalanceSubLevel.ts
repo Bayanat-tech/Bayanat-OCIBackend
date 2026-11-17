@@ -708,7 +708,7 @@ function buildDetailTxnScript(): string {
     (function () {
       document.querySelectorAll("tbody tr.txn-row").forEach(function (tr) {
         tr.addEventListener("click", function (e) {
-          if (e.target && (e.target.tagName === 'A' || e.target.tagName === 'BUTTON')) return;
+          if (!e.target || e.target.closest('a') || e.target.closest('button') || e.target.closest('.doc-link-wrap')) return;
           var docType = tr.getAttribute("data-doc-type");
           var docNo   = tr.getAttribute("data-doc-no");
           if (docType && docNo) {
