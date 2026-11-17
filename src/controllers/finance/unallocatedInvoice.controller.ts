@@ -159,17 +159,41 @@ export const allocateUnallocatedInvoices = async (req: RequestWithUser, res: Res
     // Generate next UJV Doc No: format YY + DIV + MM + sequence
     const prefix = `${yearStr.slice(2)}${div_code}${monthStr}`;
     const maxDocRes = await conn.execute(
-      `SELECT NVL(MAX(DOC_NO), 0) AS MAX_NO 
+      `SELECT DOC_NO 
        FROM TR_AC_HEADER 
-       WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO LIKE :prefix || '%'`,
-      { cc: companyCode, dt: docType, prefix }
+       WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO LIKE :prefix`,
+      { cc: companyCode, dt: docType, prefix: `${prefix}%` },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    const maxNo = String((maxDocRes.rows as any[])?.[0]?.[0] || "0");
-    let nextSeq = 1;
-    if (maxNo && maxNo.length > prefix.length) {
-      nextSeq = Number(maxNo.slice(prefix.length)) + 1;
+    let maxSeq = 0;
+    if (Array.isArray(maxDocRes.rows)) {
+      for (const row of maxDocRes.rows as any[]) {
+        const dNo = String(row.DOC_NO || "");
+        if (dNo.startsWith(prefix)) {
+          const tail = dNo.slice(prefix.length);
+          const seq = parseInt(tail, 10);
+          if (!isNaN(seq) && seq > maxSeq) {
+            maxSeq = seq;
+          }
+        }
+      }
     }
-    const newDocNo = `${prefix}${String(nextSeq).padStart(3, "0")}`;
+
+    let currSeq = maxSeq + 1;
+    let newDocNo = `${prefix}${String(currSeq).padStart(3, "0")}`;
+
+    // Safety loop to ensure DOC_NO never collides with PK_TR_AC_HEADER
+    while (true) {
+      const existsCheck = await conn.execute(
+        `SELECT COUNT(*) AS CNT FROM TR_AC_HEADER WHERE COMPANY_CODE = :cc AND DOC_TYPE = :dt AND DOC_NO = :dn`,
+        { cc: companyCode, dt: docType, dn: newDocNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const cnt = Number((existsCheck.rows as any[])?.[0]?.CNT ?? 0);
+      if (cnt === 0) break;
+      currSeq++;
+      newDocNo = `${prefix}${String(currSeq).padStart(3, "0")}`;
+    }
 
     // Calculate total allocated amount
     const totalAllocated = allocations.reduce((sum: number, line: any) => sum + Number(line.amount || 0), 0);
