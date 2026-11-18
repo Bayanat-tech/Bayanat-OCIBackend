@@ -77,7 +77,10 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
       const bal = Number(row.BALANCE_AMOUNT || 0);
       return {
         ...row,
-        SIGN_IND: bal > 0 ? 1 : -1,
+        SIGN_IND: bal >= 0 ? 1 : -1,
+        DR_CR: bal >= 0 ? "Dr" : "Cr",
+        RAW_BALANCE: bal,
+        BALANCE_AMOUNT: Math.abs(bal),
       };
     });
 
@@ -94,7 +97,7 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
       data: {
         account: acInfo || { ac_code: acCode, ac_name: "" },
         unallocated_bills: unallocResult.rows || [],
-        open_invoices: openResult.rows || [],
+        open_invoices: mappedInvoices,
       },
     });
   } catch (err: any) {
