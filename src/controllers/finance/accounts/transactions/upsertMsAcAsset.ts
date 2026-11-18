@@ -84,11 +84,15 @@ export const upsertMsAcAsset = async (
       QUANTITY: toNumber(data.quantity),
       PRICE: toNumber(data.price),
       AMOUNT: toNumber(data.amount),
+      WD_VALUE: toNumber(data.wd_value) ?? toNumber(data.amount),
+      DPRC_REQUIRED: data.dprc_required || "Y",
+      SALVAGE_VALUE: toNumber(data.salvage_value) || 0,
+      ACUUDRPC_OPENING: toNumber(data.accudprc_amount) || 0,
 
       SUPPLIER_NAME: data.supplier_name,
       SUPPLIER_AC_CODE: data.supplier_ac_code,
 
-      STATUS: data.status,
+      STATUS: data.status || "A",
       DIV_CODE: data.div_code
     });
 
@@ -100,6 +104,26 @@ export const upsertMsAcAsset = async (
         p_data: obj
       }
     );
+
+    // Ensure WD_VALUE and DPRC_REQUIRED are never left NULL or 0 for active assets with an amount
+    const wdVal = toNumber(data.wd_value) ?? toNumber(data.amount) ?? 0;
+    if (wdVal > 0) {
+      await connection.execute(
+        `UPDATE MS_AC_ASSET
+         SET WD_VALUE = NVL(:wdVal, AMOUNT),
+             DPRC_REQUIRED = NVL(:dprcReq, 'Y')
+         WHERE COMPANY_CODE = :comp
+           AND (ASSET_ID = :assetId OR (ASSET_NAME = :assetName AND ASSET_ID IS NOT NULL))
+           AND (WD_VALUE IS NULL OR WD_VALUE = 0)`,
+        {
+          wdVal,
+          dprcReq: data.dprc_required || "Y",
+          comp: data.company_code,
+          assetId: data.asset_id || "NOT_SET",
+          assetName: data.asset_name || "",
+        }
+      );
+    }
 
     await connection.commit();
 

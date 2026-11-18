@@ -64,23 +64,23 @@ export const procBuildCommonProcedurewmc = async (
         loginid: body.loginid,
 
         // STRING VALUES
-        val1s1: body.val1s1, val1s2: body.val1s2,
-        val1s3: body.val1s3, val1s4: body.val1s4,
-        val1s5: body.val1s5, val1s6: body.val1s6,
-        val1s7: body.val1s7, val1s8: body.val1s8,
-        val1s9: body.val1s9, val1s10: body.val1s10,
-        val1s11: body.val1s11, val1s12: body.val1s12,
-        val1s13: body.val1s13, val1s14: body.val1s14,
-        val1s15: body.val1s15, val1s16: body.val1s16,
-        val1s17: body.val1s17, val1s18: body.val1s18,
-        val1s19: body.val1s19, val1s20: body.val1s20,
+        val1s1: body.val1s1 ?? null, val1s2: body.val1s2 ?? null,
+        val1s3: body.val1s3 ?? null, val1s4: body.val1s4 ?? null,
+        val1s5: body.val1s5 ?? null, val1s6: body.val1s6 ?? null,
+        val1s7: body.val1s7 ?? null, val1s8: body.val1s8 ?? null,
+        val1s9: body.val1s9 ?? null, val1s10: body.val1s10 ?? null,
+        val1s11: body.val1s11 ?? null, val1s12: body.val1s12 ?? null,
+        val1s13: body.val1s13 ?? null, val1s14: body.val1s14 ?? null,
+        val1s15: body.val1s15 ?? null, val1s16: body.val1s16 ?? null,
+        val1s17: body.val1s17 ?? null, val1s18: body.val1s18 ?? null,
+        val1s19: body.val1s19 ?? null, val1s20: body.val1s20 ?? null,
 
         // NUMBER VALUES
-        val1n1: body.val1n1, val1n2: body.val1n2,
-        val1n3: body.val1n3, val1n4: body.val1n4,
-        val1n5: body.val1n5, val1n6: body.val1n6,
-        val1n7: body.val1n7, val1n8: body.val1n8,
-        val1n9: body.val1n9, val1n10: body.val1n10,
+        val1n1: body.val1n1 ?? null, val1n2: body.val1n2 ?? null,
+        val1n3: body.val1n3 ?? null, val1n4: body.val1n4 ?? null,
+        val1n5: body.val1n5 ?? null, val1n6: body.val1n6 ?? null,
+        val1n7: body.val1n7 ?? null, val1n8: body.val1n8 ?? null,
+        val1n9: body.val1n9 ?? null, val1n10: body.val1n10 ?? null,
 
         out_msg: {
           dir: oracledb.BIND_OUT,
@@ -89,6 +89,8 @@ export const procBuildCommonProcedurewmc = async (
         }
       }
     );
+
+    await connection.commit();
 
     const message = (result.outBinds as any)?.out_msg;
 
@@ -579,19 +581,19 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
       `,
       {
         parameter: param,
-        loginid,
-        code1,
-        code2,
-        code3,
-        code4,
-        number1,
-        number2,
-        number3,
-        number4,
-        date1,
-        date2,
-        date3,
-        date4,
+        loginid: loginid || "",
+        code1: code1 ?? null,
+        code2: code2 ?? null,
+        code3: code3 ?? null,
+        code4: code4 ?? null,
+        number1: number1 ?? null,
+        number2: number2 ?? null,
+        number3: number3 ?? null,
+        number4: number4 ?? null,
+        date1: date1 ?? null,
+        date2: date2 ?? null,
+        date3: date3 ?? null,
+        date4: date4 ?? null,
         out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
       }
     );
@@ -778,47 +780,41 @@ export const proc_build_dynamic_sql_common20 = async (
       `,
 
       {
-
         parameter,
-        loginid,
-
-        code1,
-        code2,
-        code3,
-        code4,
+        loginid: loginid || "",
+        code1: code1 ?? null,
+        code2: code2 ?? null,
+        code3: code3 ?? null,
+        code4: code4 ?? null,
         code5: (code5 && typeof code5 === 'string' && (code5.includes('NaN') || code5.trim() === '' || code5.toLowerCase() === 'null' || code5.toLowerCase() === 'undefined')) ? null : (code5 || null),
         code6: (code6 && typeof code6 === 'string' && (code6.includes('NaN') || code6.trim() === '' || code6.toLowerCase() === 'null' || code6.toLowerCase() === 'undefined')) ? null : (code6 || null),
         code7: (code7 && typeof code7 === 'string' && (code7.includes('NaN') || code7.trim() === '' || code7.toLowerCase() === 'null' || code7.toLowerCase() === 'undefined')) ? null : (code7 || null),
         code8: (code8 && typeof code8 === 'string' && (code8.includes('NaN') || code8.trim() === '' || code8.toLowerCase() === 'null' || code8.toLowerCase() === 'undefined')) ? null : (code8 || null),
-        code9,
-        code10,
-        code11,
-        code12,
-        code13,
-        code14,
-        code15,
-        code16,
-        code17,
-        code18,
-        code19,
-        code20,
-
-        number1,
-        number2,
-        number3,
-        number4,
-
-        date1,
-        date2,
-        date3,
-        date4,
-
+        code9: code9 ?? null,
+        code10: code10 ?? null,
+        code11: code11 ?? null,
+        code12: code12 ?? null,
+        code13: code13 ?? null,
+        code14: code14 ?? null,
+        code15: code15 ?? null,
+        code16: code16 ?? null,
+        code17: code17 ?? null,
+        code18: code18 ?? null,
+        code19: code19 ?? null,
+        code20: code20 ?? null,
+        number1: number1 ?? null,
+        number2: number2 ?? null,
+        number3: number3 ?? null,
+        number4: number4 ?? null,
+        date1: date1 ?? null,
+        date2: date2 ?? null,
+        date3: date3 ?? null,
+        date4: date4 ?? null,
         out_sql: {
           dir: oracledb.BIND_OUT,
           type: oracledb.STRING,
           maxSize: 32767
         }
-
       }
 
     );
