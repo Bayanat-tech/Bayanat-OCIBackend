@@ -165,6 +165,149 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
 
     const isAdmin = String(loginId || "").toLowerCase() === "admin";
 
+    // Step C.1: Query user's role from security access tables if available
+    let userRole = "";
+    try {
+      const userRoleRes = await connection.execute(
+        `SELECT NVL(ROLE_ID, 'USER') AS ROLE_ID FROM SEC_LOGIN_ROLE_ACCESS WHERE UPPER(LOGINID) = UPPER(:loginid) AND COMPANY_CODE = :comp AND ROWNUM = 1`,
+        { loginid: loginId || "", comp: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const rRow: any = (userRoleRes.rows as any[])?.[0];
+      if (rRow?.ROLE_ID) {
+        userRole = String(rRow.ROLE_ID).toUpperCase().trim();
+      }
+    } catch {
+      // Fallback if table not present in current schema
+    }
+
+    // Step C.2: Determine User's Operational Team
+    let userTeam = "FFD";
+    const normLogin = String(loginId || "").toLowerCase();
+    const normRole = String(userRole || "").toLowerCase();
+
+    if (isAdmin || normLogin === "admin" || normRole.includes("admin") || normRole.includes("management") || normRole.includes("manager")) {
+      userTeam = "ADMIN";
+    } else if (normRole.includes("pro") || normLogin.includes("pro")) {
+      userTeam = "PRO";
+    } else if (normRole.includes("bayan") || normRole.includes("custom") || normLogin.includes("bayan")) {
+      userTeam = "BAYAN";
+    } else if (normRole.includes("line") || normRole.includes("shipping") || normLogin.includes("line")) {
+      userTeam = "LINE";
+    } else if (normRole.includes("ccro") || normRole.includes("rop") || normRole.includes("police") || normLogin.includes("ccro")) {
+      userTeam = "CCRO";
+    } else if (normRole.includes("transport") || normRole.includes("fleet") || normRole.includes("driver") || normLogin.includes("trans")) {
+      userTeam = "TRANSPORT";
+    } else if (normRole.includes("dc") || normRole.includes("warehouse") || normLogin.includes("dc")) {
+      userTeam = "DC";
+    } else if (normRole.includes("finan") || normRole.includes("account") || normLogin.includes("fin")) {
+      userTeam = "FINANCE";
+    } else {
+      // Deduce from active tracker module permissions
+      const hasFfd = userPermsMap.has(539) || userPermsMap.has("freight/tracker/ffd");
+      const hasPro = userPermsMap.has(540) || userPermsMap.has("freight/tracker/permit");
+      const hasBayan = userPermsMap.has(541) || userPermsMap.has("freight/tracker/bayan");
+      const hasLine = userPermsMap.has(542) || userPermsMap.has("freight/tracker/do");
+      const hasCcro = userPermsMap.has(543) || userPermsMap.has("freight/tracker/ccro");
+      const hasTransport = userPermsMap.has(544) || userPermsMap.has("freight/tracker/transport");
+      const hasDc = userPermsMap.has(545) || userPermsMap.has("freight/tracker/dc");
+
+      if (hasPro && !hasFfd && !hasBayan && !hasTransport && !hasDc) userTeam = "PRO";
+      else if (hasBayan && !hasFfd && !hasTransport && !hasDc) userTeam = "BAYAN";
+      else if (hasLine && !hasFfd && !hasTransport && !hasDc) userTeam = "LINE";
+      else if (hasCcro && !hasFfd && !hasTransport && !hasDc) userTeam = "CCRO";
+      else if (hasTransport && !hasFfd && !hasDc) userTeam = "TRANSPORT";
+      else if (hasDc && !hasFfd && !hasTransport) userTeam = "DC";
+      else if (hasFfd) userTeam = "FFD";
+      else userTeam = "ADMIN";
+    }
+
+    // Step C.3: Workspace Tabs & Stage Scoping
+    // Modern Smart Freight core tabs: Job, Packlist, Documents, Activities, Tracking
+    let allowedWorkspaceTabs: string[] = ["job", "packlist", "documents", "activities", "tracking"];
+    let readOnlyWorkspaceTabs: string[] = [];
+    let defaultWorkspaceTab = "job";
+    let userAssignedStage: number | null = null;
+
+    switch (userTeam) {
+      case "PRO":
+        allowedWorkspaceTabs = ["tracking", "documents"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 2;
+        break;
+      case "BAYAN":
+        allowedWorkspaceTabs = ["tracking", "documents"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 3;
+        break;
+      case "LINE":
+        allowedWorkspaceTabs = ["tracking", "documents"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 4;
+        break;
+      case "CCRO":
+        allowedWorkspaceTabs = ["tracking", "documents"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 5;
+        break;
+      case "TRANSPORT":
+        allowedWorkspaceTabs = ["tracking", "documents"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 6;
+        break;
+      case "DC":
+        // DC warehouse receives cargo: can inspect packlist in read-only mode to verify packages/weights
+        allowedWorkspaceTabs = ["tracking", "packlist", "documents"];
+        readOnlyWorkspaceTabs = ["packlist"];
+        defaultWorkspaceTab = "tracking";
+        userAssignedStage = 7;
+        break;
+      case "FINANCE":
+        // Finance audits billing rates, manages activities & job info
+        allowedWorkspaceTabs = ["job", "packlist", "documents", "activities", "tracking"];
+        readOnlyWorkspaceTabs = ["job", "packlist", "tracking"];
+        defaultWorkspaceTab = "activities";
+        break;
+      case "FFD":
+        allowedWorkspaceTabs = ["job", "packlist", "documents", "activities", "tracking"];
+        defaultWorkspaceTab = "job";
+        userAssignedStage = 1;
+        break;
+      case "ADMIN":
+      default:
+        allowedWorkspaceTabs = ["job", "packlist", "documents", "activities", "tracking"];
+        defaultWorkspaceTab = "job";
+        userAssignedStage = null;
+        break;
+    }
+
+    // Dynamic Database Override from SEC_ROLE_FUNCTION_ACCESS_USER if configured:
+    // If explicit permissions exist in SEC_ROLE_FUNCTION_ACCESS_USER for specific screens/serials:
+    const activitiesPerm = userPermsMap.get(591) || userPermsMap.get(499) || userPermsMap.get("freight/masters/activity") || userPermsMap.get("fms/freight_invoice/invoice");
+    const jobPerm = userPermsMap.get(280) || userPermsMap.get(282) || userPermsMap.get(284) || userPermsMap.get("freight/freight_sea/import");
+
+    if (activitiesPerm) {
+      if (activitiesPerm.SSEARCH === "Y" && !allowedWorkspaceTabs.includes("activities")) {
+        allowedWorkspaceTabs.push("activities");
+      } else if (activitiesPerm.SSEARCH === "N") {
+        allowedWorkspaceTabs = allowedWorkspaceTabs.filter(t => t !== "activities");
+      }
+      if (activitiesPerm.SSAVE === "N" && activitiesPerm.SMODIFY === "N" && !readOnlyWorkspaceTabs.includes("activities")) {
+        readOnlyWorkspaceTabs.push("activities");
+      }
+    }
+
+    if (jobPerm) {
+      if (jobPerm.SSEARCH === "Y" && !allowedWorkspaceTabs.includes("job")) {
+        allowedWorkspaceTabs.unshift("job");
+      } else if (jobPerm.SSEARCH === "N") {
+        allowedWorkspaceTabs = allowedWorkspaceTabs.filter(t => t !== "job");
+      }
+      if (jobPerm.SSAVE === "N" && jobPerm.SMODIFY === "N" && !readOnlyWorkspaceTabs.includes("job")) {
+        readOnlyWorkspaceTabs.push("job");
+      }
+    }
+
     // Step D: Filter tabs based on Company Level + User RBAC
     const activeTabs: any[] = [];
     const hiddenTabs: any[] = [];
@@ -204,10 +347,21 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
         }
 
         const perm = userPermsMap.get(tab.url_path.toLowerCase()) || userPermsMap.get(tab.serial_no);
-        const canView = isAdmin || (perm?.SSEARCH === "Y");
-        const canEdit = isAdmin || (perm?.SSAVE === "Y" || perm?.SMODIFY === "Y");
+        let canView = isAdmin || (perm?.SSEARCH === "Y");
+        let canEdit = isAdmin || (perm?.SSAVE === "Y" || perm?.SMODIFY === "Y");
         const canUpload = isAdmin || (perm?.SUPLOAD === "Y");
         const canDelete = isAdmin || (perm?.SDELETE === "Y");
+
+        // Role-based operational stage scoping:
+        // Specialized operational teams can only edit/complete their own assigned stage.
+        // Other stages remain visible for end-to-end visibility but strictly locked.
+        if (userAssignedStage !== null && userTeam !== "ADMIN" && userTeam !== "FFD") {
+          if (tab.flow_level !== userAssignedStage) {
+            canEdit = false;
+          }
+        } else if (userTeam === "FINANCE") {
+          canEdit = false; // Finance has audit viewing access only on operational tracking
+        }
 
         const roleKey = `LEVEL${tab.flow_level}_ROLE`;
         const assignedRole = approverConfig ? approverConfig[roleKey] : null;
@@ -240,6 +394,12 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
         last_level: lastLevel,
         totalConfiguredLevels: activeTabs.length,
         isCfs: effectiveFlowCode === "CFS_TRANSFER",
+        user_team: userTeam,
+        user_role: userRole || (isAdmin ? "ADMIN" : userTeam),
+        user_assigned_stage: userAssignedStage,
+        allowed_workspace_tabs: allowedWorkspaceTabs,
+        read_only_workspace_tabs: readOnlyWorkspaceTabs,
+        default_workspace_tab: defaultWorkspaceTab,
         activeTabs,
         hiddenTabs,
       },
@@ -627,7 +787,9 @@ export const trkContainerOffload = async (req: Request, res: Response): Promise<
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
     const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
-    const containerNumber = value(req.body.container_number ?? req.body.CONTAINER_NUMBER);
+    const containerNumber = value(
+      req.body.container_number ?? req.body.CONTAINER_NUMBER ?? req.body.container_no ?? req.body.CONTAINER_NO
+    );
     const dcRemark = value(req.body.dc_remark ?? req.body.DC_REMARK);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
 

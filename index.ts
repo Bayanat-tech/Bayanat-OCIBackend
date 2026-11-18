@@ -44,48 +44,50 @@ import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
 import gmHrRoutes from "./src/routes/HR/gmHr.routes";
 //----------------routes-------------
+console.log("R1");
 app.use("/api/files", fileRoutes);
-
+console.log("R2");
 app.use("/api/auth", authRoutes);
-
+console.log("R3");
 app.use("/api/reports", boldReportsRoutes);
-
+console.log("R4");
 app.use("/api/security", secRoutes);
-
+console.log("R5");
 app.use("/api/hr", hrRoutes);
+console.log("R6");
 app.use("/api/gm/hr", gmHrRoutes);
+console.log("R7");
 app.use("/api/ems", hrRoutes);
-
+console.log("R8");
 app.use("/api/pf", pfRoutes);
-
+console.log("R9");
 // Mount BT-FLOW routes
 app.use("/api/bt-flow", pfbtflowRoutes);
-
+console.log("R10");
 app.use("/api/notification", logRoutes);
-
+console.log("R11");
 app.use("/api/vendor", VendorRouter);
-
+console.log("R12");
 // app.use("/api/finance",financeRoutes );
 
 // app.use("/api/attendance", attendanceRoutes);
 
 app.use("/api/pams/", pamsRoutes);
-
+console.log("R13");
 app.use("/api/wms", wmsRoutes);
-
+console.log("R14");
 app.use("/api/finance", financeRoutes);
-
+console.log("R15");
 app.use("/api/freight", freight);
-
+console.log("R16");
 app.use("/api/purchase-sales", purchaseSalesRoutes);
-
+console.log("R17");
 app.use("/api/alms/", almsRoutes);
-
-app.use("/api/wms", wmsRoutes);
-
+console.log("R18");
 app.use("/api/user", editLangrouter);
-
+console.log("R19");
 app.use("/api/mms", mmsRoutes); 
+console.log("R20"); 
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
@@ -186,6 +188,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
+console.log("DEBUG: Calling startServer now...");
 // Start the server
 startServer().catch(err => {
   console.error("Uncaught error in startServer:", err);
