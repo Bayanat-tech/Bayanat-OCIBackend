@@ -138,6 +138,7 @@ import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrReg
 import { getPrRegisterFormReportExcel, getPrRegisterFormReportHtml } from "../../../controllers/ALMS/PRFormReport";
 import { getCreditRequestHistoryApi, getCreditRequestReportExcel, getCreditRequestReportHtml } from "../../../controllers/ALMS/Creditrequestreports";
 import { getCRListingReportExcel, getCRListingReportHtml } from "../../../controllers/ALMS/CRListingReport";
+import { getPurchaseQuotationRegisterReportExcel, getPurchaseQuotationRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationListing";
 
 
 
@@ -301,7 +302,7 @@ router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
 router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
 router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
 
-//purchase 
+//purchase Quotation report routes
 
 router.post('/reports/PurchaseQuotation/html', getPurchaseQuotationReportHtml);
 router.post('/reports/PurchaseQuotation/excel', getPurchaseQuotationReportExcel);
@@ -311,6 +312,11 @@ router.post('/reports/PurchaseQuotationWithRates/excel',getPurchaseQuotationWith
 
 router.post('/reports/PurchaseQuotationCompare/html',getPurchaseQuotationCompareReportHtml);
 router.post('/reports/PurchaseQuotationCompare/excel',getPurchaseQuotationCompareReportExcel);
+
+//PQ Listing
+router.post('/reports/PurchaseQuotationRegister/html',getPurchaseQuotationRegisterReportHtml);
+router.post('/reports/PurchaseQuotationRegister/excel',getPurchaseQuotationRegisterReportExcel);
+
 
 
 
