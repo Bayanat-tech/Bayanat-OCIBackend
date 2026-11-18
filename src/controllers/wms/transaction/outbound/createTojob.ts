@@ -8,95 +8,34 @@ const router = Router();
 const paramValue = (value: string | string[] | undefined): string =>
   Array.isArray(value) ? value[0] ?? "" : value ?? "";
 
+const toDate = (val: any) => (val ? new Date(val) : null);
+
 /* =========================
    UPDATE SQL
+   Only columns the outbound form owns.
+   Everything else (canceled, confirmed, invoiced, eta, vessel, created_*, etc.)
+   is left untouched.
 ========================= */
 const UPDATE_SQL = `
 UPDATE TI_JOB SET
   job_date = :job_date,
-  job_type = :job_type,
   job_class = :job_class,
   dept_code = :dept_code,
+  div_code = :div_code,
   transport_mode = :transport_mode,
-  doc_ref = :doc_ref,
-  port_code = :port_code,
-  description1 = :description1,
-  description2 = :description2,
-  prin_ref1 = :prin_ref1,
-  prin_ref2 = :prin_ref2,
-  remarks = :remarks,
-  eta = :eta,
-  ata = :ata,
-  etd = :etd,
   schedule_date = :schedule_date,
-  payment_terms = :payment_terms,
-  curr_code = :curr_code,
-  ex_rate = :ex_rate,
-  frieght_value = :frieght_value,
-  insurance_value = :insurance_value,
-  cust_code = :cust_code,
-  container_flag = :container_flag,
-  container = :container,
-  packdet = :packdet,
-  allocated = :allocated,
-  canceled = :canceled,
-  confirmed = :confirmed,
-  grn_no = :grn_no,
-  invoiced = :invoiced,
-  completed = :completed,
-  exp_jobno = :exp_jobno,
-  picked = :picked,
-  ordered = :ordered,
+  doc_ref = :doc_ref,
+  prin_ref2 = :prin_ref2,
+  description1 = :description1,
+  remarks = :remarks,
+  port_code = :port_code,
   destination_port = :destination_port,
-  vessel_name = :vessel_name,
-  voyage_no = :voyage_no,
-  payableat = :payableat,
-  place_receipt = :place_receipt,
-  place_delivery = :place_delivery,
-  no_of_original_bl = :no_of_original_bl,
-  broker_code = :broker_code,
-  quotation_ref = :quotation_ref,
-  be_deposits = :be_deposits,
-  ind_freight = :ind_freight,
   country_origin = :country_origin,
   country_destination = :country_destination,
-  custom_recno = :custom_recno,
-  doc_ref2 = :doc_ref2,
-  hawb = :hawb,
-  reexport = :reexport,
-  ref_jobno = :ref_jobno,
-  combined_jobno = :combined_jobno,
-  carrier = :carrier,
-  job_lock = :job_lock,
-  courier_code = :courier_code,
-  delivery_point = :delivery_point,
-  div_code = :div_code,
-  salesman_code = :salesman_code,
-  transit_time = :transit_time,
-  document_check = :document_check,
-  delivery_remarks = :delivery_remarks,
-  cargo_received = :cargo_received,
-  delivered_by = :delivered_by,
-  canceled_by = :canceled_by,
-  cancel_remarks = :cancel_remarks,
-  send_mail = :send_mail,
-  backlog_mail = :backlog_mail,
-  dplan_flag = :dplan_flag,
-  trans_batch_id = :trans_batch_id,
-  send_mail_dn = :send_mail_dn,
-  kpi_inc = :kpi_inc,
-  kpi_exc_remark = :kpi_exc_remark,
-  job_category = :job_category,
-  edit_user = :edit_user,
-  tx_cat_code = :tx_cat_code,
-  bcf_code = :bcf_code,
-  request_category = :request_category,
-  load_point = :load_point,
-  created_at = :created_at,
-  created_by = :created_by,
+  curr_code = :curr_code,
+  ex_rate = :ex_rate,
   updated_at = :updated_at,
-  updated_by = :updated_by,
-  job_classification = :job_classification
+  updated_by = :updated_by
 WHERE company_code = :company_code
   AND job_no = :job_no
 `;
@@ -149,26 +88,24 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
   let connection: oracledb.Connection | undefined;
 
   try {
-    const { prin_code, job_no } = req.query as { prin_code: string; job_no: string };
     const requestUser = req.body.user || {
       loginid: "SYSTEM",
-      company_code: req.body.company_code || ""
+      company_code: req.body.company_code || "",
     };
 
     const { error } = createInboundSchema(req.body, false, requestUser.company_code);
     if (error) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: error.message });
       return;
     }
 
-    // Utility to safely convert date strings to JS Date
-    const toDate = (val: any) => val ? new Date(val) : null;
-
-    // Build SAFE bind data (ALL fields)
+    // Full bind set (used by INSERT)
     const bindData = {
       company_code: requestUser.company_code,
-     prin_code: req.body.prin_code ?? null,
-     job_no: req.body.job_no ?? null,
+      prin_code: req.body.prin_code ?? null,
+      job_no: req.body.job_no ?? null,
 
       job_type: req.body.job_type ?? null,
       job_date: toDate(req.body.job_date),
@@ -254,7 +191,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
       created_by: requestUser.loginid,
       updated_at: new Date(),
       updated_by: requestUser.loginid,
-      job_classification: req.body.job_classification ?? null
+      job_classification: req.body.job_classification ?? null,
     };
 
     connection = await oracledb.getConnection();
@@ -269,18 +206,45 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
     const exists = (result.rows?.[0]?.COUNT ?? 0) > 0;
 
     if (exists) {
-      await connection.execute(UPDATE_SQL, bindData, { autoCommit: true });
-      res.status(constants.STATUS_CODES.OK).json({ success: true, message: "Job updated successfully" });
+      // Only the binds that UPDATE_SQL actually uses (extra keys => ORA-01036)
+      const updateBinds = {
+        company_code: bindData.company_code,
+        job_no: bindData.job_no,
+        job_date: bindData.job_date,
+        job_class: bindData.job_class,
+        dept_code: bindData.dept_code,
+        div_code: bindData.div_code,
+        transport_mode: bindData.transport_mode,
+        schedule_date: bindData.schedule_date,
+        doc_ref: bindData.doc_ref,
+        prin_ref2: bindData.prin_ref2,
+        description1: bindData.description1,
+        remarks: bindData.remarks,
+        port_code: bindData.port_code,
+        destination_port: bindData.destination_port,
+        country_origin: bindData.country_origin,
+        country_destination: bindData.country_destination,
+        curr_code: bindData.curr_code,
+        ex_rate: bindData.ex_rate,
+        updated_at: bindData.updated_at,
+        updated_by: bindData.updated_by,
+      };
+
+      await connection.execute(UPDATE_SQL, updateBinds, { autoCommit: true });
+      res
+        .status(constants.STATUS_CODES.OK)
+        .json({ success: true, message: "Job updated successfully" });
     } else {
       await connection.execute(INSERT_SQL, bindData, { autoCommit: true });
-      res.status(constants.STATUS_CODES.OK).json({ success: true, message: "Job created successfully" });
+      res
+        .status(constants.STATUS_CODES.OK)
+        .json({ success: true, message: "Job created successfully" });
     }
-
   } catch (error: any) {
     console.error("Error in createOrUpdateJob:", error);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   } finally {
     if (connection) {
@@ -297,121 +261,100 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
    EDIT JOB ENDPOINT
 ========================= */
 export const editJob = async (req: Request, res: Response): Promise<void> => {
-  console.log('🔥🔥🔥 EDITJOB VERSION CHECK 12345 🔥🔥🔥');
-      let connection: oracledb.Connection | undefined;
+  let connection: oracledb.Connection | undefined;
 
+  try {
+    const job_no = paramValue(req.params.job_no);
+
+    if (!job_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "job_no is required in URL path",
+      });
+      return;
+    }
+
+    const requestUser = req.body.user || {
+      loginid: "SYSTEM",
+      company_code: req.body.company_code,
+    };
+
+    // grn_remarks removed: it's not in the TI_JOB entity, so it would likely throw ORA-00904
+    const SIMPLE_UPDATE_SQL = `
+      UPDATE TI_JOB SET
+        country_origin = :country_origin,
+        country_destination = :country_destination,
+        description1 = :description1,
+        remarks = :remarks,
+        prin_ref2 = :prin_ref2,
+        port_code = :port_code,
+        destination_port = :destination_port,
+        transport_mode = :transport_mode,
+        schedule_date = :schedule_date,
+        job_class = :job_class,
+        curr_code = :curr_code,
+        updated_at = :updated_at,
+        updated_by = :updated_by
+      WHERE company_code = :company_code
+        AND job_no = :job_no
+    `;
+
+    const bindData = {
+      company_code: requestUser.company_code,
+      job_no,
+
+      country_origin: req.body.country_origin || null,
+      country_destination: req.body.country_destination || null,
+      description1: req.body.description1 || null,
+      remarks: req.body.remarks || null,
+      prin_ref2: req.body.prin_ref2 || null,
+      port_code: req.body.port_code || null,
+      destination_port: req.body.destination_port || null,
+      transport_mode: req.body.transport_mode || null,
+      schedule_date: toDate(req.body.schedule_date),
+      job_class: req.body.job_class || null,
+      curr_code: req.body.curr_code || null,
+
+      updated_at: new Date(),
+      updated_by: requestUser.loginid,
+    };
+
+    connection = await oracledb.getConnection();
+    const result = await connection.execute(SIMPLE_UPDATE_SQL, bindData, {
+      autoCommit: true,
+    });
+
+    if (result.rowsAffected === 0) {
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "No rows were updated",
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Job updated successfully",
+      data: {
+        job_no,
+        updated_fields: Object.keys(bindData).filter(
+          (k) => !["company_code", "job_no", "updated_at", "updated_by"].includes(k)
+        ),
+      },
+    });
+  } catch (error: any) {
+    console.error("Error editing job:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  } finally {
+    if (connection) {
       try {
-        console.log('=== EDIT JOB API ===');
-        
-        // 1. Get job_no from URL parameter
-        const job_no = paramValue(req.params.job_no);
-        
-        console.log('Editing job:', job_no);
-        
-        if (!job_no) {
-          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-            success: false,
-            message: "job_no is required in URL path"
-          });
-          return; // Use return without value for void
-        }
-
-        // 2. Get user info
-        const requestUser = req.body.user || {
-          loginid: "SYSTEM",
-          company_code: req.body.company_code
-        };
-
-        // 3. Build SIMPLE UPDATE SQL - Only update fields that your form allows
-        // Based on your form, these are the modifiable fields:
-const SIMPLE_UPDATE_SQL = `
-  UPDATE TI_JOB SET
-    country_origin = :country_origin,
-    country_destination = :country_destination,
-    description1 = :description1,
-    remarks = :remarks,
-    prin_ref2 = :prin_ref2,
-    port_code = :port_code,
-    destination_port = :destination_port,
-    transport_mode = :transport_mode,
-    schedule_date = :schedule_date,
-    job_class = :job_class,
-    updated_at = :updated_at,
-    updated_by = :updated_by,
-    grn_remarks = :grn_remarks,
-    curr_code = :curr_code
-  WHERE company_code = :company_code
-    AND job_no = :job_no
-`;
-
-        // 4. Build bind data - Only modifiable fields
-        const toDate = (val: any) => val ? new Date(val) : null;
-        
-        const bindData = {
-          // WHERE clause values
-          company_code: requestUser.company_code,
-          job_no: job_no,
-          
-          // Modifiable fields from your form
-          country_origin: req.body.country_origin || null,
-          country_destination: req.body.country_destination || null,
-          description1: req.body.description1 || null,
-          remarks: req.body.remarks || null,
-          prin_ref2: req.body.prin_ref2 || null,
-          port_code: req.body.port_code || null,
-          destination_port: req.body.destination_port || null,
-          transport_mode: req.body.transport_mode || null,
-          schedule_date: toDate(req.body.schedule_date),
-          job_class: req.body.job_class || null,
-          grn_remarks: req.body.grn_remarks || null,
-          curr_code: req.body.curr_code || null,
-          // Audit fields
-          updated_at: new Date(),
-          updated_by: requestUser.loginid
-        };
-
-        console.log('Bind data for update:', bindData);
-
-        // 5. Execute update
-        connection = await oracledb.getConnection();
-        const result = await connection.execute(
-          SIMPLE_UPDATE_SQL,
-          bindData,
-          { autoCommit: true }
-        );
-
-        console.log('Update result - rows affected:', result.rowsAffected);
-
-        if (result.rowsAffected === 0) {
-          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: "No rows were updated"
-          });
-          return;
-        }
-
-        res.status(constants.STATUS_CODES.OK).json({
-          success: true,
-          message: "Job updated successfully",
-          data: {
-            job_no: job_no,
-            updated_fields: Object.keys(bindData).filter(k => !['company_code', 'job_no', 'updated_at', 'updated_by'].includes(k))
-          }
-        });
-
-      } catch (error: any) {
-        console.error("Error editing job:", error);
-        res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-          success: false,
-          message: error.message
-        });
-      } finally {
-        if (connection) {
-          try {
-            await connection.close();
-          } catch (err) {
-            console.error("Error closing Oracle connection:", err);
-          }
-        }
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection:", err);
       }
+    }
+  }
 };
