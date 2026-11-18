@@ -23,6 +23,8 @@ interface ReqParams {
 const PROC_PARAM = "PQ_REGISTER_LISTING";
 const REPORT_TITLE = "Purchase Quotation Register";
 const REPORT_NAME = "rpt_pquotation_register";
+const NO_DATA_MESSAGE =
+  "No quotations were found for the selected filters. Please adjust the date range, supplier, document type or product and try again.";
 
 // ─── DB helpers ─────────────────────────────────────────────────────────────
 
@@ -131,9 +133,9 @@ async function loadQuotationRegisterData(req: RequestWithUser, p: ReqParams): Pr
 
     const result = await conn.execute(
       `DECLARE
-         v_sql VARCHAR2(32767);
+         v_sql CLOB;
        BEGIN
-         PROC_BUILD_DYNAMIC_SQL_PQ_REGISTER(
+         PROC_BUILD_DYNAMIC_SQL_PURCHASE_QUOTATION(
            :parameter, :loginid,
            :code1,  :code2,  :code3,  :code4,
            :number1, :number2, :number3, :number4,
@@ -662,7 +664,7 @@ export const getPurchaseQuotationRegisterReportHtml = async (req: RequestWithUse
     const params = extractParams(req);
     const rows = await loadQuotationRegisterData(req, params);
     if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+     res.status(200).json({ success: false, message: NO_DATA_MESSAGE });
       return;
     }
 
@@ -703,7 +705,7 @@ export const getPurchaseQuotationRegisterReportExcel = async (req: RequestWithUs
     const params = extractParams(req);
     const rows = await loadQuotationRegisterData(req, params);
     if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      res.status(200).json({ success: false, message: NO_DATA_MESSAGE });
       return;
     }
     const buffer = buildQuotationRegisterExcel(rows, params.loginid);
