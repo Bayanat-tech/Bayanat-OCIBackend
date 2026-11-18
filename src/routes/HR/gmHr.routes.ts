@@ -78,6 +78,7 @@ import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave
 import { getMHEmployeesHandler, MHleaveDaysCntHandler, MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
 import { getPayslipReportHtml } from "../../controllers/HR/MHDL/Payslip.report.controller";
 import { mhgetRequestFlowUsers } from "../../controllers/HR/MHDL/mh_hr_leave_flow_sentback";
+import { generateAbsentMemoDaily } from "../../controllers/HR/absentmemo";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -169,7 +170,7 @@ router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 
 router.get("/leavedayscount", leaveDaysCntHandler);
 router.get("/msleavedayscount", MHleaveDaysCntHandler);
-// router.post("/absentmemo", generateAbsentMemoDaily);
+
 // Exporting the router
 router.get("/reports/payslip", getPayslipReportHtml);
 

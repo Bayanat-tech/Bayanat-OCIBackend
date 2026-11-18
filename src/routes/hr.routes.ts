@@ -18,6 +18,8 @@ import { getHrMasterReportHtml } from "../controllers/HR/Hr-Reports/Hrmasterrepo
 import { getGradeMasterReportHtml } from "../controllers/HR/Hr-Reports/Grademasterreport";
 import { leaveRequestFlow } from "../controllers/HR/leave_request_flow";
 import {updateConsolidateCancelFlag} from "../controllers/HR/updConsolidateCancelFlag.hr.controller"
+import { generateAbsentMemoDaily } from "../controllers/HR/absentmemo";
+import { insUpdAbsentMemo } from "../controllers/HR/insUpdAbsentMemo";
 // Initialize the Express router
 const router = express.Router();
 
@@ -152,6 +154,10 @@ router.post(
   checkUserAuthorization,
   getEmployeeMasterPrint
 );
+
+router.post("/absentmemo", generateAbsentMemoDaily);
+
+router.post("/insUpdAbsentMemo", insUpdAbsentMemo);
 
 // Export the router as the default module
 export default router;
