@@ -56,8 +56,11 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
         INV_NO,
         TO_CHAR(MAX(INV_DATE), 'YYYY-MM-DD') AS INV_DATE,
         SUM(LCUR_AMOUNT * SIGN_IND) AS BALANCE_AMOUNT,
+        SUM(NVL(AMOUNT_ORIGIN, AMOUNT) * SIGN_IND) AS BALANCE_AMOUNT_ORIGIN,
         MAX(CURR_CODE) AS ORG_CURR_CODE,
+        MAX(NVL(CURR_CODE_ORIGIN, CURR_CODE)) AS CURR_CODE_ORIGIN,
         MAX(EX_RATE) AS EX_RATE,
+        MAX(NVL(EX_RATE_ORIGIN, EX_RATE)) AS EX_RATE_ORIGIN,
         MAX(DIV_CODE) AS DIV_CODE
       FROM TR_AC_INVDETAIL
       WHERE (COMPANY_CODE = :cc OR :cc IS NULL)
@@ -75,12 +78,17 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
 
     const mappedInvoices = (openResult.rows || []).map((row: any) => {
       const bal = Number(row.BALANCE_AMOUNT || 0);
+      const balOrig = Number(row.BALANCE_AMOUNT_ORIGIN ?? bal);
       return {
         ...row,
         SIGN_IND: bal >= 0 ? 1 : -1,
         DR_CR: bal >= 0 ? "Dr" : "Cr",
         RAW_BALANCE: bal,
         BALANCE_AMOUNT: Math.abs(bal),
+        RAW_BALANCE_ORIGIN: balOrig,
+        BALANCE_AMOUNT_ORIGIN: Math.abs(balOrig),
+        CURR_CODE_ORIGIN: row.CURR_CODE_ORIGIN || row.ORG_CURR_CODE || "INR",
+        EX_RATE_ORIGIN: Number(row.EX_RATE_ORIGIN || row.EX_RATE || 1),
       };
     });
 
