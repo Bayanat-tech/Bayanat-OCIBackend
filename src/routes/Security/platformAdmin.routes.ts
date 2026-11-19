@@ -149,7 +149,7 @@ router.get(
       !(catalog.companies as any[]).some((c) => c.COMPANY_CODE === company)
     )
       throw new PlatformError("Select a company in this tenant");
-    const screens = await PlatformAdminService.screenCatalog(tenantId);
+    const screens = await PlatformAdminService.screenCatalog(tenantId, company);
     const disabled = await oracleDb.query(
       "SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'",
       { tenantId, company },

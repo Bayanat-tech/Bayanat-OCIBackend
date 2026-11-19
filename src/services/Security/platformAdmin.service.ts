@@ -206,7 +206,7 @@ export class PlatformAdminService {
       "SELECT LOGINID,USERNAME FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
       { company },
     );
-    const screens = await this.screenCatalog(tenantId);
+    const screens = await this.screenCatalog(tenantId, company);
     const access = loginid
       ? await this.tenantQuery(
           tenantId,
@@ -214,6 +214,12 @@ export class PlatformAdminService {
           { company, loginid },
         )
       : [];
+    const inherited = loginid ? await this.tenantQuery(tenantId,
+      `SELECT DISTINCT a.SERIAL_NO FROM #SCHEMA#.SEC_ROLE_APP_ACCESS a
+       JOIN #SCHEMA#.SEC_ROLE_FUNCTION_ACCESS_USER b ON a.ROLE_ID=b.SERIAL_NO_OR_ROLE_ID
+       WHERE UPPER(TRIM(b.LOGINID))=UPPER(TRIM(:loginid))
+       AND (b.COMPANY_CODE=:company OR b.COMPANY_CODE IS NULL)
+       AND (a.COMPANY_CODE=:company OR a.COMPANY_CODE IS NULL)`, { company, loginid }) : [];
     const disabled = await oracleDb.query(
       "SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'",
       { tenantId, company },
@@ -225,6 +231,7 @@ export class PlatformAdminService {
       users,
       screens: screens.filter((s) => !denied.has(Number(s.SERIAL_NO))),
       access,
+      inherited,
     };
   }
 
@@ -397,15 +404,43 @@ export class PlatformAdminService {
     return this.scope(tenantId, async (c, owner) => {
       try {
         const serials = [...new Set<number>(input.serials)];
-        if (!input.enabled)
+        if (!input.enabled) {
+          // Detach only this user's affected role memberships. Preserve their
+          // other role permissions as direct grants before removing membership.
+          await c.execute(`LOCK TABLE ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER IN SHARE ROW EXCLUSIVE MODE`);
+          await c.execute(`LOCK TABLE ${owner}.SEC_ROLE_APP_ACCESS IN SHARE MODE`);
+          const memberships = await c.execute<any>(
+            `SELECT * FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND (COMPANY_CODE=:company OR COMPANY_CODE IS NULL)`,
+            { loginid: input.loginid, company }, options);
+          const roleRows = await c.execute<any>(
+            `SELECT * FROM ${owner}.SEC_ROLE_APP_ACCESS WHERE COMPANY_CODE=:company OR COMPANY_CODE IS NULL`, { company }, options);
+          const selected = new Set(serials);
+          const impacted = new Set((roleRows.rows || []).filter((r: any) => selected.has(Number(r.SERIAL_NO))).map((r: any) => Number(r.ROLE_ID)));
+          const detach = (memberships.rows || []).filter((r: any) => impacted.has(Number(r.SERIAL_NO_OR_ROLE_ID)));
+          if ((memberships.rows || []).some((r: any) => !r.COMPANY_CODE && (selected.has(Number(r.SERIAL_NO_OR_ROLE_ID)) || impacted.has(Number(r.SERIAL_NO_OR_ROLE_ID)))))
+            throw new PlatformError("This user has shared company access. Assign company-specific permissions before removing these screens.");
+          const detachedIds = new Set(detach.map((r: any) => Number(r.SERIAL_NO_OR_ROLE_ID)));
+          const flags = ["SNEW","SMODIFY","SDELETE","SSAVE","SSEARCH","SSAVEAS","SUPLOAD","SUNDO","SPRINT","SPRINTSETUP","SHELP"];
+          const preserve = new Map<number, any>();
+          for (const r of roleRows.rows || []) {
+            const serial = Number(r.SERIAL_NO);
+            if (!detachedIds.has(Number(r.ROLE_ID)) || selected.has(serial)) continue;
+            const values = preserve.get(serial) || Object.fromEntries(flags.map((f) => [f, "N"]));
+            for (const f of flags) if (String(r[f]).toUpperCase() === "Y") values[f] = "Y";
+            preserve.set(serial, values);
+          }
+          for (const [serial, values] of preserve) {
+            await c.execute(`MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
+              ON (t.COMPANY_CODE=s.COMPANY_CODE AND t.LOGINID=s.LOGINID AND t.SERIAL_NO_OR_ROLE_ID=s.SERIAL_NO_OR_ROLE_ID)
+              WHEN MATCHED THEN UPDATE SET ${flags.map((f) => `t.${f}=CASE WHEN UPPER(t.${f})='Y' OR :${f}='Y' THEN 'Y' ELSE 'N' END`).join(",")}
+              WHEN NOT MATCHED THEN INSERT (COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(",")},USERID)
+              VALUES (:company,:loginid,:serial,${flags.map((f) => ":"+f).join(",")},:actor)`,
+              { company, loginid: input.loginid, serial, ...values, actor });
+          }
           await c.executeMany(
-            `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND LOGINID=:loginid AND SERIAL_NO_OR_ROLE_ID=:serial`,
-            serials.map((serial) => ({
-              company,
-              loginid: input.loginid,
-              serial,
-            })),
-          );
+            `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND SERIAL_NO_OR_ROLE_ID=:serial`,
+            [...new Set([...serials, ...detachedIds])].map((serial) => ({ company, loginid: input.loginid, serial })));
+        }
         else
           await c.executeMany(
             `MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
@@ -497,7 +532,7 @@ export class PlatformAdminService {
     };
   }
 
-  static async screenCatalog(tenantId: string) {
+  static async screenCatalog(tenantId: string, company = "") {
     return this.scope(tenantId, async (c, owner) => {
       const cols = await this.columns(c, owner, "SEC_MODULE_DATA");
       const names = new Set(cols.map((x) => x.COLUMN_NAME));
@@ -516,12 +551,21 @@ export class PlatformAdminService {
       const active = names.has("IS_ACTIVE")
         ? " AND NVL(IS_ACTIVE,'Y')='Y'"
         : "";
+      const preference = names.has("COMPANY_CODE") && company
+        ? "CASE WHEN COMPANY_CODE=:company THEN 0 WHEN COMPANY_CODE IS NULL THEN 1 ELSE 2 END,"
+        : "";
       const r = await c.execute<any>(
-        `SELECT ${select} FROM ${owner}.SEC_MODULE_DATA WHERE SERIAL_NO>0 ${active} ORDER BY APP_CODE,SERIAL_NO`,
-        {},
+        `SELECT ${select} FROM ${owner}.SEC_MODULE_DATA WHERE SERIAL_NO>0 ${active} ORDER BY ${preference} APP_CODE,SERIAL_NO,LEVEL1,LEVEL2,LEVEL3`,
+        preference ? { company } : {},
         options,
       );
-      return r.rows || [];
+      const unique = new Map<number, any>();
+      for (const row of r.rows || []) {
+        for (const key of ["LEVEL1", "LEVEL2", "LEVEL3"])
+          if (String(row[key] ?? "").trim().toUpperCase() === "NULL") row[key] = null;
+        if (!unique.has(Number(row.SERIAL_NO))) unique.set(Number(row.SERIAL_NO), row);
+      }
+      return [...unique.values()];
     });
   }
 
@@ -655,7 +699,7 @@ export class PlatformAdminService {
       );
       result.COUNTRY_CODE = result.COUNTRY;
       if (tenantId !== "root") {
-        const screens = await this.screenCatalog(tenantId);
+        const screens = await this.screenCatalog(tenantId, company);
         result.SERIAL_NO = screens.map((s) => ({
           value: String(s.SERIAL_NO),
           label: `${s.SERIAL_NO} · ${s.APP_CODE || ""} / ${[s.LEVEL1, s.LEVEL2, s.LEVEL3].filter(Boolean).join(" / ")}`,
