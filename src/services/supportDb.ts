@@ -141,8 +141,10 @@ export function identity(u: any) {
     const loginid = text(u?.loginid || u?.LOGINID, 100).toUpperCase(),
           tenantId = text(u?.tenantId || u?.tenant_id || u?.TENANT_ID, 80),
           companyCode = text(u?.company_code || u?.companyCode || u?.COMPANY_CODE, 20);
-    if (!loginid || !tenantId || !companyCode)
-        supportError('Authenticated login, tenant and company are required', 401);
+    if (!loginid)
+        supportError('Authenticated login is required', 401);
+    if (!tenantId || !companyCode)
+        supportError('A tenant and company must be selected to access Support', 403);
     return { loginid, tenantId, companyCode };
 }
 export async function query(c: oracledb.Connection, sql: string, b: any = {}) { return (await c.execute<any>(sql, b, { outFormat: oracledb.OUT_FORMAT_OBJECT, fetchInfo: { BODY: { type: oracledb.STRING }, MESSAGE_TEXT: { type: oracledb.STRING }, DATA_URL: { type: oracledb.STRING } } })).rows || []; }
