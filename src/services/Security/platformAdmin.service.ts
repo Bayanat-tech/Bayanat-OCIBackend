@@ -31,7 +31,7 @@ export const ROOT_TABLES: Record<string, string> = {
   TENANT_REGISTRY: "Tenant registry",
   USER_TENANT_MAPPING: "User tenant mappings",
 };
-const SECRETS = /^(USERPASS|SEC_PASSWD|PASSWORD|DB_PASSWORD)$/;
+const SECRETS = /(?:USERPASS|PASSWD|PASSWORD|(?:^|_)PWD(?:_|$)|SECRET|TOKEN)/;
 const SYSTEM_FIELDS =
   /^(CREATED_AT|UPDATED_AT|CREATE_DATE|USER_DT|CREATED_BY|UPDATED_BY|CREATE_USER)$/;
 const options = { outFormat: oracledb.OUT_FORMAT_OBJECT };
@@ -41,6 +41,11 @@ type Column = {
   NULLABLE: string;
   DATA_LENGTH: number;
   IDENTITY_COLUMN: string;
+};
+export type PlatformAccess = {
+  loginid: string;
+  scope: "ALL" | "SCOPED";
+  tenants: string[];
 };
 export class PlatformError extends Error {
   constructor(
@@ -58,6 +63,7 @@ export class PlatformAdminService {
     company: string,
     input: any,
   ) {
+    await this.assertTenant(actor, tenantId);
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
@@ -187,10 +193,7 @@ export class PlatformAdminService {
       "SELECT LOGINID,USERNAME FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
       { company },
     );
-    const screens = await this.tenantQuery(
-      tenantId,
-      "SELECT SERIAL_NO,APP_CODE,LEVEL1,LEVEL2,LEVEL3 FROM #SCHEMA#.SEC_MODULE_DATA WHERE NVL(IS_ACTIVE,'Y')='Y' ORDER BY APP_CODE,SERIAL_NO",
-    );
+    const screens = await this.screenCatalog(tenantId);
     const access = loginid
       ? await this.tenantQuery(
           tenantId,
@@ -218,12 +221,13 @@ export class PlatformAdminService {
     company: string,
     input: any,
   ) {
+    await this.assertTenant(actor, tenantId);
     if (
       !input.loginid ||
       !Array.isArray(input.serials) ||
       !input.serials.length ||
-      input.serials.length > 1000 ||
-      input.serials.some((n: any) => !Number.isSafeInteger(n)) ||
+      input.serials.length > 5000 ||
+      input.serials.some((n: any) => !Number.isSafeInteger(n) || n <= 0) ||
       typeof input.enabled !== "boolean"
     )
       throw new PlatformError("Select a user and valid screens");
@@ -241,23 +245,30 @@ export class PlatformAdminService {
       );
     return this.scope(tenantId, async (c, owner) => {
       try {
-        for (const serial of new Set<number>(input.serials)) {
-          const binds = { company, loginid: input.loginid, serial, actor };
-          if (!input.enabled)
-            await c.execute(
-              `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND LOGINID=:loginid AND SERIAL_NO_OR_ROLE_ID=:serial`,
-              { company, loginid: input.loginid, serial },
-            );
-          else
-            await c.execute(
-              `MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
+        const serials = [...new Set<number>(input.serials)];
+        if (!input.enabled)
+          await c.executeMany(
+            `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND LOGINID=:loginid AND SERIAL_NO_OR_ROLE_ID=:serial`,
+            serials.map((serial) => ({
+              company,
+              loginid: input.loginid,
+              serial,
+            })),
+          );
+        else
+          await c.executeMany(
+            `MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
             ON (t.COMPANY_CODE=s.COMPANY_CODE AND t.LOGINID=s.LOGINID AND t.SERIAL_NO_OR_ROLE_ID=s.SERIAL_NO_OR_ROLE_ID)
             WHEN MATCHED THEN UPDATE SET SNEW='Y',SMODIFY='Y',SDELETE='Y',SSAVE='Y',SSEARCH='Y',SSAVEAS='Y',SUPLOAD='Y',SUNDO='Y',SPRINT='Y',SPRINTSETUP='Y',SHELP='Y',USERID=:actor
             WHEN NOT MATCHED THEN INSERT (COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,SNEW,SMODIFY,SDELETE,SSAVE,SSEARCH,SSAVEAS,SUPLOAD,SUNDO,SPRINT,SPRINTSETUP,SHELP,USERID)
             VALUES (:company,:loginid,:serial,'Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y',:actor)`,
-              binds,
-            );
-        }
+            serials.map((serial) => ({
+              company,
+              loginid: input.loginid,
+              serial,
+              actor,
+            })),
+          );
         await this.audit(actor, tenantId, company, "ATTEMPT", "USER_ACCESS", {
           loginid: input.loginid,
           serials: input.serials,
@@ -277,7 +288,7 @@ export class PlatformAdminService {
           c,
         );
         await c.commit();
-        return { changed: input.serials.length };
+        return { changed: serials.length };
       } catch (e) {
         await c.rollback();
         throw e;
@@ -285,13 +296,233 @@ export class PlatformAdminService {
     });
   }
   static async isAdmin(loginid: string): Promise<boolean> {
+    return Boolean(await this.getAccess(loginid));
+  }
+
+  static async getAccess(loginid: string): Promise<PlatformAccess | null> {
     const r = await oracleDb.query(
-      `SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN a
+      `SELECT a.LOGINID,a.ADMIN_SCOPE,t.TENANT_ID FROM CUSTOMERS.SEC_PLATFORM_ADMIN a
       JOIN CUSTOMERS.SEC_LOGINTEST u ON u.LOGINID = a.LOGINID
+      LEFT JOIN CUSTOMERS.SEC_PLATFORM_ADMIN_TENANT t ON t.LOGINID=a.LOGINID
       WHERE a.LOGINID = :loginid AND a.IS_ACTIVE = 'Y' AND u.ACTIVE_FLAG = 'Y'`,
       { loginid },
     );
-    return Boolean(r.rows?.length);
+    if (!r.rows?.length) return null;
+    const scope = r.rows[0].ADMIN_SCOPE === "SCOPED" ? "SCOPED" : "ALL";
+    return {
+      loginid,
+      scope,
+      tenants:
+        scope === "ALL"
+          ? []
+          : r.rows.map((r: any) => r.TENANT_ID).filter(Boolean),
+    };
+  }
+
+  static async assertTenant(actor: string, tenantId: string) {
+    const access = await this.getAccess(actor);
+    if (
+      !access ||
+      (access.scope === "SCOPED" && !access.tenants.includes(tenantId))
+    )
+      throw new PlatformError(
+        "Your account does not have access to this tenant",
+        403,
+      );
+    return access;
+  }
+
+  static centralFilter(table: string, access: PlatformAccess | null) {
+    if (!access || access.scope === "ALL") return { sql: "", binds: {} };
+    const tenants = access.tenants.filter((t) => t !== "root");
+    const binds = Object.fromEntries(tenants.map((t, i) => [`scope${i}`, t]));
+    const list = tenants.map((_, i) => `:scope${i}`).join(",") || "NULL";
+    const userFilter = `EXISTS (SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING m WHERE m.LOGINID=${table}.LOGINID AND m.TENANT_ID IN (${list}))
+      AND NOT EXISTS (SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING m WHERE m.LOGINID=${table}.LOGINID AND m.TENANT_ID NOT IN (${list}))
+      AND NOT EXISTS (SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN p WHERE p.LOGINID=${table}.LOGINID)`;
+    return {
+      sql: table === "SEC_LOGINTEST" ? userFilter : `TENANT_ID IN (${list})`,
+      binds,
+    };
+  }
+
+  static async screenCatalog(tenantId: string) {
+    return this.scope(tenantId, async (c, owner) => {
+      const cols = await this.columns(c, owner, "SEC_MODULE_DATA");
+      const names = new Set(cols.map((x) => x.COLUMN_NAME));
+      const select = [
+        "SERIAL_NO",
+        "APP_CODE",
+        "LEVEL1",
+        "LEVEL2",
+        "LEVEL3",
+        "URL_PATH",
+      ]
+        .map((name) =>
+          names.has(name) ? name : `CAST(NULL AS VARCHAR2(100)) AS ${name}`,
+        )
+        .join(",");
+      const active = names.has("IS_ACTIVE")
+        ? " AND NVL(IS_ACTIVE,'Y')='Y'"
+        : "";
+      const r = await c.execute<any>(
+        `SELECT ${select} FROM ${owner}.SEC_MODULE_DATA WHERE SERIAL_NO>0 ${active} ORDER BY APP_CODE,SERIAL_NO`,
+        {},
+        options,
+      );
+      return r.rows || [];
+    });
+  }
+
+  static generatedColumn(table: string, column: Column) {
+    return (
+      column.IDENTITY_COLUMN === "YES" ||
+      ["ID", "USER_MAP_ID"].includes(column.COLUMN_NAME) ||
+      (table === "SEC_MODULE_DATA" && column.COLUMN_NAME === "SERIAL_NO") ||
+      (table === "SEC_ROLE_MASTER" && column.COLUMN_NAME === "ROLE_ID")
+    );
+  }
+
+  static async auditTrail(actor: string) {
+    const access = await this.getAccess(actor);
+    if (!access) throw new PlatformError("Platform access is required", 403);
+    const restricted = access.scope === "SCOPED";
+    return this.root(
+      async (c) =>
+        (
+          await c.execute(
+            `SELECT AUDIT_ID,ACTOR,TENANT_ID,COMPANY_CODE,ACTION,RESOURCE_NAME,DETAILS,CREATED_AT
+      FROM CUSTOMERS.SEC_PLATFORM_AUDIT ${restricted ? "WHERE TENANT_ID='WMSTST_TENANT' OR ACTOR=:actor" : ""}
+      ORDER BY AUDIT_ID DESC FETCH FIRST 100 ROWS ONLY`,
+            restricted ? { actor } : {},
+            options,
+          )
+        ).rows || [],
+    );
+  }
+
+  static async editorOptions(tenantId: string, company: string, actor: string) {
+    const access = await this.assertTenant(actor, tenantId);
+    return this.scope(tenantId, async (c, owner) => {
+      const result: Record<
+        string,
+        Array<{ value: string; label: string }>
+      > = {};
+      const meta = await c.execute<any>(
+        `SELECT TABLE_NAME,COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE OWNER=:owner
+        AND TABLE_NAME IN ('MS_COMPANY','SEC_LOGIN','SEC_LOGINTEST','SEC_ROLE_MASTER','MS_PS_ROLE','MS_PS_PROJECT_MASTER','MS_HR_DIVISION','MS_PS_FLOW_MASTER','MS_CURRENCY','MS_COUNTRY','MS_COUNTRY_MASTER')`,
+        { owner },
+        options,
+      );
+      const available = new Map<string, Set<string>>();
+      for (const row of meta.rows || []) {
+        if (!available.has(row.TABLE_NAME))
+          available.set(row.TABLE_NAME, new Set());
+        available.get(row.TABLE_NAME)!.add(row.COLUMN_NAME);
+      }
+      const read = async (
+        table: string,
+        key: string,
+        names: string[],
+        filterCompany = true,
+      ) => {
+        const columns = available.get(table);
+        if (!columns?.has(key)) return [];
+        const description = names.find((n) => columns.has(n));
+        const clauses: string[] = [];
+        const binds: any = {};
+        if (company && filterCompany && columns.has("COMPANY_CODE")) {
+          clauses.push("COMPANY_CODE=:company");
+          binds.company = company;
+        }
+        if (tenantId === "root" && table === "SEC_LOGINTEST") {
+          const filter = this.centralFilter(table, access);
+          if (filter.sql) {
+            clauses.push(filter.sql);
+            Object.assign(binds, filter.binds);
+          }
+        }
+        const rows = await c.execute<any>(
+          `SELECT DISTINCT ${key} AS VALUE,${description || key} AS LABEL FROM ${owner}.${table}
+          ${clauses.length ? "WHERE " + clauses.join(" AND ") : ""} ORDER BY VALUE FETCH FIRST 3000 ROWS ONLY`,
+          binds,
+          options,
+        );
+        return (rows.rows || [])
+          .filter((r) => r.VALUE != null)
+          .map((r) => ({
+            value: String(r.VALUE),
+            label:
+              r.LABEL && String(r.LABEL) !== String(r.VALUE)
+                ? `${r.VALUE} · ${r.LABEL}`
+                : String(r.VALUE),
+          }));
+      };
+      result.COMPANY_CODE = await read(
+        "MS_COMPANY",
+        "COMPANY_CODE",
+        ["COMPANY_NAME"],
+        false,
+      );
+      result.LOGINID = await read(
+        tenantId === "root" ? "SEC_LOGINTEST" : "SEC_LOGIN",
+        "LOGINID",
+        ["USERNAME"],
+      );
+      result.USER_ID = result.LOGINID;
+      result.ROLE_ID = await read("SEC_ROLE_MASTER", "ROLE_ID", [
+        "ROLE_DESC",
+        "ROLE_DESCRIPTION",
+      ]);
+      result.PROJECT_ROLE_ID = await read("MS_PS_ROLE", "ROLE_ID", [
+        "ROLE_NAME",
+        "ROLE_DESCRIPTION",
+        "ROLE_DESC",
+      ]);
+      result.PROJECT_CODE = await read("MS_PS_PROJECT_MASTER", "PROJECT_CODE", [
+        "PROJECT_NAME",
+        "PROJECT_DESCRIPTION",
+      ]);
+      result.DIV_CODE = await read("MS_HR_DIVISION", "DIV_CODE", [
+        "DIV_NAME",
+        "DIVISION_NAME",
+      ]);
+      result.FLOW_CODE = await read("MS_PS_FLOW_MASTER", "FLOW_CODE", [
+        "FLOW_DESCRIPTION",
+      ]);
+      result.CURR_CODE = await read(
+        "MS_CURRENCY",
+        "CURR_CODE",
+        ["CURR_NAME", "CURR_DESCRIPTION"],
+        false,
+      );
+      result.COUNTRY = await read(
+        available.has("MS_COUNTRY") ? "MS_COUNTRY" : "MS_COUNTRY_MASTER",
+        "COUNTRY_CODE",
+        ["COUNTRY_NAME"],
+        false,
+      );
+      result.COUNTRY_CODE = result.COUNTRY;
+      if (tenantId !== "root") {
+        const screens = await this.screenCatalog(tenantId);
+        result.SERIAL_NO = screens.map((s) => ({
+          value: String(s.SERIAL_NO),
+          label: `${s.SERIAL_NO} · ${s.APP_CODE || ""} / ${[s.LEVEL1, s.LEVEL2, s.LEVEL3].filter(Boolean).join(" / ")}`,
+        }));
+        result.SERIAL_NO_OR_ROLE_ID = [
+          ...result.SERIAL_NO.map((s) => ({
+            ...s,
+            label: "Screen " + s.label,
+          })),
+          ...result.ROLE_ID.map((r) => ({ ...r, label: "Role " + r.label })),
+        ];
+      }
+      result.TENANT_ID = (await this.tenants(actor)).map((t: any) => ({
+        value: t.TENANT_ID,
+        label: `${t.TENANT_NAME} · ${t.SCHEMA_NAME}`,
+      }));
+      return result;
+    });
   }
 
   static async root<T>(
@@ -309,14 +540,16 @@ export class PlatformAdminService {
     }
   }
 
-  static async tenants() {
+  static async tenants(actor?: string) {
+    const access = actor ? await this.getAccess(actor) : null;
+    const filter = this.centralFilter("TENANT_REGISTRY", access);
     return this.root(
       async (c) =>
         (
           await c.execute(
             `SELECT TENANT_ID,TENANT_NAME,SCHEMA_NAME,COMPANY_CODE,IS_ACTIVE
-      FROM CUSTOMERS.TENANT_REGISTRY ORDER BY TENANT_NAME`,
-            {},
+      FROM CUSTOMERS.TENANT_REGISTRY ${filter.sql ? "WHERE " + filter.sql : ""} ORDER BY TENANT_NAME`,
+            filter.binds,
             options,
           )
         ).rows || [],
@@ -390,7 +623,8 @@ export class PlatformAdminService {
     );
   }
 
-  static async catalog(tenantId: string) {
+  static async catalog(tenantId: string, actor?: string) {
+    const access = actor ? await this.assertTenant(actor, tenantId) : null;
     return this.scope(tenantId, async (c, owner, allowed) => {
       const found = await c.execute<any>(
         "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER=:owner",
@@ -413,7 +647,14 @@ export class PlatformAdminService {
         companies,
         tables: Object.entries(allowed)
           .filter(([name]) => available.has(name))
-          .map(([name, label]) => ({ name, label })),
+          .map(([name, label]) => ({
+            name,
+            label,
+            readonly:
+              tenantId === "root" &&
+              name === "TENANT_REGISTRY" &&
+              access?.scope === "SCOPED",
+          })),
       };
     });
   }
@@ -429,7 +670,9 @@ export class PlatformAdminService {
     company: string,
     page = 1,
     search = "",
+    actor?: string,
   ) {
+    const access = actor ? await this.assertTenant(actor, tenantId) : null;
     return this.scope(tenantId, async (c, owner, allowed) => {
       this.validateTable(table, allowed);
       const cols = await this.columns(c, owner, table);
@@ -438,6 +681,13 @@ export class PlatformAdminService {
       const visible = cols.filter((x) => !SECRETS.test(x.COLUMN_NAME));
       const binds: any = {};
       const clauses: string[] = [];
+      if (tenantId === "root") {
+        const filter = this.centralFilter(table, access);
+        if (filter.sql) {
+          clauses.push(filter.sql);
+          Object.assign(binds, filter.binds);
+        }
+      }
       if (company && cols.some((x) => x.COLUMN_NAME === "COMPANY_CODE")) {
         clauses.push("COMPANY_CODE = :company");
         binds.company = company;
@@ -473,6 +723,8 @@ export class PlatformAdminService {
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",
+          maxLength: /CHAR/.test(x.DATA_TYPE) ? x.DATA_LENGTH : undefined,
+          generated: this.generatedColumn(table, x),
         })),
         rows: r.rows || [],
         count: count.rows?.[0]?.TOTAL || 0,
@@ -516,6 +768,16 @@ export class PlatformAdminService {
     payload: any,
     remove = false,
   ) {
+    const access = await this.assertTenant(actor, tenantId);
+    if (
+      tenantId === "root" &&
+      access.scope === "SCOPED" &&
+      table === "TENANT_REGISTRY"
+    )
+      throw new PlatformError(
+        "Tenant connection settings are managed by the production administrator",
+        403,
+      );
     return this.scope(tenantId, async (c, owner, allowed) => {
       this.validateTable(table, allowed);
       const cols = await this.columns(c, owner, table);
@@ -546,6 +808,13 @@ export class PlatformAdminService {
       }
       const binds: any = {};
       let where = "ROWID=CHARTOROWID(:rid)";
+      if (tenantId === "root") {
+        const filter = this.centralFilter(table, access);
+        if (filter.sql) {
+          where += ` AND ${filter.sql}`;
+          Object.assign(binds, filter.binds);
+        }
+      }
       if (rowid) {
         if (typeof rowid !== "string" || !/^[A-Za-z0-9+/]{18}$/.test(rowid))
           throw new PlatformError("Invalid record identifier");
@@ -575,6 +844,67 @@ export class PlatformAdminService {
         }
       }
       const values: Record<string, any> = { ...(payload.values || {}) };
+      if (table === "MS_COMPANY" && !remove) {
+        if (
+          !rowid &&
+          (!String(values.COMPANY_CODE || "").trim() ||
+            !String(values.COMPANY_NAME || "").trim())
+        )
+          throw new PlatformError("Company code and company name are required");
+        if (!rowid) {
+          values.COMPANY_CODE = String(values.COMPANY_CODE).trim();
+          await c.execute(
+            `LOCK TABLE ${owner}.MS_COMPANY IN EXCLUSIVE MODE WAIT 5`,
+          );
+          const duplicate = await c.execute(
+            `SELECT 1 FROM ${owner}.MS_COMPANY WHERE UPPER(TRIM(COMPANY_CODE))=UPPER(:code)`,
+            { code: values.COMPANY_CODE },
+            options,
+          );
+          if (duplicate.rows?.length)
+            throw new PlatformError(
+              "This company code already exists. Choose a unique company code.",
+            );
+        }
+      }
+      if (tenantId === "root" && access.scope === "SCOPED") {
+        if (table === "SEC_LOGINTEST") {
+          if (!rowid)
+            throw new PlatformError(
+              "Select WMSTST and use Create user to create a central and tenant account together",
+            );
+          if (values.LOGINID) {
+            const original = await c.execute<any>(
+              `SELECT LOGINID FROM CUSTOMERS.SEC_LOGINTEST WHERE ${where}`,
+              binds,
+              options,
+            );
+            if (original.rows?.[0]?.LOGINID !== values.LOGINID)
+              throw new PlatformError(
+                "Login IDs cannot be renamed by this account",
+                403,
+              );
+          }
+        }
+        if (table === "USER_TENANT_MAPPING" && !remove) {
+          if (!access.tenants.includes(String(values.TENANT_ID)))
+            throw new PlatformError(
+              "Mapping is outside your allowed tenants",
+              403,
+            );
+          const outside = await c.execute(
+            `SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOGINID=:id AND TENANT_ID<>'WMSTST_TENANT'
+            UNION ALL SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN WHERE LOGINID=:id`,
+            { id: values.LOGINID },
+            options,
+          );
+          if (outside.rows?.length)
+            throw new PlatformError(
+              "This account is managed outside your QA scope",
+              403,
+            );
+        }
+      }
       if (
         Object.keys(values).some(
           (key) =>
@@ -591,17 +921,14 @@ export class PlatformAdminService {
       // IDs on older schemas have no sequence/default. Hold the table lock until commit.
       if (!rowid && !remove) {
         for (const col of cols.filter(
-          (x) =>
-            ["ID", "USER_MAP_ID"].includes(x.COLUMN_NAME) &&
-            x.NULLABLE === "N" &&
-            x.IDENTITY_COLUMN !== "YES",
+          (x) => this.generatedColumn(table, x) && x.IDENTITY_COLUMN !== "YES",
         )) {
           if (!values[col.COLUMN_NAME]) {
             await c.execute(
               `LOCK TABLE ${owner}.${table} IN EXCLUSIVE MODE WAIT 5`,
             );
             const id = await c.execute<any>(
-              `SELECT NVL(MAX(${col.COLUMN_NAME}),0)+1 AS ID FROM ${owner}.${table}`,
+              `SELECT GREATEST(NVL(MAX(${col.COLUMN_NAME}),0),${table === "SEC_ROLE_MASTER" ? 90000 : 0})+1 AS ID FROM ${owner}.${table}`,
               {},
               options,
             );
@@ -700,7 +1027,11 @@ export class PlatformAdminService {
           result = await c.execute(
             `DELETE FROM ${owner}.${table} WHERE ${where}`,
             {
-              rid: binds.rid,
+              ...Object.fromEntries(
+                Object.entries(binds).filter(
+                  ([key]) => key === "rid" || key.startsWith("scope"),
+                ),
+              ),
               ...(binds.scopeCompany
                 ? { scopeCompany: binds.scopeCompany }
                 : {}),
