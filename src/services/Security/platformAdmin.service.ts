@@ -109,6 +109,15 @@ export class PlatformAdminService {
           throw new PlatformError(
             "A central account already uses this login or email. Use central user mappings to link an existing account.",
           );
+        const tenantExists = await c.execute(
+          `SELECT 1 FROM ${owner}.SEC_LOGIN WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)`,
+          { loginid },
+          options,
+        );
+        if (tenantExists.rows?.length)
+          throw new PlatformError(
+            "This user already exists in the tenant. Edit and save that user to repair its central sign-in account instead of creating a duplicate.",
+          );
         await c.execute(
           `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE,LOGINID,USERNAME,EMAIL_ID,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,CREATED_BY,CREATED_AT)
           VALUES (:company,:loginid,:username,:email,'A','Y',(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
@@ -128,6 +137,10 @@ export class PlatformAdminService {
           USER_ID: loginid,
           USER_CODE: loginid,
           USERID: loginid,
+          CREATED_BY: actor,
+          UPDATED_BY: actor,
+          CREATED_AT: new Date(),
+          UPDATED_AT: new Date(),
         };
         if (
           cols.some(
@@ -213,6 +226,144 @@ export class PlatformAdminService {
       screens: screens.filter((s) => !denied.has(Number(s.SERIAL_NO))),
       access,
     };
+  }
+
+  static async syncCentralLogin(
+    c: oracledb.Connection,
+    owner: string,
+    tenantId: string,
+    company: string,
+    actor: string,
+    rowid: string,
+    values: Record<string, any>,
+    access: PlatformAccess,
+  ) {
+    const record = await c.execute<any>(
+      `SELECT * FROM ${owner}.SEC_LOGIN WHERE ROWID=CHARTOROWID(:rid) AND COMPANY_CODE=:company`,
+      { rid: rowid, company },
+      options,
+    );
+    const user = record.rows?.[0];
+    if (!user?.LOGINID)
+      throw new PlatformError(
+        "User login is required before the sign-in account can be synchronized",
+      );
+    const loginid = String(user.LOGINID).trim();
+    const protectedAccount = await c.execute(
+      "SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)",
+      { loginid },
+      options,
+    );
+    if (protectedAccount.rows?.length)
+      throw new PlatformError(
+        "Platform administrator credentials cannot be changed through tenant users",
+        403,
+      );
+    if (access.scope === "SCOPED") {
+      const tenants = access.tenants.filter((t) => t !== "root");
+      const outside = await c.execute(
+        `SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)
+        AND TENANT_ID NOT IN (${tenants.map((_, i) => `:allowed${i}`).join(",") || "NULL"})`,
+        {
+          loginid,
+          ...Object.fromEntries(tenants.map((t, i) => [`allowed${i}`, t])),
+        },
+        options,
+      );
+      if (outside.rows?.length)
+        throw new PlatformError(
+          "This central login is shared outside your QA tenants. A production administrator must update it.",
+          403,
+        );
+    }
+    await c.execute(
+      "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
+    );
+    const roots = await c.execute<any>(
+      "SELECT LOGINID FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)",
+      { loginid },
+      options,
+    );
+    if ((roots.rows?.length || 0) > 1)
+      throw new PlatformError(
+        "More than one central account matches this login. Contact the production administrator.",
+      );
+    const centralLogin = roots.rows?.[0]?.LOGINID || loginid;
+    if (values.EMAIL_ID) {
+      const duplicate = await c.execute(
+        "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(EMAIL_ID))=LOWER(TRIM(:email)) AND LOWER(TRIM(LOGINID))<>LOWER(:loginid)",
+        { email: values.EMAIL_ID, loginid: centralLogin },
+        options,
+      );
+      if (duplicate.rows?.length)
+        throw new PlatformError(
+          "Another central account already uses this email address",
+        );
+    }
+    if (!roots.rows?.length) {
+      const hash = [user.USERPASS, user.SEC_PASSWD, user.PASSWORD].find(
+        (v) => typeof v === "string" && /^\$2[aby]\$\d{2}\$/.test(v),
+      );
+      if (!hash)
+        throw new PlatformError(
+          "Set a new password to create the missing central sign-in account",
+        );
+      await c.execute(
+        `INSERT INTO CUSTOMERS.SEC_LOGINTEST
+        (COMPANY_CODE,LOGINID,USERNAME,EMAIL_ID,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,CREATED_BY,CREATED_AT)
+        VALUES (:company,:loginid,:username,:email,'A',:active,(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
+        {
+          company,
+          loginid: centralLogin,
+          username: user.USERNAME || loginid,
+          email: user.EMAIL_ID || null,
+          active: user.ACTIVE_FLAG || "Y",
+          hash,
+          actor,
+        },
+      );
+    } else {
+      const fields = ["USERNAME", "EMAIL_ID", "ACTIVE_FLAG"].filter((key) =>
+        Object.prototype.hasOwnProperty.call(values, key),
+      );
+      if (values.USERPASS || values.SEC_PASSWD || values.PASSWORD)
+        fields.push("USERPASS", "SEC_PASSWD", "PASSWORD");
+      if (fields.length)
+        await c.execute(
+          `UPDATE CUSTOMERS.SEC_LOGINTEST SET ${fields.map((key, i) => `${key}=:value${i}`).join(",")},UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE LOGINID=:loginid`,
+          {
+            loginid: centralLogin,
+            actor,
+            ...Object.fromEntries(
+              fields.map((key, i) => [`value${i}`, user[key] ?? null]),
+            ),
+          },
+        );
+    }
+    const mapped = await c.execute(
+      "SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid) AND TENANT_ID=:tenantId",
+      { loginid: centralLogin, tenantId },
+      options,
+    );
+    if (!mapped.rows?.length) {
+      await c.execute(
+        "LOCK TABLE CUSTOMERS.USER_TENANT_MAPPING IN EXCLUSIVE MODE WAIT 5",
+      );
+      const defaultMapping = await c.execute(
+        "SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid) AND IS_DEFAULT='Y'",
+        { loginid: centralLogin },
+        options,
+      );
+      await c.execute(
+        `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING (USER_MAP_ID,LOGINID,TENANT_ID,IS_DEFAULT,CREATED_DATE)
+        VALUES ((SELECT NVL(MAX(USER_MAP_ID),0)+1 FROM CUSTOMERS.USER_TENANT_MAPPING),:loginid,:tenantId,:isDefault,SYSDATE)`,
+        {
+          loginid: centralLogin,
+          tenantId,
+          isDefault: defaultMapping.rows?.length ? "N" : "Y",
+        },
+      );
+    }
   }
 
   static async grant(
@@ -665,11 +816,14 @@ export class PlatformAdminService {
   }
 
   static async companyCodeLimit(c: oracledb.Connection, owner: string) {
-    const r = await c.execute<{ MAX_LENGTH:number }>(
+    const r = await c.execute<{ MAX_LENGTH: number }>(
       `SELECT MIN(DATA_LENGTH) AS MAX_LENGTH FROM ALL_TAB_COLUMNS
        WHERE OWNER=:owner AND COLUMN_NAME='COMPANY_CODE'
          AND TABLE_NAME IN ('MS_COMPANY','MS_PS_FLOW_MASTER','MS_AC_L1','MS_AC_L2','MS_AC_L3','MS_AC_L4')
-         AND DATA_TYPE IN ('VARCHAR2','CHAR')`,{owner},options);
+         AND DATA_TYPE IN ('VARCHAR2','CHAR')`,
+      { owner },
+      options,
+    );
     return r.rows?.[0]?.MAX_LENGTH;
   }
 
@@ -687,7 +841,10 @@ export class PlatformAdminService {
       const cols = await this.columns(c, owner, table);
       if (!cols.length)
         throw new PlatformError("Resource is unavailable in this tenant", 404);
-      const companyCodeLimit=table==='MS_COMPANY'?await this.companyCodeLimit(c,owner):undefined;
+      const companyCodeLimit =
+        table === "MS_COMPANY"
+          ? await this.companyCodeLimit(c, owner)
+          : undefined;
       const visible = cols.filter((x) => !SECRETS.test(x.COLUMN_NAME));
       const binds: any = {};
       const clauses: string[] = [];
@@ -733,7 +890,11 @@ export class PlatformAdminService {
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",
-          maxLength: /CHAR/.test(x.DATA_TYPE) ? (x.COLUMN_NAME==='COMPANY_CODE'&&companyCodeLimit?Math.min(x.DATA_LENGTH,companyCodeLimit):x.DATA_LENGTH) : undefined,
+          maxLength: /CHAR/.test(x.DATA_TYPE)
+            ? x.COLUMN_NAME === "COMPANY_CODE" && companyCodeLimit
+              ? Math.min(x.DATA_LENGTH, companyCodeLimit)
+              : x.DATA_LENGTH
+            : undefined,
           generated: this.generatedColumn(table, x),
         })),
         rows: r.rows || [],
@@ -779,6 +940,16 @@ export class PlatformAdminService {
     remove = false,
   ) {
     const access = await this.assertTenant(actor, tenantId);
+    if (table === "SEC_LOGIN" && !payload.rowid && !remove) {
+      const v = payload.values || {};
+      const result = await this.provisionUser(actor, tenantId, company, {
+        loginid: v.LOGINID,
+        username: v.USERNAME,
+        email: v.EMAIL_ID,
+        password: v.USERPASS || v.SEC_PASSWD || v.PASSWORD,
+      });
+      return { changed: 1, ...result };
+    }
     if (
       tenantId === "root" &&
       access.scope === "SCOPED" &&
@@ -828,18 +999,31 @@ export class PlatformAdminService {
       if (rowid) {
         if (typeof rowid !== "string" || !/^[A-Za-z0-9+/]{18}$/.test(rowid))
           throw new PlatformError("Invalid record identifier");
+        // Match provisioning's lock order: central login before tenant user.
+        if (table === "SEC_LOGIN" && !remove)
+          await c.execute(
+            "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
+          );
         binds.rid = rowid;
         if (company && hasCompany) {
           where += " AND COMPANY_CODE=:scopeCompany";
           binds.scopeCompany = company;
         }
         const old = await c.execute<any>(
-          `SELECT ${table === "SEC_LOGINTEST" ? "LOGINID" : "1 AS FOUND"} FROM ${owner}.${table} WHERE ${where}`,
+          `SELECT ${["SEC_LOGINTEST", "SEC_LOGIN"].includes(table) ? "LOGINID" : "1 AS FOUND"} FROM ${owner}.${table} WHERE ${where}`,
           binds,
           options,
         );
         if (!old.rows?.length)
           throw new PlatformError("Record no longer exists in this scope", 404);
+        if (
+          ["SEC_LOGIN", "SEC_LOGINTEST"].includes(table) &&
+          payload.values?.LOGINID &&
+          payload.values.LOGINID !== old.rows[0].LOGINID
+        )
+          throw new PlatformError(
+            "Login IDs cannot be renamed here because they link the central and tenant accounts",
+          );
         if (table === "SEC_LOGINTEST") {
           const admin = await c.execute(
             "SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN WHERE LOGINID=:id",
@@ -863,8 +1047,11 @@ export class PlatformAdminService {
           throw new PlatformError("Company code and company name are required");
         if (!rowid) {
           values.COMPANY_CODE = String(values.COMPANY_CODE).trim();
-          const limit=await this.companyCodeLimit(c,owner);
-          if(limit && Buffer.byteLength(values.COMPANY_CODE,'utf8')>limit)throw new PlatformError(`Company code is too long. Use at most ${limit} characters to match the company setup tables.`);
+          const limit = await this.companyCodeLimit(c, owner);
+          if (limit && Buffer.byteLength(values.COMPANY_CODE, "utf8") > limit)
+            throw new PlatformError(
+              `Company code is too long. Use at most ${limit} characters to match the company setup tables.`,
+            );
           await c.execute(
             `LOCK TABLE ${owner}.MS_COMPANY IN EXCLUSIVE MODE WAIT 5`,
           );
@@ -1065,6 +1252,17 @@ export class PlatformAdminService {
           );
         if (result.rowsAffected !== 1)
           throw new PlatformError("Expected exactly one changed record");
+        if (table === "SEC_LOGIN" && rowid && !remove)
+          await this.syncCentralLogin(
+            c,
+            owner,
+            tenantId,
+            company,
+            actor,
+            rowid,
+            values,
+            access,
+          );
         await this.audit(
           actor,
           tenantId,
