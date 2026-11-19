@@ -178,7 +178,8 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       });
       return;
     }
-    const isPlatformAdmin = await PlatformAdminService.isAdmin(rootUser.LOGINID);
+    const platformAccess = await PlatformAdminService.getAccess(rootUser.LOGINID);
+    const isPlatformAdmin = Boolean(platformAccess);
     const defaultTenantId = isPlatformAdmin ? undefined : await TenantManager.getTenantForUser(rootUser.LOGINID);
     if (!defaultTenantId && !isPlatformAdmin) throw new Error("Account has no default tenant mapping");
     const userTenant = { user: rootUser, tenantId: defaultTenantId };
@@ -213,7 +214,8 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
 
     if (isPlatformAdmin) {
       const profile = {loginid:user.LOGINID,username:user.USERNAME,email_id:user.EMAIL_ID,
-        company_code:user.COMPANY_CODE,tenant_name:"All tenants",isPlatformAdmin:true};
+        company_code:user.COMPANY_CODE,tenant_name:platformAccess?.scope==='SCOPED'?"QA administration":"All tenants",isPlatformAdmin:true,
+        platformAccess,platformPolicyVersion:2};
       const token = await generateToken(profile);
       res.json({success:true,data:{token,user:profile}});
       return;
@@ -305,11 +307,12 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       return;
     }
 
-    if (await PlatformAdminService.isAdmin(requestUser.loginid)) {
+    const platformAccess = await PlatformAdminService.getAccess(requestUser.loginid);
+    if (platformAccess) {
       const user = await AuthService.findRootUserByIdentifier(requestUser.loginid);
       res.json({success:true,data:{
         user:{loginid:user.LOGINID,username:user.USERNAME,email_id:user.EMAIL_ID,company_code:user.COMPANY_CODE,
-          isPlatformAdmin:true,tenant_name:"All tenants"},
+          isPlatformAdmin:true,tenant_name:platformAccess.scope==='SCOPED'?"QA administration":"All tenants",platformAccess,platformPolicyVersion:2},
         permissionBasedMenuTree:[{title:"Security",type:"group",children:[{title:"Super Admin Console",type:"item",url_path:"platform-admin"}]}],
         permissions:{},user_permission:{},userAccessibleModules:{Security:{all:true}}
       }});

@@ -32,27 +32,41 @@ const handle =
   };
 router.get(
   "/tenants",
-  handle(() => PlatformAdminService.tenants()),
+  handle((req) => PlatformAdminService.tenants(req.user.loginid)),
 );
 router.get(
   "/audit",
-  handle(() =>
-    PlatformAdminService.root(
-      async (c) =>
-        (
-          await c.execute(
-            `SELECT AUDIT_ID,ACTOR,TENANT_ID,COMPANY_CODE,ACTION,RESOURCE_NAME,DETAILS,CREATED_AT
-  FROM CUSTOMERS.SEC_PLATFORM_AUDIT ORDER BY AUDIT_ID DESC FETCH FIRST 100 ROWS ONLY`,
-            {},
-            { outFormat: require("oracledb").OUT_FORMAT_OBJECT },
-          )
-        ).rows,
+  handle((req) => PlatformAdminService.auditTrail(req.user.loginid)),
+);
+router.use("/:tenant", (req: any, res, next) => {
+  const access = req.platformAccess;
+  if (
+    access.scope === "SCOPED" &&
+    !access.tenants.includes(req.params.tenant)
+  ) {
+    res.status(403).json({
+      success: false,
+      message: "Your account does not have access to this tenant",
+    });
+    return;
+  }
+  next();
+});
+router.get(
+  "/:tenant/options",
+  handle((req) =>
+    PlatformAdminService.editorOptions(
+      req.params.tenant,
+      String(req.query.company || ""),
+      req.user.loginid,
     ),
   ),
 );
 router.get(
   "/:tenant/catalog",
-  handle((req) => PlatformAdminService.catalog(req.params.tenant)),
+  handle((req) =>
+    PlatformAdminService.catalog(req.params.tenant, req.user.loginid),
+  ),
 );
 router.post(
   "/:tenant/users",
@@ -95,6 +109,7 @@ router.get(
       String(req.query.company || ""),
       Number(req.query.page) || 1,
       String(req.query.search || ""),
+      req.user.loginid,
     ),
   ),
 );
@@ -134,10 +149,7 @@ router.get(
       !(catalog.companies as any[]).some((c) => c.COMPANY_CODE === company)
     )
       throw new PlatformError("Select a company in this tenant");
-    const screens = await PlatformAdminService.tenantQuery(
-      tenantId,
-      `SELECT SERIAL_NO,APP_CODE,LEVEL1,LEVEL2,LEVEL3,URL_PATH FROM #SCHEMA#.SEC_MODULE_DATA ORDER BY APP_CODE,SERIAL_NO`,
-    );
+    const screens = await PlatformAdminService.screenCatalog(tenantId);
     const disabled = await oracleDb.query(
       "SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'",
       { tenantId, company },

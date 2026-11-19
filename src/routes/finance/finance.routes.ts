@@ -57,6 +57,8 @@ import {
   getUnallocatedBills,
   allocateUnallocatedInvoices,
   getAssetDepreciationExceptions,
+  getAssetDepreciationStatus,
+  deleteAssetDepreciation,
   getAllocationsList,
   getAllocationDetails,
   cancelAllocation,
@@ -380,6 +382,20 @@ router.get(
   checkUserAuthorization,
   tenantContextMiddleware,
   getAssetDepreciationExceptions
+);
+router.get(
+  "/asset-depreciation/status",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  getAssetDepreciationStatus
+);
+router.post(
+  "/asset-depreciation/delete",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  tenantContextMiddleware,
+  deleteAssetDepreciation
 );
 router.get(
   "/allocations/list",

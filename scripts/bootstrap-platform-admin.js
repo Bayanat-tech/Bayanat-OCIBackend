@@ -15,23 +15,25 @@ async function main() {
     connectString: process.env.ORACLE_CONNECTION_STRING,
   });
   try {
-    const statements = fs
-      .readFileSync(
-        path.join(__dirname, "../migrations/20261119_platform_admin.sql"),
-        "utf8",
-      )
-      .replace(/--[^\n]*/g, "")
-      .split(";")
-      .map((x) => x.trim())
-      .filter(Boolean);
-    for (const sql of statements) {
-      try {
-        await conn.execute(sql);
-      } catch (e) {
-        if (e.errorNum !== 955) throw e;
+    for (const migration of [
+      "20261119_platform_admin.sql",
+      "20261120_platform_admin_scope.sql",
+    ]) {
+      const statements = fs
+        .readFileSync(path.join(__dirname, "../migrations", migration), "utf8")
+        .replace(/--[^\n]*/g, "")
+        .split(";")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      for (const sql of statements) {
+        try {
+          await conn.execute(sql);
+        } catch (e) {
+          if (![955, 1430].includes(e.errorNum)) throw e;
+        }
       }
     }
-    const loginid = process.env.PLATFORM_ADMIN_LOGIN || "superadmin";
+    const loginid = process.env.PLATFORM_ADMIN_LOGIN || "prodadmin";
     if (!/^[A-Za-z0-9_.-]{1,15}$/.test(loginid))
       throw new Error(
         "Use a login of at most 15 letters, numbers, dots, underscores or hyphens.",
@@ -76,7 +78,7 @@ async function main() {
     );
     await conn.execute(
       `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE,LOGINID,USERNAME,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,APPLICATION,CREATED_BY,CREATED_AT,UPDATED_BY,UPDATED_AT)
-      VALUES ('BSG',:loginid,'Platform Super Admin','A','Y',(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,'PLATFORM','bootstrap',SYSTIMESTAMP,'bootstrap',SYSTIMESTAMP)`,
+      VALUES ('BSG',:loginid,'Production Administrator','A','Y',(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,'PLATFORM','bootstrap',SYSTIMESTAMP,'bootstrap',SYSTIMESTAMP)`,
       { loginid, hash },
     );
     await conn.execute(
