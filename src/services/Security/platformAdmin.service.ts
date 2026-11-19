@@ -664,6 +664,15 @@ export class PlatformAdminService {
       throw new PlatformError("Security resource is not allowed", 403);
   }
 
+  static async companyCodeLimit(c: oracledb.Connection, owner: string) {
+    const r = await c.execute<{ MAX_LENGTH:number }>(
+      `SELECT MIN(DATA_LENGTH) AS MAX_LENGTH FROM ALL_TAB_COLUMNS
+       WHERE OWNER=:owner AND COLUMN_NAME='COMPANY_CODE'
+         AND TABLE_NAME IN ('MS_COMPANY','MS_PS_FLOW_MASTER','MS_AC_L1','MS_AC_L2','MS_AC_L3','MS_AC_L4')
+         AND DATA_TYPE IN ('VARCHAR2','CHAR')`,{owner},options);
+    return r.rows?.[0]?.MAX_LENGTH;
+  }
+
   static async records(
     tenantId: string,
     table: string,
@@ -678,6 +687,7 @@ export class PlatformAdminService {
       const cols = await this.columns(c, owner, table);
       if (!cols.length)
         throw new PlatformError("Resource is unavailable in this tenant", 404);
+      const companyCodeLimit=table==='MS_COMPANY'?await this.companyCodeLimit(c,owner):undefined;
       const visible = cols.filter((x) => !SECRETS.test(x.COLUMN_NAME));
       const binds: any = {};
       const clauses: string[] = [];
@@ -723,7 +733,7 @@ export class PlatformAdminService {
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",
-          maxLength: /CHAR/.test(x.DATA_TYPE) ? x.DATA_LENGTH : undefined,
+          maxLength: /CHAR/.test(x.DATA_TYPE) ? (x.COLUMN_NAME==='COMPANY_CODE'&&companyCodeLimit?Math.min(x.DATA_LENGTH,companyCodeLimit):x.DATA_LENGTH) : undefined,
           generated: this.generatedColumn(table, x),
         })),
         rows: r.rows || [],
@@ -853,6 +863,8 @@ export class PlatformAdminService {
           throw new PlatformError("Company code and company name are required");
         if (!rowid) {
           values.COMPANY_CODE = String(values.COMPANY_CODE).trim();
+          const limit=await this.companyCodeLimit(c,owner);
+          if(limit && Buffer.byteLength(values.COMPANY_CODE,'utf8')>limit)throw new PlatformError(`Company code is too long. Use at most ${limit} characters to match the company setup tables.`);
           await c.execute(
             `LOCK TABLE ${owner}.MS_COMPANY IN EXCLUSIVE MODE WAIT 5`,
           );
