@@ -14,6 +14,8 @@ import { VendorService } from "../services/vendor.service";
 import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
+import { PlatformAdminService } from "../services/Security/platformAdmin.service";
+import { oracleDb } from "../database/connection";
 
 
 // Update generateToken to include tenant
@@ -28,6 +30,7 @@ export async function generateToken(userData: any): Promise<string> {
     tenant_name: userData.tenant_name,
     company_code: userData.company_code,
     company_name: userData.company_name,
+    isPlatformAdmin: userData.isPlatformAdmin === true,
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
   };
@@ -175,8 +178,10 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       });
       return;
     }
-    const defaultTenantId = await TenantManager.getTenantForUser(rootUser.LOGINID);
-    if (!defaultTenantId) throw new Error("Account has no default tenant mapping");
+    const platformAccess = await PlatformAdminService.getAccess(rootUser.LOGINID);
+    const isPlatformAdmin = Boolean(platformAccess);
+    const defaultTenantId = isPlatformAdmin ? undefined : await TenantManager.getTenantForUser(rootUser.LOGINID);
+    if (!defaultTenantId && !isPlatformAdmin) throw new Error("Account has no default tenant mapping");
     const userTenant = { user: rootUser, tenantId: defaultTenantId };
 
     const { user, tenantId } = userTenant;
@@ -206,6 +211,16 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     }
 
     console.log(`[login] ✅ STEP 2 SUCCESS: Password verified`);
+
+    if (isPlatformAdmin) {
+      const profile = {loginid:user.LOGINID,username:user.USERNAME,email_id:user.EMAIL_ID,
+        company_code:user.COMPANY_CODE,tenant_name:platformAccess?.scope==='SCOPED'?"QA administration":"All tenants",isPlatformAdmin:true,
+        platformAccess,platformPolicyVersion:2};
+      const token = await generateToken(profile);
+      res.json({success:true,data:{token,user:profile}});
+      return;
+    }
+    if (!tenantId) throw new Error("Account has no default tenant mapping");
 
     // Get tenant config for additional info
     console.log(`[login] STEP 3: Getting tenant config...`);
@@ -289,6 +304,18 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
         success: false,
         message: constants.MESSAGES.USER.USER_NOT_FOUND,
       });
+      return;
+    }
+
+    const platformAccess = await PlatformAdminService.getAccess(requestUser.loginid);
+    if (platformAccess) {
+      const user = await AuthService.findRootUserByIdentifier(requestUser.loginid);
+      res.json({success:true,data:{
+        user:{loginid:user.LOGINID,username:user.USERNAME,email_id:user.EMAIL_ID,company_code:user.COMPANY_CODE,
+          isPlatformAdmin:true,tenant_name:platformAccess.scope==='SCOPED'?"QA administration":"All tenants",platformAccess,platformPolicyVersion:2},
+        permissionBasedMenuTree:[{title:"Security",type:"group",children:[{title:"Super Admin Console",type:"item",url_path:"platform-admin"}]}],
+        permissions:{},user_permission:{},userAccessibleModules:{Security:{all:true}}
+      }});
       return;
     }
 
@@ -376,7 +403,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       userPermissions = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: user.COMPANY_CODE }
       );
       
       console.log(`[me] ✅ STEP 1 RESULT: Found ${userPermissions.length} permission records`);
@@ -398,6 +425,12 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
         permissionsListQuery,
         {}
       );
+
+      const restrictions = await oracleDb.query(`SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS
+        WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'`, {tenantId,company:user.COMPANY_CODE});
+      const disabledScreens = new Set((restrictions.rows || []).map((r:any)=>Number(r.SERIAL_NO)));
+      userPermissions = userPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
+      allPermissions = allPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
       
       console.log(`[me] ✅ Found ${allPermissions.length} total permissions available`);
 
@@ -957,7 +990,7 @@ export const diagnosticPermissions = async (req: RequestWithUser, res: Response)
       const userPerms = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: requestUser.company_code }
       );
       diagnostics.checks.user_permissions_count = userPerms.length;
       if (userPerms.length > 0) {
@@ -989,7 +1022,7 @@ export const diagnosticPermissions = async (req: RequestWithUser, res: Response)
       const userPermissions = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: requestUser.company_code }
       );
       const formattedPerms = formatRolePermissions(userPermissions);
       diagnostics.checks.formatted_permissions = formattedPerms;
