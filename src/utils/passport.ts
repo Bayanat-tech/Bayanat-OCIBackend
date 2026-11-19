@@ -65,6 +65,7 @@ passport.use(
           email_id: jwtPayload.email_id,
           username: jwtPayload.username,
           company_code: jwtPayload.company_code,
+          isPlatformAdmin: jwtPayload.isPlatformAdmin === true,
           
           // From JWT token payload
           iat: jwtPayload.iat,

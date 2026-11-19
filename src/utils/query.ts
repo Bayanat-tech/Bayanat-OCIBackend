@@ -10,6 +10,8 @@ export const userPermissionQuery = `
 FROM SEC_ROLE_APP_ACCESS a
 JOIN SEC_ROLE_FUNCTION_ACCESS_USER b ON a.ROLE_ID = b.SERIAL_NO_OR_ROLE_ID
 WHERE b.LOGINID = :loginid
+  AND (b.COMPANY_CODE = :company_code OR b.COMPANY_CODE IS NULL)
+  AND (a.COMPANY_CODE = :company_code OR a.COMPANY_CODE IS NULL)
 
 UNION
 
@@ -23,6 +25,7 @@ SELECT
     LOGINID
 FROM SEC_ROLE_FUNCTION_ACCESS_USER 
 WHERE LOGINID = :loginid
+  AND (COMPANY_CODE = :company_code OR COMPANY_CODE IS NULL)
   AND SERIAL_NO_OR_ROLE_ID < 90001
 `;
 export const permissionsListQuery = `
