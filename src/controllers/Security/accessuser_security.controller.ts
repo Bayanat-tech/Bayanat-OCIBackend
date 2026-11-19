@@ -281,7 +281,8 @@ export const deleteSecRollFunctionAccessUser = async (
 
     const isDeleted =
       await AccessMasterService.deleteUserAccessesWithTransaction(
-        screen_details
+        screen_details,
+        req.user.company_code
       );
 
     if (!isDeleted) {
