@@ -340,7 +340,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     console.log(`[me] INIT: User context = { loginid: ${loginid}, tenantId: ${tenantId} }`);
 
     // Get user info (this should come from the main database, not tenant-specific)
-    const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+    const userResult = await AuthService.getUserWithTenant(requestUser.loginid || requestUser.email_id);
     
     if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
