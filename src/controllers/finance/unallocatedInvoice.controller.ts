@@ -656,27 +656,48 @@ export const getAssetDepreciationStatus = async (req: RequestWithUser, res: Resp
       return;
     }
 
-    const jvNo = (regRes.rows[0] as any).REF_DOC_NO;
+    let jvNo = (regRes.rows[0] as any).REF_DOC_NO;
+    let isCanceled = false;
+
     if (!jvNo) {
-      res.json({ success: true, exists: true, isJvPosted: false, isJvCanceled: false, jvNo: null });
-      return;
+      // Check if a JV exists in TR_AC_HEADER matching this month's depreciation allocation
+      const dateRes = await conn.execute(
+        `SELECT DISTINCT TO_CHAR(DOC_DATE, 'mon-yy') AS MON_YY FROM TR_AC_ASSET_DPRCREGISTER WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO = :dn`,
+        { cc: companyCode, dn: docNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const monYy = (dateRes.rows?.[0] as any)?.MON_YY;
+      if (monYy) {
+        const jvSearch = await conn.execute(
+          `SELECT DOC_NO, CANCELED FROM TR_AC_HEADER 
+           WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'JV' AND (:dc IS NULL OR DIV_CODE = :dc) 
+             AND LOWER(REMARKS) LIKE :rem
+           ORDER BY DOC_DATE DESC, DOC_NO DESC`,
+          { cc: companyCode, dc: divCode || null, rem: `%${monYy.toLowerCase()}%` },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (jvSearch.rows && jvSearch.rows.length > 0) {
+          const matchRow = jvSearch.rows[0] as any;
+          jvNo = matchRow.DOC_NO;
+          isCanceled = matchRow.CANCELED === "Y";
+        }
+      }
+    } else {
+      // Check TR_AC_HEADER for this JV's cancellation status
+      const hdrRes = await conn.execute(
+        `SELECT CANCELED FROM TR_AC_HEADER WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'JV' AND DOC_NO = :jn`,
+        { cc: companyCode, jn: jvNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      isCanceled = hdrRes.rows && hdrRes.rows.length > 0 ? (hdrRes.rows[0] as any).CANCELED === "Y" : false;
     }
-
-    // Check TR_AC_HEADER for this JV's cancellation status
-    const hdrRes = await conn.execute(
-      `SELECT CANCELED FROM TR_AC_HEADER WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'JV' AND DOC_NO = :jn`,
-      { cc: companyCode, jn: jvNo },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const isCanceled = hdrRes.rows && hdrRes.rows.length > 0 ? (hdrRes.rows[0] as any).CANCELED === "Y" : false;
 
     res.json({
       success: true,
       exists: true,
-      isJvPosted: true,
+      isJvPosted: Boolean(jvNo),
       isJvCanceled: isCanceled,
-      jvNo: jvNo,
+      jvNo: jvNo || null,
     });
   } catch (err: any) {
     console.error("Error in getAssetDepreciationStatus:", err);
