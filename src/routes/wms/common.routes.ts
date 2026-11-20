@@ -23,6 +23,8 @@ import { proc_build_dynamic_sql_common ,proc_build_dynamic_del_common} from "../
 
 
 const router = express.Router();
+import { dynamicCompanySecurity } from "../../middleware/companySecurity.middleware";
+router.use(dynamicCompanySecurity as any);
 
 // FETCH (SELECT)
 router.post(

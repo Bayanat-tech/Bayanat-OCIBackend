@@ -64,11 +64,23 @@ export class PlatformAdminService {
     input: any,
   ) {
     await this.assertTenant(actor, tenantId);
+    return this.provisionUserRecords(actor, tenantId, company, input);
+  }
+
+  static async provisionCompanyUser(actor: string, tenantId: string, company: string, input: any) {
+    const { CompanySecurityService } = await import("./companySecurity.service");
+    await CompanySecurityService.capability({ loginid: actor, tenantId, company_code: company }, ["sec_login"], "SNEW");
+    return this.provisionUserRecords(actor, tenantId, company, input);
+  }
+
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
     const username = String(input.username || "").trim();
     const email = String(input.email || "").trim();
+    const active = input.active === undefined ? "Y" : String(input.active).toUpperCase();
+    if (!["Y", "N"].includes(active)) throw new PlatformError("Choose an active status");
     if (
       !/^[A-Za-z0-9_.-]{1,15}$/.test(loginid) ||
       !username ||
@@ -120,8 +132,8 @@ export class PlatformAdminService {
           );
         await c.execute(
           `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE,LOGINID,USERNAME,EMAIL_ID,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,CREATED_BY,CREATED_AT)
-          VALUES (:company,:loginid,:username,:email,'A','Y',(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
-          { company, loginid, username, email, hash, actor },
+          VALUES (:company,:loginid,:username,:email,'A',:active,(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
+          { company, loginid, username, email, hash, actor, active },
         );
         const cols = await this.columns(c, owner, "SEC_LOGIN");
         const values: Record<string, any> = {
@@ -130,7 +142,8 @@ export class PlatformAdminService {
           USERNAME: username,
           EMAIL_ID: email,
           STATUS: "A",
-          ACTIVE_FLAG: "Y",
+          ACTIVE_FLAG: active,
+          CONTACT_NO: input.contact || null,
           USERPASS: hash,
           SEC_PASSWD: hash,
           PASSWORD: hash,

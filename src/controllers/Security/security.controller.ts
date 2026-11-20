@@ -5,6 +5,8 @@ import constants from "../../helpers/constants";
 import { SecurityMasterService } from "./../../services/Security/securitymaster.service";
 import { TenantAdminService } from "../../services/Security/tenantAdmin.service";
 import { SecModuleService } from "../../services/Security/secmodule.service";
+import { CompanySecurityService } from "../../services/Security/companySecurity.service";
+import { PlatformAdminService } from "../../services/Security/platformAdmin.service";
 
 export const getSecMaster = async (
   req: RequestWithUser,
@@ -26,6 +28,12 @@ export const getSecMaster = async (
       count: 0,
     };
 
+    if (["serialno", "sec_module_dropdown", "sec_module_data"].includes(master) && !await PlatformAdminService.getAccess(requestUser.loginid)) {
+      const policy = await CompanySecurityService.policy(requestUser as any);
+      const tableData = policy.screens.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])));
+      res.json({ success: true, data: { tableData, count: tableData.length } });
+      return;
+    }
     console.log("Fetching master data for:", master);
 
     switch (master) {

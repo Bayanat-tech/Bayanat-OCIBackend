@@ -4,11 +4,20 @@ import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { secmasterSchema } from "../../validation/Security/Security.validation";
 import { SecmasterService } from "../../services/Security/secmaster.service";
+import { PlatformAdminService } from "../../services/Security/platformAdmin.service";
+import { CompanySecurityService } from "../../services/Security/companySecurity.service";
 
 export class SecmasterController {
   static async createsecmaster(req: RequestWithUser, res: Response) {
     try {
       const requestUser: IUser = req.user;
+
+      if (!await PlatformAdminService.getAccess(requestUser.loginid)) {
+        const result = await PlatformAdminService.provisionCompanyUser(requestUser.loginid, (requestUser as any).tenantId,
+          requestUser.company_code, { loginid: req.body.loginid, username: req.body.username, email: req.body.email_id, password: req.body.userpass, active: req.body.active_flag, contact: req.body.contact_no });
+        res.json({ success: true, message: "Company user and central sign-in account created", data: result });
+        return;
+      }
 
       const { error } = secmasterSchema(req.body);
       if (error) {
@@ -94,7 +103,6 @@ export class SecmasterController {
   static async updatesecmaster(req: RequestWithUser, res: Response) {
     try {
       const requestUser: IUser = req.user;
-      console.log("Request Body:", req.body); 
 
       const { error } = secmasterSchema(req.body);
       if (error) {
@@ -144,7 +152,7 @@ export class SecmasterController {
         updated_by: requestUser.loginid,
       };
 
-      const isUpdated = await SecmasterService.updateUser(
+      const isUpdated = !await PlatformAdminService.getAccess(requestUser.loginid) ? await CompanySecurityService.updateUser(requestUser as any, updateData) : await SecmasterService.updateUser(
         loginid,
         id,
         company_code,

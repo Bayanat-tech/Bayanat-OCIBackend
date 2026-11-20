@@ -242,7 +242,8 @@ export const deleteSecRollAppAccess = async (
     }
 
     const isDeleted = await AccessRoleService.deleteRoleAccessesWithTransaction(
-      screen_details
+      screen_details,
+      req.user.company_code
     );
 
     if (!isDeleted) {

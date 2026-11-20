@@ -88,8 +88,10 @@ export class AccessRoleService {
     accesses: Array<{
       serial_no: number;
       role_id: number;
-    }>
+    }>,
+    companyCode: string
   ): Promise<boolean> {
+    if (!companyCode) throw new Error("Select a company before removing role access");
     const queryRunner = AppDataSource.createQueryRunner();
     await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
@@ -102,6 +104,7 @@ export class AccessRoleService {
 
       for (const access of accesses) {
         const result = await repository.delete({
+          company_code: companyCode,
           serial_no: access.serial_no,
           role_id: access.role_id,
         });
