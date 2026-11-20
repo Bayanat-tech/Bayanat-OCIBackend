@@ -810,7 +810,7 @@ export const getFinanceListData = async (
                   AND NVL(pay_h.canceled, 'N') = 'N'
                  WHERE d.company_code = h.company_code
                    AND d.div_code     = h.div_code
-                   AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+                   AND (d.ac_code = :ac_code OR d.ac_code = h.ac_code OR pay_h.ac_code = :ac_code OR pay_h.ac_code = h.ac_code)
                    AND (
                      (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
                      OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
@@ -882,7 +882,7 @@ export const getFinanceListData = async (
                 inv_date: hRow.INV_DATE || hRow.inv_date,
                 amount: paidAmt,
                 sign_ind: 1,
-                ac_code: hRow.AC_CODE || hRow.ac_code,
+                ac_code: code || hRow.AC_CODE || hRow.ac_code,
                 company_code: hRow.COMPANY_CODE || hRow.company_code,
                 inv_amt: invAmt,
                 c_curr_code: ' ',
