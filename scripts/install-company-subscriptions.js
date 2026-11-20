@@ -1,0 +1,21 @@
+//subscription settings API.
+require('dotenv').config({ quiet: true });
+const db = require('oracledb');
+try { db.initOracleClient({ libDir: process.env.ORACLE_INSTANT_CLIENT_PATH }); } catch (e) { if (e.code !== 'NJS-077') throw e; }
+(async () => {
+  const c = await db.getConnection({ user: process.env.ORACLE_USER, password: process.env.ORACLE_PASSWORD, connectString: process.env.ORACLE_CONNECTION_STRING });
+  try {
+    await c.execute(`BEGIN EXECUTE IMMEDIATE 'CREATE TABLE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION (
+      TENANT_ID VARCHAR2(100) NOT NULL, COMPANY_CODE VARCHAR2(20) NOT NULL,
+      PLAN_NAME VARCHAR2(100), STATUS VARCHAR2(20) DEFAULT ''DRAFT'' NOT NULL,
+      BILLING_CYCLE VARCHAR2(20) DEFAULT ''MONTHLY'' NOT NULL, CURRENCY VARCHAR2(3),
+      AMOUNT NUMBER(16,2), NEXT_BILL_DATE DATE, BILLING_REFERENCE VARCHAR2(100), NOTES VARCHAR2(1000),
+      VERSION_NO NUMBER DEFAULT 1 NOT NULL, UPDATED_BY VARCHAR2(100), UPDATED_AT TIMESTAMP DEFAULT SYSTIMESTAMP,
+      CONSTRAINT PK_SEC_COMPANY_SUBSCRIPTION PRIMARY KEY (TENANT_ID,COMPANY_CODE),
+      CONSTRAINT CK_SEC_COMPANY_SUB_STATUS CHECK (STATUS IN (''DRAFT'',''ACTIVE'',''PAUSED'',''CLOSED'')),
+      CONSTRAINT CK_SEC_COMPANY_SUB_CYCLE CHECK (BILLING_CYCLE IN (''MONTHLY'',''QUARTERLY'',''YEARLY'',''CUSTOM'')),
+      CONSTRAINT CK_SEC_COMPANY_SUB_AMOUNT CHECK (AMOUNT IS NULL OR AMOUNT>=0)
+    )'; EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF; END;`);
+    console.log('CUSTOMERS.SEC_COMPANY_SUBSCRIPTION is ready. Existing data was preserved.');
+  } finally { await c.close(); }
+})().catch(e => { console.error(e.message); process.exitCode = 1; });

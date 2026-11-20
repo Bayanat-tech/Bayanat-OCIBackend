@@ -6,6 +6,7 @@ import {
   PlatformError,
 } from "../../services/Security/platformAdmin.service";
 import { oracleDb } from "../../database/connection";
+import { CompanySubscriptionService } from "../../services/Security/companySubscription.service";
 
 const router = Router();
 router.use(
@@ -52,6 +53,8 @@ router.use("/:tenant", (req: any, res, next) => {
   }
   next();
 });
+router.get("/:tenant/subscription", handle(req => CompanySubscriptionService.get(req.user.loginid, req.params.tenant, String(req.query.company || ""))));
+router.put("/:tenant/subscription", handle(req => CompanySubscriptionService.save(req.user.loginid, req.params.tenant, String(req.query.company || ""), req.body)));
 router.get(
   "/:tenant/options",
   handle((req) =>

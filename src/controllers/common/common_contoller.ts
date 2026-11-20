@@ -3,6 +3,7 @@ import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { scopeAlmsApprovalQuery } from "../../utils/workflowVisibility";
+import { assertSafeDynamicSecuritySql } from "../../middleware/companySecurity.middleware";
 
 export const procBuildCommonProcedurewmc = async (
   req: Request,
@@ -220,6 +221,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
 
     try {
       // Execute the DELETE SQL
+      assertSafeDynamicSecuritySql(req, rawSql);
       await connection.execute(rawSql, [], { autoCommit: true });
 
       res.json({
@@ -430,6 +432,7 @@ export const proc_build_dynamic_ins_upd_common = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1093,6 +1096,7 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1172,6 +1176,7 @@ export const proc_build_dynamic_edi_save = async (req: Request, res: Response): 
     try {
       for (const stmt of statements) {
         current++;
+        assertSafeDynamicSecuritySql(req, stmt);
         await connection.execute(stmt, [], { autoCommit: false });
       }
       await connection.commit();
