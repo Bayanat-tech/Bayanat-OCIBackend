@@ -3,7 +3,7 @@ import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
-import { RequestWithUser } from "../../../interfaces/common.interface";
+import { RequestWithUser } from "../../common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
  
  
@@ -85,6 +85,48 @@ function formatDocNo(docType: string, docNo: string): string {
   if (dn.toUpperCase().startsWith(dt.toUpperCase())) return dn;
   return `${dt}-${dn}`;
 }
+
+type KvPair = [string, string];
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+/** Two boxes side by side (50% / 50%). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** Blue line + title (+ red CANCELLED tag). Frontend styles si-top-line / si-top-cancel. */
+function titleLineHtml(title: string, cancelled = false): string {
+  if (cancelled) {
+    return `<table class="si-top-line si-top-cancel"><tbody><tr>
+      <td><h1 class="report-title">${escapeHtml(title)}</h1></td>
+      <td class="si-cancel-tag center">CANCELLED</td>
+    </tr></tbody></table>`;
+  }
+  return `<table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
+}
+
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
  
 // ─── Param extraction ───────────────────────────────────────────────────────
  
@@ -389,28 +431,55 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   const headerHtml = await reportHeader({ company_code: p.company_code, req });
  
   // ── Party / GRN details, two data-tables side by side ──
-   const detailsHtml = `
-    <div class="info-grid">
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-      </div>
-      <div class="info-block">
-        <div class="label">GRN Details</div>
-        <div class="kv-line"><span class="kv-label">GRN No</span><span class="kv-value">: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></span></div>
-        <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
-        <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
-        <div class="kv-line"><span class="kv-label">Ref No</span><span class="kv-value">: ${escapeHtml(header.ref_no)}${header.ref_date ? ` (${escapeHtml(dateText(header.ref_date))})` : ""}</span></div>
-        <div class="kv-line"><span class="kv-label">Deliver To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
-        <div class="kv-line"><span class="kv-label">Contact</span><span class="kv-value">: ${escapeHtml(contactMobile)}</span></div>
-        <div class="kv-line"><span class="kv-label">Email</span><span class="kv-value">: ${escapeHtml(emailToShow)}</span></div>
-        <div class="kv-line"><span class="kv-label">Delivery Term</span><span class="kv-value">: ${escapeHtml(header.dlvr_term)}</span></div>
-      </div>
-    </div>
-    ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
+  //  const detailsHtml = `
+  //   <div class="info-grid">
+  //     <div class="info-block">
+  //       <div class="label">To</div>
+  //       <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+  //       <div class="value-line">${escapeHtml(header.party_address)}</div>
+  //       <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+  //       <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+  //     </div>
+  //     <div class="info-block">
+  //       <div class="label">GRN Details</div>
+  //       <div class="kv-line"><span class="kv-label">GRN No</span><span class="kv-value">: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></span></div>
+  //       <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
+  //       <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
+  //       <div class="kv-line"><span class="kv-label">Ref No</span><span class="kv-value">: ${escapeHtml(header.ref_no)}${header.ref_date ? ` (${escapeHtml(dateText(header.ref_date))})` : ""}</span></div>
+  //       <div class="kv-line"><span class="kv-label">Deliver To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
+  //       <div class="kv-line"><span class="kv-label">Contact</span><span class="kv-value">: ${escapeHtml(contactMobile)}</span></div>
+  //       <div class="kv-line"><span class="kv-label">Email</span><span class="kv-value">: ${escapeHtml(emailToShow)}</span></div>
+  //       <div class="kv-line"><span class="kv-label">Delivery Term</span><span class="kv-value">: ${escapeHtml(header.dlvr_term)}</span></div>
+  //     </div>
+  //   </div>
+  //   ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
+
+
+    const toPairs = keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+    ],
+    1
+  );
+
+  const grnPairs = keepFilled(
+    [
+      ["GRN No", formatDocNo(header.doc_type, header.doc_no)],
+      ["Date", dateText(header.doc_date)],
+      ["A/C Code", header.ac_code],
+      ["Ref No", header.ref_no ? `${header.ref_no}${header.ref_date ? ` (${dateText(header.ref_date)})` : ""}` : ""],
+      ["Deliver To", header.delivery_to],
+      ["Contact", contactMobile],
+      ["Email", emailToShow],
+      ["Delivery Term", header.dlvr_term],
+    ],
+    3
+  );
+
+  const detailsHtml = kvTwoBoxesHtml("To", toPairs, "GRN Details", grnPairs);
  
   // ── Line items, using the shared data-table look exactly like every other report ──
   let itemsHtml: string;
@@ -450,8 +519,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
   <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
   <div class="row grand"><span>Net Qty</span><span>${qtyFmt(totals.totalQty)}</span></div>
-</div>
-      </table>`;
+</div>`;
   }
  
   // ── Remarks / terms ──
@@ -489,15 +557,15 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
       <div class="sign-label">Receiver's Name &amp; Signature</div>
     </div>
   </div>`;
-  // ── Body: report title first, then details / items / remarks / terms ──
+  // ── Body: blue line + title first, then details / items / remarks / terms ──
   const bodyHtml = `
-    <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
+    ${titleLineHtml(REPORT_TITLE, header.cancelled)}
     ${detailsHtml}
     <div class="group">
       ${itemsHtml}
     </div>
     ${remarksHtml}
-    ${termsHtml}`;
+    ${termsHtml}`.replace(/>\s+</g, "><");
  
   // ── Shared footer (print date / user / report name) ──
   const footerHtml = `

@@ -78,6 +78,37 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+
+type KvPair = [string, string];
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+/** Two boxes side by side (50% / 50%). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -387,28 +418,49 @@ const TAX_TABLE_FIX_HTML = `
   }
 </style>`;
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+function printMetaHtml(title: string, _subtitle: string, _printDateTime: string, _loginId: string): string {
   return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      
-    </div>`;
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
 }
 
-function partyInfoBlockHtml(header: InvoiceHeader): string {
-  return `
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.mobile_no ? `<div class="value-line">Mob: ${escapeHtml(header.mobile_no)}</div>` : ""}
-        ${header.e_mail ? `<div class="value-line">Email: ${escapeHtml(header.e_mail)}</div>` : ""}
-      </div>`;
+/** "To" box rows – empty fields are skipped, the supplier name is always shown. */
+function partyPairs(header: InvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+      ["Mobile", header.mobile_no],
+      ["Email", header.e_mail],
+    ],
+    1
+  );
+}
+
+function invoiceDetailPairs(header: InvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      ["A/C Code", header.ac_code],
+      ["Payment Term", header.payment_terms],
+      ["Due Date", header.due_date ? dateText(header.due_date) : ""],
+    ],
+    4
+  );
+}
+
+function invoiceTaxDetailPairs(header: InvoiceHeader): KvPair[] {
+  return [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Payment Term", header.payment_terms],
+    ["Tax Reg No", header.tax_reg_no],
+  ];
 }
 
 // ─── Body 1: Purchase Invoice ───────────────────────────────────────────
@@ -435,19 +487,9 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
   return `
     ${printMetaHtml("Purchase Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
-      </div>
-    </div>
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceDetailPairs(header))}
 
-    <table class="data-table">
+    <table class="data-table si-items">
       
       <thead>
         <tr>
@@ -511,19 +553,9 @@ function renderPurchaseInvoiceTaxBody(
     ${isPortrait ? TAX_TABLE_FIX_HTML_PORTRAIT : TAX_TABLE_FIX_HTML}
     ${printMetaHtml("Purchase Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        <div class="value-line">Tax Reg No: ${escapeHtml(header.tax_reg_no)}</div>
-      </div>
-    </div>
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceTaxDetailPairs(header))}
 
-        <table class="data-table pi-portrait" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
+        <table class="data-table pi-portrait si-items-tax" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
   <colgroup>
     ${isPortrait
       ? `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:6%">
@@ -635,7 +667,7 @@ export const getPurchaseInvoiceReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
   title: "Purchase Invoice",                  
@@ -675,7 +707,7 @@ export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res:
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation);
+    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
   title: "Purchase Invoice (Tax)",
@@ -712,7 +744,7 @@ export const getPurchaseInvoiceAccountDetailsReportHtml = async (req: RequestWit
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderAccountDetailsBody(rows, params.loginid);
+    const bodyHtml = renderAccountDetailsBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Account Details",

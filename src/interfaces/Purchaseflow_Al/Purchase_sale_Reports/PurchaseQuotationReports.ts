@@ -10,6 +10,33 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 
 type ReportRow = Record<string, any>;
 
+
+
+type KvPair = [string, string];
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+/** Two boxes side by side (50% / 50%). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
 interface ReqParams {
   loginid: string;
   company_code: string;
@@ -303,42 +330,81 @@ const PQ_EXTRA_CSS = `
   .info-grid { margin-top: 0 !important; margin-bottom: 8px !important; }
 `;
 
-function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
+// function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+//   return `
+//     <div class="doc-title-row">
+//       <div>
+//         <h1>${escapeHtml(title)}</h1>
+//         <div class="doc-sub">${escapeHtml(subtitle)}</div>
+//       </div>
       
-    </div>`;
+//     </div>`;
+// }
+
+
+
+function docTitleRowHtml(title: string, _subtitle: string, _printDateTime: string, _loginId: string): string {
+  return `
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
 }
 
-function partyInfoBlockHtml(header: PurchaseQuotationHeader): string {
-  return `
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
-        ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
-      </div>`;
+// function partyInfoBlockHtml(header: PurchaseQuotationHeader): string {
+//   return `
+//       <div class="info-block">
+//         <div class="label">To</div>
+//         <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+//         <div class="value-line">${escapeHtml(header.party_address)}</div>
+//         <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+//         <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+//         ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
+//         ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
+//       </div>`;
+// }
+
+// function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
+//   return `
+//       <div class="info-block">
+//         <div class="label">Quotation Details</div>
+//         <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+//         <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+//         <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+//         <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
+//         <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
+//         <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
+//         <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
+//       </div>`;
+// }
+
+
+function partyPairs(header: PurchaseQuotationHeader): KvPair[] {
+  const all: KvPair[] = [
+    ["Supplier", header.party_name],
+    ["Address", header.party_address],
+    ["Tel", header.party_phone],
+    ["Fax", header.party_fax],
+    ["Contact", header.dlvr_contact],
+    ["Email", header.dlvr_email],
+  ];
+  return all.filter(([, v], i) => i === 0 || !!text(v).trim());   // rikame skip
 }
 
-function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
-  return `
-      <div class="info-block">
-        <div class="label">Quotation Details</div>
-        <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
-        <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
-        <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
-        <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
-      </div>`;
+function quotationDetailPairs(header: PurchaseQuotationHeader): KvPair[] {
+  const all: KvPair[] = [
+    ["Quotation No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["A/C Code", header.ac_code],
+    ["Quot Ref", header.quotation_refno],
+    ["Ref No", header.ref_no],
+    ["Ref Date", header.ref_date ? dateText(header.ref_date) : ""],
+    ["Deliver To", header.delivery_to],
+  ];
+  return all.filter(([, v], i) => i < 3 || !!text(v).trim());     // pahile 3 nehmi
+}
+
+function quotationInfoBoxesHtml(header: PurchaseQuotationHeader): string {
+  return kvTwoBoxesHtml("To", partyPairs(header), "Quotation Details", quotationDetailPairs(header));
 }
 
 // ─── Report 1: Quotation ────────────────────────────────────────────────────
@@ -437,10 +503,7 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
   return `
     ${docTitleRowHtml("Quotation", `Purchase Quotation — ${header.div_name}`, printDateTime, loginId)}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      ${quotationDetailsBlockHtml(header)}
-    </div>
+        ${quotationInfoBoxesHtml(header)}
 
         ${quotationItemsTableHtml(rows)}
 
@@ -469,10 +532,7 @@ function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string
   return `
     ${docTitleRowHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, printDateTime, loginId)}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      ${quotationDetailsBlockHtml(header)}
-    </div>
+       ${quotationInfoBoxesHtml(header)}
 
         ${quotationItemsTableHtml(rows, true)}
 
@@ -568,7 +628,7 @@ export const getPurchaseQuotationReportHtml = async (req: RequestWithUser, res: 
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid);
+   const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `Quotation ${buildPurchaseQuotationHeader(rows).doc_no}`,
@@ -609,7 +669,7 @@ export const getPurchaseQuotationWithRatesReportHtml = async (req: RequestWithUs
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseQuotationWithRatesBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseQuotationWithRatesBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `Quotation With Rates ${buildPurchaseQuotationHeader(rows).doc_no}`,
