@@ -1,6 +1,7 @@
 import { PlatformAdminService, PlatformError } from "./platformAdmin.service";
 import bcrypt from "bcrypt";
 import oracledb from "oracledb";
+import { CompanyBillingService } from "./companyBilling.service";
 
 const flags = ["SNEW", "SMODIFY", "SDELETE", "SSAVE", "SSEARCH", "SSAVEAS", "SUPLOAD", "SUNDO", "SPRINT", "SPRINTSETUP", "SHELP"];
 export type CompanyActor = { loginid: string; tenantId: string; company_code: string };
@@ -47,6 +48,7 @@ export class CompanySecurityService {
     if (!actor.loginid || !actor.tenantId || !actor.company_code)
       throw new PlatformError("Sign in to a tenant company first", 403);
     const catalog = await PlatformAdminService.screenCatalog(actor.tenantId, actor.company_code);
+    const billingBlocked = await CompanyBillingService.blockedSerials(actor.tenantId, actor.company_code);
     return PlatformAdminService.scope(actor.tenantId, async (c, owner) => {
       const binds = { loginid: actor.loginid, company: actor.company_code };
       const active = await c.execute(`SELECT 1 FROM ${owner}.SEC_LOGIN WHERE UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND COMPANY_CODE=:company ${requireActive ? "AND NVL(ACTIVE_FLAG,'Y')='Y'" : ""}`, binds);
@@ -59,6 +61,7 @@ export class CompanySecurityService {
         WHERE UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND (COMPANY_CODE=:company OR COMPANY_CODE IS NULL) AND SERIAL_NO_OR_ROLE_ID<90001`, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
       const denied = await c.execute<any>(`SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND IS_ENABLED='N'`, { tenant: actor.tenantId, company: actor.company_code }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
       const disabled = new Set((denied.rows || []).map(r => Number(r.SERIAL_NO)));
+      billingBlocked.forEach(serial => disabled.add(serial));
       const permissions = new Map<number, Record<string, string>>();
       for (const row of r.rows || []) {
         const serial = Number(row.SERIAL_NO);
