@@ -52,6 +52,12 @@ export class CompanySubscriptionService {
         if (version) await c.execute(`UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET PLAN_NAME=:plan,STATUS=:status,BILLING_CYCLE=:cycle,CURRENCY=:currency,AMOUNT=:amount,NEXT_BILL_DATE=TO_DATE(:nextDate,'YYYY-MM-DD'),BILLING_REFERENCE=:reference,NOTES=:notes,VERSION_NO=:version,UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company`, binds);
         else await c.execute(`INSERT INTO CUSTOMERS.SEC_COMPANY_SUBSCRIPTION (TENANT_ID,COMPANY_CODE,PLAN_NAME,STATUS,BILLING_CYCLE,CURRENCY,AMOUNT,NEXT_BILL_DATE,BILLING_REFERENCE,NOTES,VERSION_NO,UPDATED_BY) VALUES (:tenant,:company,:plan,:status,:cycle,:currency,:amount,TO_DATE(:nextDate,'YYYY-MM-DD'),:reference,:notes,:version,:actor)`, binds);
         await c.execute(`UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET START_DATE=TO_DATE(:startDate,'YYYY-MM-DD'),MODULE_CODES=:modules,BILLING_EMAIL=:billingEmail,DUE_DAYS=:dueDays,GRACE_DAYS=:graceDays,CUSTOM_DAYS=:customDays WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company`, { tenant, company, ...extra });
+        await Platform.audit(actor, tenant, company, "UPDATE", "COMPANY_SUBSCRIPTION", { ...values, version: version + 1 }, c);
+        await c.commit();
+        // Finance initialization owns its transaction. Use a separate connection
+        // after billing commits so its COMMIT cannot commit pending billing work.
+        try {
+          await Platform.scope(tenant, async (c, owner) => {
         if (modules && /(FINANCE|ACCOUNTS|AC)/i.test(modules)) {
           try {
             console.log(`[CompanySubscription] Ensuring Finance setup is provisioned for company '${company}' in ${owner}`);
@@ -68,8 +74,8 @@ export class CompanySubscriptionService {
             console.warn(`[CompanySubscription] Finance auto-provision notice for '${company}':`, finErr.message);
           }
         }
-        await Platform.audit(actor, tenant, company, "UPDATE", "COMPANY_SUBSCRIPTION", { ...values, version: version + 1 }, c);
-        await c.commit();
+          });
+        } catch { console.warn("Billing saved; finance initialization can be retried separately"); }
         return { version: version + 1 };
       } catch (e) { await c.rollback(); throw e; }
     });

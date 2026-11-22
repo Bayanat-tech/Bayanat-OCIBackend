@@ -185,6 +185,8 @@ export class PlatformAdminService {
           VALUES ((SELECT NVL(MAX(USER_MAP_ID),0)+1 FROM CUSTOMERS.USER_TENANT_MAPPING),:loginid,:tenantId,'Y',SYSDATE)`,
           { loginid, tenantId },
         );
+        const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
+        const defaultMasters = await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
         await this.audit(
           actor,
           tenantId,
@@ -205,7 +207,7 @@ export class PlatformAdminService {
           c,
         );
         await c.commit();
-        return { loginid, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created. Assign an application module and screen permissions before the user signs in." };
+        return { loginid, defaultMasters, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created with view-only general masters across modules. Assign operational module and transaction permissions before use." };
       } catch (e) {
         await c.rollback();
         throw e;
@@ -216,7 +218,7 @@ export class PlatformAdminService {
   static async userAccess(tenantId: string, company: string, loginid: string) {
     const users = await this.tenantQuery(
       tenantId,
-      "SELECT LOGINID,USERNAME FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
+      "SELECT LOGINID,USERNAME,ACTIVE_FLAG FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
       { company },
     );
     const screens = await this.screenCatalog(tenantId, company);
@@ -943,7 +945,7 @@ export class PlatformAdminService {
         columns: cols.map((x) => ({
           name: x.COLUMN_NAME,
           type: x.DATA_TYPE,
-          required: x.NULLABLE === "N",
+          required: x.NULLABLE === "N" || (["SEC_LOGIN", "SEC_LOGINTEST"].includes(table) && ["LOGINID", "USERNAME", "EMAIL_ID"].includes(x.COLUMN_NAME)) || (table === "MS_COMPANY" && ["COMPANY_CODE","COMPANY_NAME"].includes(x.COLUMN_NAME)),
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",

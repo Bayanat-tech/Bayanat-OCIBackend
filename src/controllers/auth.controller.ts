@@ -15,6 +15,7 @@ import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 import { CompanyBillingService } from "../services/Security/companyBilling.service";
+import { CompanyAccountService } from "../services/Security/companyAccount.service";
 import { PlatformAdminService } from "../services/Security/platformAdmin.service";
 import { oracleDb } from "../database/connection";
 
@@ -222,6 +223,8 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       return;
     }
     if (!tenantId) throw new Error("Account has no default tenant mapping");
+    try { await CompanyAccountService.assertActive(tenantId, user.COMPANY_CODE, user.LOGINID); }
+    catch (e: any) { res.status(403).json({ success: false, message: e.message || "Account or company is inactive" }); return; }
 
     // Get tenant config for additional info
     console.log(`[login] STEP 3: Getting tenant config...`);
