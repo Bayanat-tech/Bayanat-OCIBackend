@@ -132,6 +132,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const binds: Record<string, any> = {
       fromDate: toOracleDate(p.fromdate) ?? new Date("1900-01-01"),
       toDate:   toOracleDate(p.todate)   ?? new Date("2999-12-31"),
+      company_code: p.company_code,
     };
 
     const groupClause    = buildInClause("GROUP_CODE",    p.group,        "grp", binds);
@@ -140,6 +141,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const typeClause     = buildInClause("PRODTYPE_CODE", p.prodtype,     "typ", binds);
     const manuClause     = buildInClause("MANU_CODE",     p.manu,         "man", binds);
     const custClause     = buildInClause("AC_CODE",       p.cust,         "cus", binds);
+    const company_code    = "COMPANY_CODE"; // column name is the same as the bind variable
 
     // Only bind :docNo when the SQL text actually references it
     // (otherwise oracledb throws ORA-01036).
@@ -167,6 +169,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
       AND ${typeClause}
       AND ${manuClause}
       AND ${custClause}
+      AND ${company_code} = :company_code
     `;
 
     let sql = "";

@@ -6,6 +6,9 @@ import {
   PlatformError,
 } from "../../services/Security/platformAdmin.service";
 import { oracleDb } from "../../database/connection";
+import { CompanySubscriptionService } from "../../services/Security/companySubscription.service";
+import { CompanyBillingService } from "../../services/Security/companyBilling.service";
+import { companyModuleReadiness } from "../../services/Security/companyReadiness.service";
 
 const router = Router();
 router.use(
@@ -52,6 +55,17 @@ router.use("/:tenant", (req: any, res, next) => {
   }
   next();
 });
+router.get("/:tenant/subscription", handle(req => CompanySubscriptionService.get(req.user.loginid, req.params.tenant, String(req.query.company || ""))));
+router.put("/:tenant/subscription", handle(req => CompanySubscriptionService.save(req.user.loginid, req.params.tenant, String(req.query.company || ""), req.body)));
+router.get("/:tenant/billing", handle(req => CompanyBillingService.overview(req.user.loginid, req.params.tenant, String(req.query.company || ""))));
+router.get("/:tenant/readiness", handle(req => companyModuleReadiness(req.user.loginid, req.params.tenant, String(req.query.company || ""))));
+router.post("/:tenant/billing/control", handle(req => CompanyBillingService.control(req.user.loginid, req.params.tenant, String(req.query.company || ""), req.body)));
+router.post("/:tenant/billing/invoices/:invoice/pay", handle(req => CompanyBillingService.pay(req.user.loginid, req.params.tenant, String(req.query.company || ""), Number(req.params.invoice), req.body)));
+router.post("/:tenant/billing/run", handle(async req => {
+  await CompanyBillingService.production(req.user.loginid);
+  await CompanySubscriptionService.validateCompany(req.user.loginid, req.params.tenant, String(req.query.company || ""));
+  return CompanyBillingService.processCompany(req.params.tenant, String(req.query.company || ""));
+}));
 router.get(
   "/:tenant/options",
   handle((req) =>
@@ -149,7 +163,7 @@ router.get(
       !(catalog.companies as any[]).some((c) => c.COMPANY_CODE === company)
     )
       throw new PlatformError("Select a company in this tenant");
-    const screens = await PlatformAdminService.screenCatalog(tenantId);
+    const screens = await PlatformAdminService.screenCatalog(tenantId, company);
     const disabled = await oracleDb.query(
       "SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'",
       { tenantId, company },

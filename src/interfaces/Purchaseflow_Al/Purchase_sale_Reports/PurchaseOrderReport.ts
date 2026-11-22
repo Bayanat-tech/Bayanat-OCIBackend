@@ -165,6 +165,8 @@ interface PoHeader {
   cancelled: boolean;
   total_tx_compnt_amt_1: number;
   logo_url: string | null;
+  project: string;
+  ref_no: string;
 }
 
 function buildHeader(rows: ReportRow[]): PoHeader {
@@ -187,6 +189,8 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
     logo_url: h.logo_url || null,
+    project: text(h.project_name || h.job_no),
+    ref_no: text(h.ref_no),
   };
 }
 
@@ -219,32 +223,45 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
 
 const REPORT_TITLE = "Purchase Order";
 const REPORT_SUBTITLE = "PO Document";
+const PO_NOTES: string[] = [
+  "1. Our order number is to be quoted on all relevant Invoices & Delivery Notes.",
+  "2. Goods once sold will not be taken back.",
+];
+
+const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
 
 /** PO-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_EXTRA_CSS = `
   .doc-title-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    justify-content: center !important;
+    align-items: center;
+    text-align: center !important;
     margin: 4px 0 12px 0;
   }
+
+  .doc-title-row > div {
+    text-align: center !important;
+    width: 100%;
+  }
+
   .doc-title-row h1 {
     margin: 0;
     font-size: 18px;
     font-weight: 800;
     color: #0b4ca1;
+    text-align: center !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
   }
+
   .doc-title-row .doc-sub {
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
+    text-align: center !important;
   }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
+
   .status-badge {
     display: inline-block;
     margin-top: 4px;
@@ -253,32 +270,70 @@ const PO_EXTRA_CSS = `
     font-size: 11px;
     font-weight: 600;
   }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
+  .status-CANCELLED {
+    background: #fee2e2;
+    color: #dc2626;
   }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    background: #f8fafc;
+
+  /* Two separate boxes */
+  table.grn-two-col {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 10px 0;
+    margin: 0 -10px 14px;
   }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 6px;
+
+  .grn-two-col > tbody > tr > td {
+    width: 50%;
+    vertical-align: top;
+    padding: 0;
+  }
+
+  /* Individual box */
+  table.pr-kv-box {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    font-size: 11px;
+  }
+
+  .pr-kv-box thead th {
+    text-align: left;
+    padding: 8px 10px;
+    color: #0b4ca1;
+    background: #eff6ff;
+    font-size: 11px;
     font-weight: 700;
+    border-bottom: 2px solid #0b4ca1;
   }
-  .info-block .value-line {
-    font-size: 12px;
+
+  .pr-kv-box tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    vertical-align: top;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .pr-kv-box tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .pr-kv-box tbody td:first-child {
+    width: 34%;
+  }
+
+  .pr-kv-box tbody td:nth-child(2) {
+    width: 12px;
+    text-align: center;
+  }
+
+  .pr-kv-box tbody td:last-child {
     color: #0f172a;
-    line-height: 1.55;
   }
 
   table.data-table {
@@ -287,6 +342,7 @@ const PO_EXTRA_CSS = `
     font-size: 11px;
     margin-top: 4px;
   }
+
   table.data-table thead th {
     background: #f1f5f9;
     color: #334155;
@@ -295,19 +351,28 @@ const PO_EXTRA_CSS = `
     font-weight: 700;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: 0;
     border-bottom: 1px solid #cbd5e1;
   }
-  table.data-table thead th.right { text-align: right; }
+
+  table.data-table thead th.right {
+    text-align: right;
+  }
+
   table.data-table tbody td {
     padding: 7px 10px;
-    border: 0;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: top;
   }
-  table.data-table .right { text-align: right; font-variant-numeric: tabular-nums; }
-  table.data-table .amount { font-weight: 600; color: #065f46; }
+
+  table.data-table .right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.data-table .amount {
+    font-weight: 600;
+    color: #065f46;
+  }
 
   .totals-box {
     margin-top: 16px;
@@ -317,6 +382,7 @@ const PO_EXTRA_CSS = `
     border-radius: 10px;
     overflow: hidden;
   }
+
   .totals-box .row {
     display: flex;
     justify-content: space-between;
@@ -324,6 +390,7 @@ const PO_EXTRA_CSS = `
     font-size: 12px;
     border-bottom: 1px solid #f1f5f9;
   }
+
   .totals-box .row.grand {
     background: #0b4ca1;
     color: #fff;
@@ -331,12 +398,162 @@ const PO_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
+
+   /* Payment / Delivery / Project strip */
+  table.po-terms-strip {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse !important;
+    border: 1px solid #4a6fa5 !important;
+    margin: 0 0 14px 0;
+  }
+  table.po-terms-strip thead th,
+  table.po-terms-strip tbody td {
+    border: 1px solid #4a6fa5 !important;
+    border-top: 1px solid #4a6fa5 !important;
+    border-bottom: 1px solid #4a6fa5 !important;
+    border-left: 1px solid #4a6fa5 !important;
+    border-right: 1px solid #4a6fa5 !important;
+    text-align: center !important;
+    color: #0f172a !important;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  table.po-terms-strip thead th {
+    background: #a4c9f4 !important;
+    font-weight: 700;
+    padding: 7px 8px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  table.po-terms-strip tbody td {
+    background: #ffffff !important;
+    line-height: 1.4;
+    padding: 10px 8px;
+  }
+
   .empty-lines {
     text-align: center;
     padding: 40px 20px;
     color: #64748b;
   }
+
+    /* Keep Reference + notes + signature together, never split across pages */
+  .po-sign-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .po-sign-block table,
+  .po-sign-block tr,
+  .po-sign-block td,
+  .po-sign-block th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Do not repeat the header row on the next page */
+  .po-sign-block thead {
+    display: table-row-group !important;
+  }
 `;
+
+
+type KvPair = [string, string];
+
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(
+      ([key, value]) => `
+        <tr>
+          <td>${escapeHtml(key)}</td>
+          <td>:</td>
+          <td><b>${escapeHtml(value || "-")}</b></td>
+        </tr>
+      `
+    )
+    .join("");
+
+  return `
+    <table class="pr-kv-box">
+      <thead>
+        <tr>
+          <th colspan="3">${escapeHtml(title)}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function kvTwoBoxesHtml(
+  leftTitle: string,
+  left: KvPair[],
+  rightTitle: string,
+  right: KvPair[]
+): string {
+  return `
+    <table class="grn-two-col">
+      <tbody>
+        <tr>
+          <td>${kvBoxHtml(leftTitle, left)}</td>
+          <td>${kvBoxHtml(rightTitle, right)}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, value], index) =>
+    index < required || !!text(value).trim()
+  );
+
+function poPartyPairs(header: PoHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+    ],
+    1
+  );
+}
+
+
+function poTermsStripHtml(header: PoHeader): string {
+  const B = "border:1px solid #4a6fa5;";
+  return `
+    <table class="po-terms-strip" style="width:100%;border-collapse:collapse;${B}">
+      <thead>
+        <tr>
+          <th style="${B}background:#dbe7f5;text-align:center;">PAYMENT TERM</th>
+          <th style="${B}background:#dbe7f5;text-align:center;">DELIVERY TERM / PERIOD</th>
+          <th style="${B}background:#dbe7f5;text-align:center;">PROJECT</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="${B}text-align:center;">${escapeHtml(header.payment_terms || "-")}</td>
+          <td style="${B}text-align:center;">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td style="${B}text-align:center;">${escapeHtml(header.project || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+function poDetailPairs(header: PoHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      ["A/C Code", header.ac_code],
+     
+    ],
+    3
+  );
+}
 
 /** Body only – no full HTML document */
 function renderPoBody(rows: ReportRow[], loginId: string): string {
@@ -362,43 +579,30 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       <td>${escapeHtml(r.p_uom)}</td>
       <td class="right">${qtyFmt(r.quantity)}</td>
       <td class="right">${amtFmt(r.unit_price)}</td>
-<td class="right amount">${amtFmt(grossValue(r))}</td>
-<td class="right">${amtFmt(lineDiscOf(r))}</td>
-<td class="right">\u2014</td>
+      <td class="right amount">${amtFmt(grossValue(r))}</td>
+      <td class="right">${amtFmt(lineDiscOf(r))}</td>
+      <td class="right">\u2014</td>
     </tr>`
     )
     .join("");
 
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(REPORT_TITLE)}</h1>
-        <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-        ${header.cancelled
-      ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>`
-      : ""
-    }
+    return `
+            <div align="center" style="text-align:center;margin:4px 0 12px 0;">
+      <h1 align="center" style="margin:0;text-align:center;font-size:18px;font-weight:800;color:#0b4ca1;letter-spacing:1px;">
+        ${escapeHtml(REPORT_TITLE)}${header.cancelled ? ` <span class="status-badge status-CANCELLED">Cancelled</span>` : ""}
+      </h1>
+      <div align="center" style="margin:2px 0 0;text-align:center;font-size:11px;color:#64748b;">
+        ${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}
       </div>
-      
     </div>
+     ${poTermsStripHtml(header)}
 
-    <div class="info-grid">
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-      </div>
-      <div class="info-block">
-        <div class="label">PO Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        <div class="value-line">Delivery Term: ${escapeHtml(header.dlvr_term)}</div>
-      </div>
-    </div>
+    ${kvTwoBoxesHtml(
+  "To",
+  poPartyPairs(header),
+  "PO Details",
+  poDetailPairs(header)
+)}
 
     ${rows.length === 0
       ? `<div class="empty-lines">No line items found for this PO.</div>`
@@ -425,9 +629,38 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
         <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
         <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
         <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
-        <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
+      <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
       </div>`
     }
+
+            <div class="po-sign-block" style="break-inside:avoid;page-break-inside:avoid;">
+      <div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no || "as per above")}</span></div>
+      <div class="group">${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
+
+      <table class="data-table" style="break-inside:avoid;page-break-inside:avoid;">
+        <thead>
+          <tr>
+            <th class="center">For Supplier:</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}:</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <b>I have read &amp; agreed to all terms and conditions.</b>
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+            <td class="center">
+              ${escapeHtml(PO_APPROVAL_TEXT)}
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   `;
 }
 
@@ -508,6 +741,26 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const gtRow = rows_.length;
   rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null, null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
+
+
+    rows_.push(new Array(COL_COUNT).fill(null));
+
+  rows_.push([cell(`Reference: ${header.ref_no || "as per above"}`, "meta"), null, null, null, null, null, null, null]);
+  merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+
+  PO_NOTES.forEach((n) => {
+    rows_.push([cell(n, "meta"), null, null, null, null, null, null, null]);
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+  });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
+  const sRow = rows_.length;
+  rows_.push([
+    cell("For Supplier — Signature / Date", "meta"), null, null, null,
+    cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta"), null, null, null,
+  ]);
+  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 3 } });
+  merges.push({ s: { r: sRow, c: 4 }, e: { r: sRow, c: 7 } });
 
   rows_.push([null, null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 

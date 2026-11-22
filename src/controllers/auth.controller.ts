@@ -14,7 +14,9 @@ import { VendorService } from "../services/vendor.service";
 import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
-import { PlatformAdminService } from "../services/Security/platformAdmin.service";
+import { CompanyBillingService } from "../services/Security/companyBilling.service";
+import { CompanyAccountService } from "../services/Security/companyAccount.service";
+import { PlatformAdminService, PlatformError } from "../services/Security/platformAdmin.service";
 import { oracleDb } from "../database/connection";
 
 
@@ -221,6 +223,12 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       return;
     }
     if (!tenantId) throw new Error("Account has no default tenant mapping");
+    try { await CompanyAccountService.assertActive(tenantId, user.COMPANY_CODE, user.LOGINID); }
+    catch (e: any) {
+      if (!(e instanceof PlatformError)) console.error("[login] Account-state validation failed", { code: e.code });
+      res.status(e instanceof PlatformError ? e.status : 503).json({ success: false, message: e instanceof PlatformError ? e.message : "Unable to verify company account status. Please retry or contact support." });
+      return;
+    }
 
     // Get tenant config for additional info
     console.log(`[login] STEP 3: Getting tenant config...`);
@@ -325,7 +333,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     console.log(`[me] INIT: User context = { loginid: ${loginid}, tenantId: ${tenantId} }`);
 
     // Get user info (this should come from the main database, not tenant-specific)
-    const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+    const userResult = await AuthService.getUserWithTenant(requestUser.loginid || requestUser.email_id);
     
     if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -429,6 +437,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       const restrictions = await oracleDb.query(`SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS
         WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'`, {tenantId,company:user.COMPANY_CODE});
       const disabledScreens = new Set((restrictions.rows || []).map((r:any)=>Number(r.SERIAL_NO)));
+      for (const serial of await CompanyBillingService.blockedSerials(tenantId, user.COMPANY_CODE)) disabledScreens.add(serial);
       userPermissions = userPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
       allPermissions = allPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
       

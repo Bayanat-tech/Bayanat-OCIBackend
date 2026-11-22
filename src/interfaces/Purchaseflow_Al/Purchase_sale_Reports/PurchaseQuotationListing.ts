@@ -226,9 +226,7 @@ function grandLabel(curr: string): string {
   return curr ? `Grand Total Amount (${curr})` : "Grand Total Amount";
 }
 
-// ─── HTML renderer ──────────────────────────────────────────────────────────
-// Note: only the shared report_common classes (data-table, right, num, subtotal-row,
-// grand-total-row) are reliable in the exported PDF. Inline styles are for the screen preview.
+
 
 const PQ_REG_EXTRA_CSS = `
   .pq-register { font-size: 9.5px; line-height: 1.25; color: #1e293b; }

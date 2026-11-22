@@ -3,6 +3,7 @@ import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { scopeAlmsApprovalQuery } from "../../utils/workflowVisibility";
+import { assertSafeDynamicSecuritySql } from "../../middleware/companySecurity.middleware";
 
 export const procBuildCommonProcedurewmc = async (
   req: Request,
@@ -220,6 +221,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
 
     try {
       // Execute the DELETE SQL
+      assertSafeDynamicSecuritySql(req, rawSql);
       await connection.execute(rawSql, [], { autoCommit: true });
 
       res.json({
@@ -430,6 +432,7 @@ export const proc_build_dynamic_ins_upd_common = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1093,6 +1096,7 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1117,3 +1121,81 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     }
   }
 };
+
+// ---- add to the same controller file as proc_build_dynamic_sql_common20 ----
+export const proc_build_dynamic_edi_save = async (req: Request, res: Response): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+
+  try {
+    const { ediKey, loginid, rows } = req.body;
+
+    if (!ediKey || !Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ success: false, message: "ediKey and rows are required" });
+      return;
+    }
+
+    let tenantId: string | undefined;
+    try { tenantId = getCurrentTenantId(); } catch (e) { }
+    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
+
+    // 1) procedure returns all INSERT/UPDATE statements (separated by CHR(30))
+    const result = await connection.execute(
+      `
+      DECLARE
+        v_sql CLOB;
+      BEGIN
+        PROC_BUILD_DYNAMIC_EDI_SAVE(:ediKey, :rows, v_sql);
+        :out_sql := v_sql;
+      END;
+      `,
+      {
+        ediKey: String(ediKey),
+        rows: { dir: oracledb.BIND_IN, type: oracledb.CLOB, val: JSON.stringify(rows) },
+        out_sql: { dir: oracledb.BIND_OUT, type: oracledb.CLOB },
+      }
+    );
+
+    const lob = (result.outBinds as any)?.out_sql as oracledb.Lob | null;
+    const allSql: any = lob ? await lob.getData() : "";
+    if (lob) lob.destroy();
+
+    const statements = allSql.split("\x1E").map((s: any) => s.trim()).filter(Boolean);
+    if (!statements.length) {
+      res.status(400).json({ success: false, message: "Procedure returned no SQL" });
+      return;
+    }
+
+    // 2) run all in one transaction (all rows saved or none)
+    let current = 0;
+    try {
+      for (const stmt of statements) {
+        current++;
+        assertSafeDynamicSecuritySql(req, stmt);
+        await connection.execute(stmt, [], { autoCommit: false });
+      }
+      await connection.commit();
+    } catch (execErr: any) {
+      await connection.rollback().catch(() => { });
+      console.error(`EDI save failed at row ${current}:`, execErr);
+      res.status(500).json({ success: false, message: "Failed to save EDI rows", details: `Row ${current}: ${execErr.message}` });
+      return;
+    }
+
+    res.json({ success: true, message: `${statements.length} rows saved successfully`, count: statements.length });
+  } catch (error: any) {
+    console.error("Oracle Error:", error);
+    res.status(500).json({ success: false, message: "Failed to build EDI save statements", details: error.message });
+  } finally {
+    if (connection) await connection.close().catch(() => { });
+  }
+};
+
+// route:
+// router.post("/proc_build_dynamic_edi_save", proc_build_dynamic_edi_save);
+// body limit for big files: app.use(express.json({ limit: "20mb" }));

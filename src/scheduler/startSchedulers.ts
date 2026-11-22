@@ -1,4 +1,5 @@
 import { startNotificationEmailScheduler } from "./notificationEmail.scheduler";
+import { startCompanyBillingScheduler } from "./companyBilling.scheduler";
 
 export async function startSchedulers(): Promise<void> {
   const enabled = process.env.SCHEDULER_ENABLED;
@@ -10,6 +11,7 @@ export async function startSchedulers(): Promise<void> {
   try {
     console.log("Starting schedulers...");
     startNotificationEmailScheduler();
+    startCompanyBillingScheduler();
     console.log("NotificationEmailScheduler initialized");
     console.log("All schedulers started");
   } catch (error) {

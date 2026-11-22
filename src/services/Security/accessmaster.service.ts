@@ -374,8 +374,10 @@ export class AccessMasterService {
     accesses: Array<{
       serial_no_or_role_id: number;
       loginid: string;
-    }>
+    }>,
+    companyCode: string
   ): Promise<boolean> {
+    if (!companyCode) throw new Error("Select a company before removing access");
     const queryRunner = AppDataSource.createQueryRunner();
     await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
@@ -390,6 +392,7 @@ export class AccessMasterService {
 
       for (const access of accesses) {
         const result = await repository.delete({
+          company_code: companyCode,
           serial_no_or_role_id: access.serial_no_or_role_id,
           loginid: access.loginid,
         });
