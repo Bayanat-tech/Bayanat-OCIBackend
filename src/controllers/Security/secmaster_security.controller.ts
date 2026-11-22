@@ -15,7 +15,7 @@ export class SecmasterController {
       if (!await PlatformAdminService.getAccess(requestUser.loginid)) {
         const result = await PlatformAdminService.provisionCompanyUser(requestUser.loginid, (requestUser as any).tenantId,
           requestUser.company_code, { loginid: req.body.loginid, username: req.body.username, email: req.body.email_id, password: req.body.userpass, active: req.body.active_flag, contact: req.body.contact_no });
-        res.json({ success: true, message: "Company user and central sign-in account created", data: result });
+        res.json({ success: true, message: "Company user and central sign-in account created. Assign an application module and screen access before sign-in.", data: result });
         return;
       }
 

@@ -205,7 +205,7 @@ export class PlatformAdminService {
           c,
         );
         await c.commit();
-        return { loginid };
+        return { loginid, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created. Assign an application module and screen permissions before the user signs in." };
       } catch (e) {
         await c.rollback();
         throw e;
@@ -1320,6 +1320,22 @@ export class PlatformAdminService {
             values,
             access,
           );
+        if (table === "MS_COMPANY" && !remove && !rowid && values.COMPANY_CODE) {
+          try {
+            console.log(`[PlatformAdmin] Auto-provisioning Finance setup for new company '${values.COMPANY_CODE}' in ${owner}`);
+            await c.execute(
+              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:code, NULL, :actor, :status, :msg); END;`,
+              {
+                code: String(values.COMPANY_CODE).trim(),
+                actor: actor || "ADMIN",
+                status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+                msg: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+              }
+            );
+          } catch (finErr: any) {
+            console.warn(`[PlatformAdmin] Finance auto-provision notice for '${values.COMPANY_CODE}':`, finErr.message);
+          }
+        }
         await this.audit(
           actor,
           tenantId,

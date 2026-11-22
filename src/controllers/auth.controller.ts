@@ -16,6 +16,7 @@ import { VendorService } from "../services/vendor.service";
 import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
+import { CompanyBillingService } from "../services/Security/companyBilling.service";
 import { PlatformAdminService } from "../services/Security/platformAdmin.service";
 import { oracleDb } from "../database/connection";
 
@@ -447,6 +448,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       const restrictions = await oracleDb.query(`SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS
         WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'`, {tenantId,company:user.COMPANY_CODE});
       const disabledScreens = new Set((restrictions.rows || []).map((r:any)=>Number(r.SERIAL_NO)));
+      for (const serial of await CompanyBillingService.blockedSerials(tenantId, user.COMPANY_CODE)) disabledScreens.add(serial);
       userPermissions = userPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
       allPermissions = allPermissions.filter((r:any)=>!disabledScreens.has(Number(r.SERIAL_NO ?? r.serial_no)));
       

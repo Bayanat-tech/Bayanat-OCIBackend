@@ -4,6 +4,8 @@ import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { companySchema } from "../../validation/Security/Security.validation";
 import { CompanyService } from "../../services/Security/company.service";
+import { getConn, closeConn } from "../../res/oracleDbConnect";
+import { initializeCompanyFinanceSetup } from "../finance/accounts/transactions/transactionFinance.controller";
 
 export const createcompanymaster = async (
   req: RequestWithUser,
@@ -69,6 +71,19 @@ export const createcompanymaster = async (
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Error while creating company" });
       return;
+    }
+
+    // Auto-provision standard Finance setup for the new company
+    try {
+      const conn = await getConn(req);
+      try {
+        await initializeCompanyFinanceSetup(conn, company_code);
+        console.log(`[createcompanymaster] Finance setup auto-provisioned for company '${company_code}'`);
+      } finally {
+        await closeConn(conn);
+      }
+    } catch (finErr: any) {
+      console.warn(`[createcompanymaster] Finance auto-provision notice for '${company_code}':`, finErr.message);
     }
 
     res.status(constants.STATUS_CODES.OK).json({
