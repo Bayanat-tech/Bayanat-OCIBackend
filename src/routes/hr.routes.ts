@@ -155,9 +155,13 @@ router.post(
   getEmployeeMasterPrint
 );
 
-router.post("/absentmemo", generateAbsentMemoDaily);
+router.post("/absentmemo", passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization, generateAbsentMemoDaily);
 
-router.post("/insUpdAbsentMemo", insUpdAbsentMemo);
+router.post("/insUpdAbsentMemo", passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization, insUpdAbsentMemo);
 
 // Export the router as the default module
 export default router;

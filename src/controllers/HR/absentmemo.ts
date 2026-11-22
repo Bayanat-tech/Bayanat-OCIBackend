@@ -64,7 +64,7 @@ export const generateAbsentMemoDaily = async (
     // The procedure COMMITs / ROLLBACKs internally.
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_GENERATE_ABSENT_MEMO_DAILY(${args});
+         PROC_GENERATE_ABSENT_MEMO_DAILY(${args});
        END;`,
       binds as oracledb.BindParameters,
       { autoCommit: false }
