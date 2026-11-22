@@ -2,6 +2,7 @@ import { PlatformAdminService, PlatformError } from "./platformAdmin.service";
 import bcrypt from "bcrypt";
 import oracledb from "oracledb";
 import { CompanyBillingService } from "./companyBilling.service";
+import { isGeneralMaster } from "./defaultMasterAccess.service";
 
 const flags = ["SNEW", "SMODIFY", "SDELETE", "SSAVE", "SSEARCH", "SSAVEAS", "SUPLOAD", "SUNDO", "SPRINT", "SPRINTSETUP", "SHELP"];
 export type CompanyActor = { loginid: string; tenantId: string; company_code: string };
@@ -14,7 +15,7 @@ export class CompanySecurityService {
     await this.targetUser(actor, input.loginid);
     const targetPolicy = await this.policy({ ...actor, loginid: input.loginid }, false);
     for (const [serial, grant] of targetPolicy.permissions) for (const flag of flags)
-      if (grant[flag] === "Y" && actorPolicy.permissions.get(serial)?.[flag] !== "Y")
+      if (grant[flag] === "Y" && actorPolicy.permissions.get(serial)?.[flag] !== "Y" && !(flag === "SSEARCH" && isGeneralMaster(targetPolicy.screens.find(s => Number(s.SERIAL_NO) === serial) || {})))
         throw new PlatformError("This user has broader access. A platform administrator must edit their sign-in account.", 403);
     const values: Record<string, any> = {};
     for (const key of ["username", "email_id", "contact_no", "active_flag"])

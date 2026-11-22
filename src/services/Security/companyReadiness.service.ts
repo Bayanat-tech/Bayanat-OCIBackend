@@ -15,6 +15,8 @@ export async function companyModuleReadiness(actor: string, tenant: string, comp
         WHERE a.COMPANY_CODE=:company OR a.COMPANY_CODE IS NULL
       ) g ON UPPER(TRIM(g.LOGINID))=UPPER(TRIM(u.LOGINID)) AND (g.COMPANY_CODE=:company OR g.COMPANY_CODE IS NULL)
       LEFT JOIN ${owner}.SEC_MODULE_DATA m ON m.SERIAL_NO=g.SERIAL_NO AND UPPER(TRIM(m.APP_CODE)) NOT IN ('SECURITY','SUPPORT')
+      AND LOWER(NVL(m.URL_PATH,' ')) NOT LIKE '%/masters/gm/%'
+      AND REPLACE(REPLACE(UPPER(NVL(m.LEVEL2,' ')),'_',''),' ','') NOT IN ('GENERALMASTER','GENERALMASTERS')
       AND NOT EXISTS (SELECT 1 FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS x WHERE x.TENANT_ID=:tenant AND x.COMPANY_CODE=:company AND x.SERIAL_NO=m.SERIAL_NO AND x.IS_ENABLED='N')
       WHERE u.COMPANY_CODE=:company GROUP BY u.LOGINID ORDER BY u.LOGINID`, { company, tenant }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const users = result.rows || [];
