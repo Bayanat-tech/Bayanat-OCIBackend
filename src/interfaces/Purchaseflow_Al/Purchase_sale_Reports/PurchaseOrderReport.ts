@@ -82,6 +82,8 @@ function grossValue(r: ReportRow): number {
   return num(r.quantity) * num(r.unit_price);
 }
 
+const minifyHtml = (html: string) => html.replace(/>\s+</g, "><").trim();
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -209,6 +211,7 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalAmount = round2(rows.reduce((s, r) => s + grossValue(r), 0));
 
 
+
   const discount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
 
   const exclusiveVat = round2(totalAmount - discount);
@@ -224,8 +227,8 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
 const REPORT_TITLE = "Purchase Order";
 const REPORT_SUBTITLE = "PO Document";
 const PO_NOTES: string[] = [
-  "1. Our order number is to be quoted on all relevant Invoices & Delivery Notes.",
-  "2. Goods once sold will not be taken back.",
+  "1. Our order number is to be quoted on all relevant Invoices.",
+  
 ];
 
 const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
@@ -290,6 +293,9 @@ const PO_EXTRA_CSS = `
     vertical-align: top;
     padding: 0;
   }
+
+    table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
 
   /* Individual box */
   table.pr-kv-box {
@@ -456,12 +462,41 @@ const PO_EXTRA_CSS = `
   .po-sign-block thead {
     display: table-row-group !important;
   }
+
+    /* Terms strip + items table: same grid look */
+  table.po-terms,
+  table.po-items {
+    border-collapse: collapse;
+  }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td {
+    border: 1px solid #4a6fa5 !important;
+  }
+  table.po-terms {
+    margin-bottom: 12px;
+  }
+
+    .pr-kv-box.po-kv-to thead th,
+  .pr-kv-box.po-kv-details thead th {
+    padding: 4px 10px;
+  }
+      table.po-two-col > tbody > tr > td:first-child { width: 70% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 30% !important; }
+
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-bottom: 12px; }
+
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 32%; }
+  .pr-kv-box.po-kv-to thead th,
+  .pr-kv-box.po-kv-details thead th { padding: 4px 10px; }
 `;
 
 
 type KvPair = [string, string];
-
-function kvBoxHtml(title: string, pairs: KvPair[]): string {
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
   const rows = pairs
     .map(
       ([key, value]) => `
@@ -475,7 +510,7 @@ function kvBoxHtml(title: string, pairs: KvPair[]): string {
     .join("");
 
   return `
-    <table class="pr-kv-box">
+        <table class="pr-kv-box ${cls}">
       <thead>
         <tr>
           <th colspan="3">${escapeHtml(title)}</th>
@@ -493,11 +528,11 @@ function kvTwoBoxesHtml(
   right: KvPair[]
 ): string {
   return `
-    <table class="grn-two-col">
+      <table class="grn-two-col po-two-col">
       <tbody>
         <tr>
-          <td>${kvBoxHtml(leftTitle, left)}</td>
-          <td>${kvBoxHtml(rightTitle, right)}</td>
+                   <td>${kvBoxHtml(leftTitle, left, "po-kv-to")}</td>
+          <td>${kvBoxHtml(rightTitle, right, "po-kv-details")}</td>
         </tr>
       </tbody>
     </table>
@@ -523,21 +558,20 @@ function poPartyPairs(header: PoHeader): KvPair[] {
 
 
 function poTermsStripHtml(header: PoHeader): string {
-  const B = "border:1px solid #4a6fa5;";
   return `
-    <table class="po-terms-strip" style="width:100%;border-collapse:collapse;${B}">
+   <table class="data-table po-terms">
       <thead>
         <tr>
-          <th style="${B}background:#dbe7f5;text-align:center;">PAYMENT TERM</th>
-          <th style="${B}background:#dbe7f5;text-align:center;">DELIVERY TERM / PERIOD</th>
-          <th style="${B}background:#dbe7f5;text-align:center;">PROJECT</th>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">PROJECT</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="${B}text-align:center;">${escapeHtml(header.payment_terms || "-")}</td>
-          <td style="${B}text-align:center;">${escapeHtml(header.dlvr_term || "-")}</td>
-          <td style="${B}text-align:center;">${escapeHtml(header.project || "-")}</td>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.project || "-")}</td>
         </tr>
       </tbody>
     </table>`;
@@ -549,7 +583,7 @@ function poDetailPairs(header: PoHeader): KvPair[] {
       ["Doc No", header.doc_no],
       ["Date", dateText(header.doc_date)],
       ["A/C Code", header.ac_code],
-     
+
     ],
     3
   );
@@ -574,40 +608,33 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       (r, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""
-        }</td>
+     <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
       <td>${escapeHtml(r.p_uom)}</td>
       <td class="right">${qtyFmt(r.quantity)}</td>
       <td class="right">${amtFmt(r.unit_price)}</td>
       <td class="right amount">${amtFmt(grossValue(r))}</td>
       <td class="right">${amtFmt(lineDiscOf(r))}</td>
-      <td class="right">\u2014</td>
+      
     </tr>`
     )
     .join("");
 
-    return `
-            <div align="center" style="text-align:center;margin:4px 0 12px 0;">
-      <h1 align="center" style="margin:0;text-align:center;font-size:18px;font-weight:800;color:#0b4ca1;letter-spacing:1px;">
-        ${escapeHtml(REPORT_TITLE)}${header.cancelled ? ` <span class="status-badge status-CANCELLED">Cancelled</span>` : ""}
-      </h1>
-      <div align="center" style="margin:2px 0 0;text-align:center;font-size:11px;color:#64748b;">
-        ${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}
-      </div>
-    </div>
-     ${poTermsStripHtml(header)}
+  return `
+    <h1 class="center"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}${header.cancelled ? " (CANCELLED)" : ""}</u></h1>
 
     ${kvTwoBoxesHtml(
-  "To",
-  poPartyPairs(header),
-  "PO Details",
-  poDetailPairs(header)
-)}
+    "To",
+    poPartyPairs(header),
+    "PO Details",
+    poDetailPairs(header)
+  )}
+
+    ${poTermsStripHtml(header)}
 
     ${rows.length === 0
       ? `<div class="empty-lines">No line items found for this PO.</div>`
       : `
-      <table class="data-table">
+      <table class="data-table po-items">
         <thead>
           <tr>
             <th>S.No.</th>
@@ -617,7 +644,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
             <th class="right">Unit Rate</th>
             <th class="right">Gross Value</th>
             <th class="right">Disc</th>
-            <th class="right">VAT Type</th>
+           
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -637,7 +664,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       <div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no || "as per above")}</span></div>
       <div class="group">${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
 
-      <table class="data-table" style="break-inside:avoid;page-break-inside:avoid;">
+     <table class="data-table po-sign" style="break-inside:avoid;page-break-inside:avoid;">
         <thead>
           <tr>
             <th class="center">For Supplier:</th>
@@ -679,7 +706,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 8; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, VAT Type
+  const COL_COUNT = 7; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, Disc
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -687,43 +714,52 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const blank = (): Row => new Array(COL_COUNT).fill(null);
+  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
+  const mergeFull = () =>
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null, null]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  rows_.push(fullRow(cell(`${REPORT_TITLE} - ${header.doc_no}`, "title")));
+  mergeFull();
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null, null]);
+  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push([
     cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
-    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null, null,
+    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
-  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 7 } });
+  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: COL_COUNT - 1 } });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(fullRow(cell(
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Project: ${header.project || "-"}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(blank());
 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
     cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
-    cell("Disc", "header"), cell("VAT Type", "header"),
+    cell("Disc", "header"),
   ]);
 
   rows.forEach((r, i) => {
     rows_.push([
       cell(i + 1, "data"),
-      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      cell(text(r.prod_name), "data"),
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
       cell(grossValue(r), "dataNum"),
       cell(lineDiscOf(r), "dataNum"),
-      cell("", "data"), // TODO: VAT type column not available yet
     ]);
   });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(blank());
 
   const totalRows: [string, number][] = [
     ["Total Quantity", totals.totalQty],
@@ -734,35 +770,36 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   ];
   totalRows.forEach(([label, value]) => {
     const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null, null]);
+    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
     merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
   });
 
   const gtRow = rows_.length;
-  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null, null]);
+  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
 
+  rows_.push(blank());
 
-    rows_.push(new Array(COL_COUNT).fill(null));
-
-  rows_.push([cell(`Reference: ${header.ref_no || "as per above"}`, "meta"), null, null, null, null, null, null, null]);
-  merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
+  mergeFull();
 
   PO_NOTES.forEach((n) => {
-    rows_.push([cell(n, "meta"), null, null, null, null, null, null, null]);
-    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+    rows_.push(fullRow(cell(n, "meta")));
+    mergeFull();
   });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(blank());
   const sRow = rows_.length;
   rows_.push([
     cell("For Supplier — Signature / Date", "meta"), null, null, null,
-    cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta"), null, null, null,
+    cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta"), null, null,
   ]);
   merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 3 } });
-  merges.push({ s: { r: sRow, c: 4 }, e: { r: sRow, c: 7 } });
+  merges.push({ s: { r: sRow, c: 4 }, e: { r: sRow, c: COL_COUNT - 1 } });
 
-  rows_.push([null, null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  const footRow: Row = blank();
+  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
+  rows_.push(footRow);
 
   // ── Style registration engine (identical to PO Order Register) ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
@@ -1014,7 +1051,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
 // ─── Route handlers ─────────────────────────────────────────────────────────
 
-export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseOrderReportHtml  = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseOrderData(req, params);
@@ -1035,7 +1072,7 @@ export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Resp
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPoBody(rows, params.loginid);
+    const bodyHtml = minifyHtml(renderPoBody(rows, params.loginid));
 
     const html = buildReportDocument({
       title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,
