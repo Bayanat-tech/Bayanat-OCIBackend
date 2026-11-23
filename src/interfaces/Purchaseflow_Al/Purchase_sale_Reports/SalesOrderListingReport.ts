@@ -310,11 +310,9 @@ function renderSalesOrderListingBody(rows: ReportRow[]): string {
             <td class="right num" style="${S.grand} text-align:right;">${amtFmt(grand.amount)}</td>
           </tr>`;
 
-    return `
+      return `
   <div class="so-listing" style="font-size:9.5px;line-height:1.25;color:#1e293b;">
-    <table class="si-top-line"><tbody><tr><td>
-      <h1 class="report-title">${escapeHtml(REPORT_TITLE)}</h1>
-    </td></tr></tbody></table>
+       <h1 class="center grl-title" style="margin:0 0 6px 0;padding:0;text-align:center;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}</u></h1>
 
     ${
       rows.length === 0
@@ -707,7 +705,7 @@ export const getSalesOrderListingReportHtml = async (req: RequestWithUser, res: 
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesOrderListingBody(rows);
+  const bodyHtml = renderSalesOrderListingBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: REPORT_TITLE,
