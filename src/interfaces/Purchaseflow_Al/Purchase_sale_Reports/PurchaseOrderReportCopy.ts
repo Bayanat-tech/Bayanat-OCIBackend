@@ -543,7 +543,7 @@ function poDetailPairs(header: PoHeader): KvPair[] {
     [
       ["Doc No", header.doc_no],
       ["Date", dateText(header.doc_date)],
-      ["A/C Code", header.ac_code],
+    
     ],
     3
   );
@@ -587,7 +587,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
           <tr>
             <th>S.No</th>
             <th>Product / Description</th>
-            <th>Unit</th>
+            <th>UOM</th>
             <th class="right">Qty</th>
             <th class="right">Unit Rate</th>
             <th class="right">Gross Value</th>
@@ -687,7 +687,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   rows_.push(blank());
 
   rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
+    cell("S.No", "header"), cell("Product / Description", "header"), cell("UOM", "header"),
     cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
     cell("Disc %", "header"), cell("Disc", "header"), cell("Tax %", "header"), cell("Grand Total", "header"),
   ]);

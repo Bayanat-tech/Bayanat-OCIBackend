@@ -297,17 +297,13 @@ function renderGrnListingBody(rows: ReportRow[]): string {
 
   return `
   <div class="grn-listing" style="font-size:9.5px;line-height:1.25;color:#1e293b;">
-    <div style="margin:0 0 6px 0;padding:0;">
-      <h1 style="margin:0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;">
-        ${escapeHtml(REPORT_TITLE)}
-      </h1>
-    </div>
+       <h1 class="center grl-title" style="margin:0 0 6px 0;padding:0;text-align:center;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}</u></h1>
 
     ${
       rows.length === 0
         ? `<div style="padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;">No records found for the selected filters.</div>`
         : `
-      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+           <table class="data-table grl-items" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
         <colgroup><col style="width:44%"/><col style="width:8%"/><col style="width:13%"/><col style="width:8%"/><col style="width:13%"/><col style="width:14%"/></colgroup>
         <thead>
           <tr>
@@ -692,7 +688,7 @@ export const getPurchaseGrnListingReportHtml = async (req: RequestWithUser, res:
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderGrnListingBody(rows);
+        const bodyHtml = renderGrnListingBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: REPORT_TITLE,
@@ -702,7 +698,7 @@ export const getPurchaseGrnListingReportHtml = async (req: RequestWithUser, res:
       extraCss: GRN_LISTING_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
-      orientation: "landscape",
+      
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");

@@ -356,17 +356,13 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
 
   return `
   <div class="po-register" style="font-size:9.5px;line-height:1.25;color:#1e293b;">
-    <div style="margin:0 0 6px 0;padding:0;">
-      <h1 style="margin:0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;">
-        Purchase Orders - Order Register
-      </h1>
-    </div>
+        <h1 class="center po-reg-title" style="margin:0 0 4px 0;padding:0;text-align:center;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;"><u>PURCHASE ORDERS REGISTER</u></h1>
 
     ${
       rows.length === 0
         ? `<div style="padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;">No records found for the selected filters.</div>`
         : `
-      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;">
+      <table class="data-table por-items" style="margin-top:4px;border-collapse:collapse;width:100%;">
         <thead>
           <tr>
             <th style="${S.th}">Product</th>
@@ -758,7 +754,7 @@ export const getPoOrderRegisterReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPoRegisterBody(rows, params.loginid);
+    const bodyHtml = renderPoRegisterBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `${REPORT_TITLE} - ${REPORT_SUBTITLE}`,

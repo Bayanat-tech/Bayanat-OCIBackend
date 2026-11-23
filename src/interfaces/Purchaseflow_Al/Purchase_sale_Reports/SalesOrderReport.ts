@@ -141,7 +141,7 @@ async function loadSalesOrderData(req: RequestWithUser, p: ReqParams): Promise<R
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
-    console.log("=== GENERATED SQL ===\n", rawSql, "\n=== END ===");
+    console.log("=== GENERATED SQL (Sales Order) ===\n", rawSql, "\n=== END ===");
 
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return normalize(dataResult.rows as any[]);
@@ -150,61 +150,16 @@ async function loadSalesOrderData(req: RequestWithUser, p: ReqParams): Promise<R
   }
 }
 
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+// ─── Cancel helpers ─────────────────────────────────────────────────────────
 
 const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
 const isCancelledRow = (r: ReportRow): boolean =>
   flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+/** Document is cancelled when every line is cancelled */
 const isCancelledDoc = (rows: ReportRow[]): boolean =>
   rows.length > 0 && rows.every(isCancelledRow);
 
-type KvPair = [string, string];
-
-function kvBoxHtml(title: string, pairs: KvPair[]): string {
-  const rows = pairs
-    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
-    .join("");
-  return (
-    '<table class="pr-kv-box">' +
-      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody>" +
-    "</table>"
-  );
-}
-
-function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
-  return (
-    '<table class="grn-two-col"><tbody><tr>' +
-      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
-      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
-    "</tr></tbody></table>"
-  );
-}
-
-function titleHtml(title: string, cancelled: boolean): string {
-  if (cancelled) {
-    return `
-    <table class="si-top-line si-top-cancel"><tbody><tr>
-      <td><h1 class="report-title">${escapeHtml(title)}</h1></td>
-      <td class="si-cancel-tag center">CANCELLED</td>
-    </tr></tbody></table>`;
-  }
-  return `
-    <table class="si-top-line"><tbody><tr><td>
-      <h1 class="report-title">${escapeHtml(title)}</h1>
-    </td></tr></tbody></table>`;
-}
-
-const SIGN_LABELS = ["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"];
-
-function signHtml(labels: string[] = SIGN_LABELS): string {
-  return `<table class="dn-sign"><tbody><tr>${labels
-    .map((label) => `<td class="center"><strong>${escapeHtml(label)}</strong></td>`)
-    .join("")}</tr></tbody></table>`;
-}
-
-// ─── Report line model ──────────────────────────────────────────────────────
+// ─── Header model ───────────────────────────────────────────────────────────
 
 interface SoHeader {
   doc_no: string;
@@ -216,10 +171,13 @@ interface SoHeader {
   party_address: string;
   party_phone: string;
   party_fax: string;
-    cust_mobile: string;
+  cust_mobile: string;
   cust_email: string;
   user_id: string;
   payment_terms: string;
+  dlvr_term: string;
+  remarks: string;
+  ref_no: string;
   total_discount: number;
   disc_hdr_price: number;
   disc_hdr_percent: number;
@@ -238,31 +196,34 @@ function buildHeader(rows: ReportRow[]): SoHeader {
     party_address: text(h.party_address),
     party_phone: text(h.party_phone),
     party_fax: text(h.party_fax),
-        cust_mobile: text(h.cust_mobile),
+    cust_mobile: text(h.cust_mobile),
     cust_email: text(h.cust_email || h.e_mail),
     user_id: text(h.user_id),
     payment_terms: text(h.payment_terms),
+    // ⚠ Check the "=== GENERATED SQL (Sales Order) ===" console log: if the delivery term /
+    // remarks / reference columns have different names, add them to these lines.
+    dlvr_term: text(h.dlvr_term || h.delivery_term),
+    remarks: text(h.remarks || h.hdr_remarks),
+    ref_no: text(h.ref_no),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     total_discount: num(h.total_discount),
     cancelled: isCancelledDoc(rows),
-    
   };
 }
+
+// ─── Line / totals calculations (unchanged logic) ──────────────────────────
+
+const lineDiscOf = (r: ReportRow) =>
+  num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100;
 
 function computeTotals(rows: ReportRow[], header: SoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
 
-  // Gross = qty × rate 
+  // Gross = qty × rate
   const totalAmount = rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0);
 
-
-  const lineDiscount = rows.reduce((s, r) => {
-    const gross = num(r.quantity) * num(r.unit_price);
-    const d = num(r.disc_price) || (gross * num(r.disc_percent)) / 100;
-    return s + d;
-  }, 0);
-
+  const lineDiscount = rows.reduce((s, r) => s + lineDiscOf(r), 0);
 
   const lineNet = totalAmount - lineDiscount;
   const headerDiscount =
@@ -276,38 +237,41 @@ function computeTotals(rows: ReportRow[], header: SoHeader) {
   return { totalQty, totalAmount, discount, exclusiveVat, vatAmount, inclusiveVat };
 }
 
+/** Product name (+ line remarks). The product code is intentionally not shown. */
+const productText = (r: ReportRow) =>
+  `${text(r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`;
 
+// ─── Layout CSS — same visual system as Sales Invoice ──────────────────────
 
 const SALES_ORDER_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: flex-start !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    margin-bottom: 2px !important;
-  }
-  .doc-title-row h1 {
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-    line-height: 1.2 !important;
-  }
-  .doc-title-row .doc-sub {
-    margin: 0 !important;
-    padding: 0 !important;
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.2 !important;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
+  .center { text-align: center; }
+  h1.center { margin: 4px 0 12px; font-size: 18px; font-weight: 800; color: #0b4ca1; letter-spacing: 1px; }
+  .si-cancel-text { text-align: center; color: #dc2626; font-weight: 700; font-size: 12px; margin: -6px 0 10px; letter-spacing: 1px; }
+
+  table.grn-two-col { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px 14px; }
+  .grn-two-col > tbody > tr > td { vertical-align: top; padding: 0; }
+  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
+
+  table.pr-kv-box { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; }
+  .pr-kv-box thead th { text-align: left; padding: 4px 10px; color: #0b4ca1; background: #eff6ff; font-size: 11px; font-weight: 700; border-bottom: 2px solid #0b4ca1; }
+  .pr-kv-box tbody td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; overflow-wrap: anywhere; }
+  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
+  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 38%; }
+
+  /* Payment / Delivery / Remarks strip + items table: same grid look */
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-bottom: 12px; }
+  table.po-terms th, table.po-terms td { width: 33.333% !important; text-align: center; overflow-wrap: anywhere; }
+
+  .data-table { width: 100%; table-layout: auto; }
+  .data-table th, .data-table td { font-size: 10.5px; padding: 6px 5px; }
+  .data-table td:nth-child(2) { min-width: 140px; }
+
   .status-badge {
     display: inline-block;
     margin-left: 8px;
@@ -319,46 +283,6 @@ const SALES_ORDER_EXTRA_CSS = `
   }
   .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px 16px;
-    margin-top: 2px !important;
-    margin-bottom: 12px !important;
-    padding-top: 0 !important;
-  }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    background: #f8fafc;
-  }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 6px;
-  }
-  .info-block .value-line {
-    font-size: 11px;
-    color: #0f172a;
-    line-height: 1.55;
-  }
-  .info-block .kv-line {
-    display: flex;
-    font-size: 11px;
-    color: #0f172a;
-    line-height: 1.7;
-  }
-  .info-block .kv-label {
-    flex: 0 0 100px;
-    color: #475569;
-  }
-  .info-block .kv-value {
-    flex: 1;
-  }
-
   .totals-box {
     margin-top: 16px;
     margin-left: auto;
@@ -366,6 +290,7 @@ const SALES_ORDER_EXTRA_CSS = `
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     overflow: hidden;
+    page-break-inside: avoid;
   }
   .totals-box .row {
     display: flex;
@@ -381,29 +306,85 @@ const SALES_ORDER_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
-    .dn-sign { width: 100%; margin-top: 40px; }
+
+  /* 4 signature labels (the frontend pins these to the page footer in the PDF) */
+  .dn-sign { width: 100%; margin-top: 40px; border-collapse: collapse; page-break-inside: avoid; }
   .dn-sign td { width: 25%; text-align: center; padding-top: 28px; border-top: 1px solid #64748b; font-size: 10px; }
 `;
 
 const REPORT_TITLE = "Sales Order";
-const REPORT_SUBTITLE = "SO Document";
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled: boolean): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}${cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      
-    </div>`;
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+
+type KvPair = [string, string];
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box ' + cls + '">' +
+    '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+    "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
 }
 
+/** Two boxes side by side (To wider 60%, SO Details narrower 40%). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col po-two-col po-two-wide"><tbody><tr>' +
+    "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to") + "</td>" +
+    "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details po-kv-wide") + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
 
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
+
+/** Centered, uppercase, underlined title (+ red CANCELLED line when the document is cancelled). */
+function reportTitleHtml(title: string, cancelled = false): string {
+  return (
+    `<h1 class="center"><u>${escapeHtml(title.toUpperCase())}</u></h1>` +
+    (cancelled ? `<p class="center si-cancel-text">CANCELLED</p>` : "")
+  );
+}
+
+/** PAYMENT TERM | DELIVERY TERM / PERIOD | REMARKS strip. */
+function soTermsStripHtml(header: SoHeader): string {
+  return `
+    <table class="data-table po-terms">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+const SIGN_LABELS = ["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"];
+
+function signHtml(labels: string[] = SIGN_LABELS): string {
+  return `<table class="dn-sign"><tbody><tr>${labels
+    .map((label) => `<td class="center"><strong>${escapeHtml(label)}</strong></td>`)
+    .join("")}</tr></tbody></table>`;
+}
 
 // ─── Body ───────────────────────────────────────────────────────────────────
 
-function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
+function renderSalesOrderBody(rows: ReportRow[], _loginId: string): string {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
@@ -412,41 +393,49 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
       (r, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td>${escapeHtml(productText(r))}</td>
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(r.quantity)}</td>
           <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right">${amtFmt(num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100)}</td>
+          <td class="right">${amtFmt(lineDiscOf(r))}</td>
           <td class="right amount">${amtFmt(r.amount)}</td>
         </tr>`
     )
     .join("");
 
-  const partyPairs: KvPair[] = ([
-    ["Customer", header.party_name],
-    ["Address", header.party_address],
-    ["Tel", header.party_phone],
-    ["Fax", header.party_fax],
-    ["Mobile", header.cust_mobile],
-    ["Email", header.cust_email],
-  ] as KvPair[]).filter(([, v], i) => i === 0 || !!text(v).trim());
+  const partyPairs: KvPair[] = keepFilled(
+    [
+      ["Customer", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+      ["Mobile", header.cust_mobile],
+      ["Email", header.cust_email],
+    ],
+    1
+  );
 
-  const detailPairs: KvPair[] = [
-    ["SO No", header.doc_no],
-    ["Date", dateText(header.doc_date)],
-    ["A/C Code", header.ac_code],
-  ];
-  if (header.payment_terms) detailPairs.push(["Payment Term", header.payment_terms]);
-  if (header.user_id) detailPairs.push(["Sold By", header.user_id]);
+  const detailPairs: KvPair[] = keepFilled(
+    [
+      ["SO No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      // ["A/C Code", header.ac_code],
+      ["Sold By", header.user_id],
+    ],
+    3
+  );
 
   return `
-    ${titleHtml(REPORT_TITLE, header.cancelled)}
-    ${kvTwoBoxesHtml("Customer", partyPairs, "SO Details", detailPairs)}
+    ${reportTitleHtml(REPORT_TITLE, header.cancelled)}
+
+    ${kvTwoBoxesHtml("To", partyPairs, "SO Details", detailPairs)}
 
     ${rows.length === 0
       ? `<div class="empty">No line items found for this order.</div>`
       : `
-      <table class="data-table si-items">
+      ${soTermsStripHtml(header)}
+
+      <table class="data-table si-items po-items">
         <thead>
           <tr>
             <th>S.No</th>
@@ -468,6 +457,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
         <div class="row grand"><span>Net Amount</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
       </div>
 
+      ${header.ref_no ? `<p><strong>Reference:</strong> ${escapeHtml(header.ref_no)}</p>` : ""}
       ${signHtml()}`
     }
   `;
@@ -475,11 +465,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
 
 // ─── Excel builder ───────────────────────────────────────────────────────
 
-function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
+function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
   const GREEN_BG = "FFD1FAE5";
@@ -487,7 +473,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 7;
+  const COL_COUNT = 7; // S.No, Product, Unit, Qty, Unit Rate, Disc, Amount
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -496,21 +482,36 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}${header.cancelled ? " (CANCELLED)" : ""}`, "title"), null, null, null, null, null]);
+  // Row 0: title
+  rows_.push([
+    cell(`${REPORT_TITLE} - ${header.doc_no}${header.cancelled ? " (CANCELLED)" : ""}`, "title"),
+    ...new Array(COL_COUNT - 1).fill(null),
+  ]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-
+  // Row 1: To | Date / A/C / Sold By
   rows_.push([
-    cell(`Customer: ${header.party_name}, ${header.party_address}`, "meta"), null, null,
-    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
+    cell(`To: ${[header.party_name, header.party_address].filter(Boolean).join(", ")}`, "meta"), null, null,
+    cell(
+      `Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}${header.user_id ? `   Sold By: ${header.user_id}` : ""}`,
+      "meta"
+    ),
+    null, null, null,
   ]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 2 } });
-  merges.push({ s: { r: 2, c: 3 }, e: { r: 2, c: 5 } });
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
-  rows_.push([null, null, null, null, null, null]);
+  // Row 2: Payment Term / Delivery Term / Remarks
+  rows_.push([
+    cell(
+      `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
+      "meta"
+    ),
+    ...new Array(COL_COUNT - 1).fill(null),
+  ]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
@@ -520,34 +521,37 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   rows.forEach((r, i) => {
     rows_.push([
       cell(i + 1, "data"),
-      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      cell(productText(r), "data"),
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
-      cell(num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100, "dataNum"),
+      cell(lineDiscOf(r), "dataNum"),
       cell(num(r.amount), "dataNum"),
     ]);
   });
 
-  rows_.push([null, null, null, null, null, null]);
+  rows_.push(new Array(COL_COUNT).fill(null));
 
-  const totalRows: [string, number][] = [
-    ["Total Quantity", totals.totalQty],
-    ["Total Amount", totals.totalAmount],
-    ["Discount", totals.discount],
-  ];
-  totalRows.forEach(([label, value]) => {
+  const addTotal = (label: string, value: number, grand = false) => {
     const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 3 } });
-  });
+    const arr: Row = new Array(COL_COUNT).fill(null);
+    arr[0] = cell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = cell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total Quantity", totals.totalQty);
+  addTotal("Total Amount", totals.totalAmount);
+  addTotal("Overall Discount", totals.discount);
+  addTotal("Net Amount", totals.inclusiveVat, true);
 
-  const gtRow = rows_.length;
-  rows_.push([cell("Net Amount", "grandTotal"), null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 3 } });
-rows_.push([null, null, null, null, null, null, null]);
-rows_.push([cell("Prepared By", "sign"), null, cell("Checked By", "sign"), null, cell("Delivered By", "sign"), null, cell("Receiver's Name & Signature", "sign")]);
-  rows_.push([null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  // Signature row (same 4 labels as the browser / PDF)
+  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push([
+    cell("Prepared By", "sign"), null, cell("Checked By", "sign"), null,
+    cell("Delivered By", "sign"), null, cell("Receiver's Name & Signature", "sign"),
+  ]);
+  rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
@@ -594,8 +598,7 @@ rows_.push([cell("Prepared By", "sign"), null, cell("Checked By", "sign"), null,
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.00",
     },
-
-        sign: {
+    sign: {
       font: { bold: true, sz: 9, color: { rgb: "FF334155" } },
       alignment: { horizontal: "center", vertical: "center", wrapText: true },
       border: { top: { color: { rgb: "FF64748B" } } },
@@ -674,7 +677,7 @@ rows_.push([cell("Prepared By", "sign"), null, cell("Checked By", "sign"), null,
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
   const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="18" customWidth="1"/>`
+    `<col min="${i + 1}" max="${i + 1}" width="20" customWidth="1"/>`
   ).join("");
 
   let sheetDataXml = "";
@@ -820,7 +823,7 @@ export const getSalesOrderReportHtml = async (req: RequestWithUser, res: Respons
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-   const bodyHtml = renderSalesOrderBody(rows, params.loginid).replace(/>\s+</g, "><");
+    const bodyHtml = renderSalesOrderBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,
@@ -830,7 +833,7 @@ export const getSalesOrderReportHtml = async (req: RequestWithUser, res: Respons
       extraCss: SALES_ORDER_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
-       orientation: "portrait",
+      orientation: "portrait",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
