@@ -64,11 +64,23 @@ export class PlatformAdminService {
     input: any,
   ) {
     await this.assertTenant(actor, tenantId);
+    return this.provisionUserRecords(actor, tenantId, company, input);
+  }
+
+  static async provisionCompanyUser(actor: string, tenantId: string, company: string, input: any) {
+    const { CompanySecurityService } = await import("./companySecurity.service");
+    await CompanySecurityService.capability({ loginid: actor, tenantId, company_code: company }, ["sec_login"], "SNEW");
+    return this.provisionUserRecords(actor, tenantId, company, input);
+  }
+
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
     const username = String(input.username || "").trim();
     const email = String(input.email || "").trim();
+    const active = input.active === undefined ? "Y" : String(input.active).toUpperCase();
+    if (!["Y", "N"].includes(active)) throw new PlatformError("Choose an active status");
     if (
       !/^[A-Za-z0-9_.-]{1,15}$/.test(loginid) ||
       !username ||
@@ -109,10 +121,19 @@ export class PlatformAdminService {
           throw new PlatformError(
             "A central account already uses this login or email. Use central user mappings to link an existing account.",
           );
+        const tenantExists = await c.execute(
+          `SELECT 1 FROM ${owner}.SEC_LOGIN WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)`,
+          { loginid },
+          options,
+        );
+        if (tenantExists.rows?.length)
+          throw new PlatformError(
+            "This user already exists in the tenant. Edit and save that user to repair its central sign-in account instead of creating a duplicate.",
+          );
         await c.execute(
           `INSERT INTO CUSTOMERS.SEC_LOGINTEST (COMPANY_CODE,LOGINID,USERNAME,EMAIL_ID,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,CREATED_BY,CREATED_AT)
-          VALUES (:company,:loginid,:username,:email,'A','Y',(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
-          { company, loginid, username, email, hash, actor },
+          VALUES (:company,:loginid,:username,:email,'A',:active,(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
+          { company, loginid, username, email, hash, actor, active },
         );
         const cols = await this.columns(c, owner, "SEC_LOGIN");
         const values: Record<string, any> = {
@@ -121,13 +142,18 @@ export class PlatformAdminService {
           USERNAME: username,
           EMAIL_ID: email,
           STATUS: "A",
-          ACTIVE_FLAG: "Y",
+          ACTIVE_FLAG: active,
+          CONTACT_NO: input.contact || null,
           USERPASS: hash,
           SEC_PASSWD: hash,
           PASSWORD: hash,
           USER_ID: loginid,
           USER_CODE: loginid,
           USERID: loginid,
+          CREATED_BY: actor,
+          UPDATED_BY: actor,
+          CREATED_AT: new Date(),
+          UPDATED_AT: new Date(),
         };
         if (
           cols.some(
@@ -159,6 +185,8 @@ export class PlatformAdminService {
           VALUES ((SELECT NVL(MAX(USER_MAP_ID),0)+1 FROM CUSTOMERS.USER_TENANT_MAPPING),:loginid,:tenantId,'Y',SYSDATE)`,
           { loginid, tenantId },
         );
+        const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
+        const defaultMasters = await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
         await this.audit(
           actor,
           tenantId,
@@ -179,7 +207,7 @@ export class PlatformAdminService {
           c,
         );
         await c.commit();
-        return { loginid };
+        return { loginid, defaultMasters, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created with view-only general masters across modules. Assign operational module and transaction permissions before use." };
       } catch (e) {
         await c.rollback();
         throw e;
@@ -190,10 +218,10 @@ export class PlatformAdminService {
   static async userAccess(tenantId: string, company: string, loginid: string) {
     const users = await this.tenantQuery(
       tenantId,
-      "SELECT LOGINID,USERNAME FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
+      "SELECT LOGINID,USERNAME,ACTIVE_FLAG FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
       { company },
     );
-    const screens = await this.screenCatalog(tenantId);
+    const screens = await this.screenCatalog(tenantId, company);
     const access = loginid
       ? await this.tenantQuery(
           tenantId,
@@ -201,6 +229,12 @@ export class PlatformAdminService {
           { company, loginid },
         )
       : [];
+    const inherited = loginid ? await this.tenantQuery(tenantId,
+      `SELECT DISTINCT a.SERIAL_NO FROM #SCHEMA#.SEC_ROLE_APP_ACCESS a
+       JOIN #SCHEMA#.SEC_ROLE_FUNCTION_ACCESS_USER b ON a.ROLE_ID=b.SERIAL_NO_OR_ROLE_ID
+       WHERE UPPER(TRIM(b.LOGINID))=UPPER(TRIM(:loginid))
+       AND (b.COMPANY_CODE=:company OR b.COMPANY_CODE IS NULL)
+       AND (a.COMPANY_CODE=:company OR a.COMPANY_CODE IS NULL)`, { company, loginid }) : [];
     const disabled = await oracleDb.query(
       "SELECT SERIAL_NO FROM CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS WHERE TENANT_ID=:tenantId AND COMPANY_CODE=:company AND IS_ENABLED='N'",
       { tenantId, company },
@@ -212,7 +246,146 @@ export class PlatformAdminService {
       users,
       screens: screens.filter((s) => !denied.has(Number(s.SERIAL_NO))),
       access,
+      inherited,
     };
+  }
+
+  static async syncCentralLogin(
+    c: oracledb.Connection,
+    owner: string,
+    tenantId: string,
+    company: string,
+    actor: string,
+    rowid: string,
+    values: Record<string, any>,
+    access: PlatformAccess,
+  ) {
+    const record = await c.execute<any>(
+      `SELECT * FROM ${owner}.SEC_LOGIN WHERE ROWID=CHARTOROWID(:rid) AND COMPANY_CODE=:company`,
+      { rid: rowid, company },
+      options,
+    );
+    const user = record.rows?.[0];
+    if (!user?.LOGINID)
+      throw new PlatformError(
+        "User login is required before the sign-in account can be synchronized",
+      );
+    const loginid = String(user.LOGINID).trim();
+    const protectedAccount = await c.execute(
+      "SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)",
+      { loginid },
+      options,
+    );
+    if (protectedAccount.rows?.length)
+      throw new PlatformError(
+        "Platform administrator credentials cannot be changed through tenant users",
+        403,
+      );
+    if (access.scope === "SCOPED") {
+      const tenants = access.tenants.filter((t) => t !== "root");
+      const outside = await c.execute(
+        `SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)
+        AND TENANT_ID NOT IN (${tenants.map((_, i) => `:allowed${i}`).join(",") || "NULL"})`,
+        {
+          loginid,
+          ...Object.fromEntries(tenants.map((t, i) => [`allowed${i}`, t])),
+        },
+        options,
+      );
+      if (outside.rows?.length)
+        throw new PlatformError(
+          "This central login is shared outside your QA tenants. A production administrator must update it.",
+          403,
+        );
+    }
+    await c.execute(
+      "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
+    );
+    const roots = await c.execute<any>(
+      "SELECT LOGINID FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid)",
+      { loginid },
+      options,
+    );
+    if ((roots.rows?.length || 0) > 1)
+      throw new PlatformError(
+        "More than one central account matches this login. Contact the production administrator.",
+      );
+    const centralLogin = roots.rows?.[0]?.LOGINID || loginid;
+    if (values.EMAIL_ID) {
+      const duplicate = await c.execute(
+        "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(EMAIL_ID))=LOWER(TRIM(:email)) AND LOWER(TRIM(LOGINID))<>LOWER(:loginid)",
+        { email: values.EMAIL_ID, loginid: centralLogin },
+        options,
+      );
+      if (duplicate.rows?.length)
+        throw new PlatformError(
+          "Another central account already uses this email address",
+        );
+    }
+    if (!roots.rows?.length) {
+      const hash = [user.USERPASS, user.SEC_PASSWD, user.PASSWORD].find(
+        (v) => typeof v === "string" && /^\$2[aby]\$\d{2}\$/.test(v),
+      );
+      if (!hash)
+        throw new PlatformError(
+          "Set a new password to create the missing central sign-in account",
+        );
+      await c.execute(
+        `INSERT INTO CUSTOMERS.SEC_LOGINTEST
+        (COMPANY_CODE,LOGINID,USERNAME,EMAIL_ID,STATUS,ACTIVE_FLAG,ID,USERPASS,SEC_PASSWD,PASSWORD,USER_ID,USER_CODE,USERID,CREATED_BY,CREATED_AT)
+        VALUES (:company,:loginid,:username,:email,'A',:active,(SELECT NVL(MAX(ID),0)+1 FROM CUSTOMERS.SEC_LOGINTEST),:hash,:hash,:hash,:loginid,:loginid,:loginid,:actor,SYSTIMESTAMP)`,
+        {
+          company,
+          loginid: centralLogin,
+          username: user.USERNAME || loginid,
+          email: user.EMAIL_ID || null,
+          active: user.ACTIVE_FLAG || "Y",
+          hash,
+          actor,
+        },
+      );
+    } else {
+      const fields = ["USERNAME", "EMAIL_ID", "ACTIVE_FLAG"].filter((key) =>
+        Object.prototype.hasOwnProperty.call(values, key),
+      );
+      if (values.USERPASS || values.SEC_PASSWD || values.PASSWORD)
+        fields.push("USERPASS", "SEC_PASSWD", "PASSWORD");
+      if (fields.length)
+        await c.execute(
+          `UPDATE CUSTOMERS.SEC_LOGINTEST SET ${fields.map((key, i) => `${key}=:value${i}`).join(",")},UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE LOGINID=:loginid`,
+          {
+            loginid: centralLogin,
+            actor,
+            ...Object.fromEntries(
+              fields.map((key, i) => [`value${i}`, user[key] ?? null]),
+            ),
+          },
+        );
+    }
+    const mapped = await c.execute(
+      "SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid) AND TENANT_ID=:tenantId",
+      { loginid: centralLogin, tenantId },
+      options,
+    );
+    if (!mapped.rows?.length) {
+      await c.execute(
+        "LOCK TABLE CUSTOMERS.USER_TENANT_MAPPING IN EXCLUSIVE MODE WAIT 5",
+      );
+      const defaultMapping = await c.execute(
+        "SELECT 1 FROM CUSTOMERS.USER_TENANT_MAPPING WHERE LOWER(TRIM(LOGINID))=LOWER(:loginid) AND IS_DEFAULT='Y'",
+        { loginid: centralLogin },
+        options,
+      );
+      await c.execute(
+        `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING (USER_MAP_ID,LOGINID,TENANT_ID,IS_DEFAULT,CREATED_DATE)
+        VALUES ((SELECT NVL(MAX(USER_MAP_ID),0)+1 FROM CUSTOMERS.USER_TENANT_MAPPING),:loginid,:tenantId,:isDefault,SYSDATE)`,
+        {
+          loginid: centralLogin,
+          tenantId,
+          isDefault: defaultMapping.rows?.length ? "N" : "Y",
+        },
+      );
+    }
   }
 
   static async grant(
@@ -246,15 +419,43 @@ export class PlatformAdminService {
     return this.scope(tenantId, async (c, owner) => {
       try {
         const serials = [...new Set<number>(input.serials)];
-        if (!input.enabled)
+        if (!input.enabled) {
+          // Detach only this user's affected role memberships. Preserve their
+          // other role permissions as direct grants before removing membership.
+          await c.execute(`LOCK TABLE ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER IN SHARE ROW EXCLUSIVE MODE`);
+          await c.execute(`LOCK TABLE ${owner}.SEC_ROLE_APP_ACCESS IN SHARE MODE`);
+          const memberships = await c.execute<any>(
+            `SELECT * FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND (COMPANY_CODE=:company OR COMPANY_CODE IS NULL)`,
+            { loginid: input.loginid, company }, options);
+          const roleRows = await c.execute<any>(
+            `SELECT * FROM ${owner}.SEC_ROLE_APP_ACCESS WHERE COMPANY_CODE=:company OR COMPANY_CODE IS NULL`, { company }, options);
+          const selected = new Set(serials);
+          const impacted = new Set((roleRows.rows || []).filter((r: any) => selected.has(Number(r.SERIAL_NO))).map((r: any) => Number(r.ROLE_ID)));
+          const detach = (memberships.rows || []).filter((r: any) => impacted.has(Number(r.SERIAL_NO_OR_ROLE_ID)));
+          if ((memberships.rows || []).some((r: any) => !r.COMPANY_CODE && (selected.has(Number(r.SERIAL_NO_OR_ROLE_ID)) || impacted.has(Number(r.SERIAL_NO_OR_ROLE_ID)))))
+            throw new PlatformError("This user has shared company access. Assign company-specific permissions before removing these screens.");
+          const detachedIds = new Set(detach.map((r: any) => Number(r.SERIAL_NO_OR_ROLE_ID)));
+          const flags = ["SNEW","SMODIFY","SDELETE","SSAVE","SSEARCH","SSAVEAS","SUPLOAD","SUNDO","SPRINT","SPRINTSETUP","SHELP"];
+          const preserve = new Map<number, any>();
+          for (const r of roleRows.rows || []) {
+            const serial = Number(r.SERIAL_NO);
+            if (!detachedIds.has(Number(r.ROLE_ID)) || selected.has(serial)) continue;
+            const values = preserve.get(serial) || Object.fromEntries(flags.map((f) => [f, "N"]));
+            for (const f of flags) if (String(r[f]).toUpperCase() === "Y") values[f] = "Y";
+            preserve.set(serial, values);
+          }
+          for (const [serial, values] of preserve) {
+            await c.execute(`MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
+              ON (t.COMPANY_CODE=s.COMPANY_CODE AND t.LOGINID=s.LOGINID AND t.SERIAL_NO_OR_ROLE_ID=s.SERIAL_NO_OR_ROLE_ID)
+              WHEN MATCHED THEN UPDATE SET ${flags.map((f) => `t.${f}=CASE WHEN UPPER(t.${f})='Y' OR :${f}='Y' THEN 'Y' ELSE 'N' END`).join(",")}
+              WHEN NOT MATCHED THEN INSERT (COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(",")},USERID)
+              VALUES (:company,:loginid,:serial,${flags.map((f) => ":"+f).join(",")},:actor)`,
+              { company, loginid: input.loginid, serial, ...values, actor });
+          }
           await c.executeMany(
-            `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND LOGINID=:loginid AND SERIAL_NO_OR_ROLE_ID=:serial`,
-            serials.map((serial) => ({
-              company,
-              loginid: input.loginid,
-              serial,
-            })),
-          );
+            `DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND SERIAL_NO_OR_ROLE_ID=:serial`,
+            [...new Set([...serials, ...detachedIds])].map((serial) => ({ company, loginid: input.loginid, serial })));
+        }
         else
           await c.executeMany(
             `MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING (SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL) s
@@ -346,7 +547,7 @@ export class PlatformAdminService {
     };
   }
 
-  static async screenCatalog(tenantId: string) {
+  static async screenCatalog(tenantId: string, company = "") {
     return this.scope(tenantId, async (c, owner) => {
       const cols = await this.columns(c, owner, "SEC_MODULE_DATA");
       const names = new Set(cols.map((x) => x.COLUMN_NAME));
@@ -365,12 +566,21 @@ export class PlatformAdminService {
       const active = names.has("IS_ACTIVE")
         ? " AND NVL(IS_ACTIVE,'Y')='Y'"
         : "";
+      const preference = names.has("COMPANY_CODE") && company
+        ? "CASE WHEN COMPANY_CODE=:company THEN 0 WHEN COMPANY_CODE IS NULL THEN 1 ELSE 2 END,"
+        : "";
       const r = await c.execute<any>(
-        `SELECT ${select} FROM ${owner}.SEC_MODULE_DATA WHERE SERIAL_NO>0 ${active} ORDER BY APP_CODE,SERIAL_NO`,
-        {},
+        `SELECT ${select} FROM ${owner}.SEC_MODULE_DATA WHERE SERIAL_NO>0 ${active} ORDER BY ${preference} APP_CODE,SERIAL_NO,LEVEL1,LEVEL2,LEVEL3`,
+        preference ? { company } : {},
         options,
       );
-      return r.rows || [];
+      const unique = new Map<number, any>();
+      for (const row of r.rows || []) {
+        for (const key of ["LEVEL1", "LEVEL2", "LEVEL3"])
+          if (String(row[key] ?? "").trim().toUpperCase() === "NULL") row[key] = null;
+        if (!unique.has(Number(row.SERIAL_NO))) unique.set(Number(row.SERIAL_NO), row);
+      }
+      return [...unique.values()];
     });
   }
 
@@ -504,7 +714,7 @@ export class PlatformAdminService {
       );
       result.COUNTRY_CODE = result.COUNTRY;
       if (tenantId !== "root") {
-        const screens = await this.screenCatalog(tenantId);
+        const screens = await this.screenCatalog(tenantId, company);
         result.SERIAL_NO = screens.map((s) => ({
           value: String(s.SERIAL_NO),
           label: `${s.SERIAL_NO} · ${s.APP_CODE || ""} / ${[s.LEVEL1, s.LEVEL2, s.LEVEL3].filter(Boolean).join(" / ")}`,
@@ -665,11 +875,14 @@ export class PlatformAdminService {
   }
 
   static async companyCodeLimit(c: oracledb.Connection, owner: string) {
-    const r = await c.execute<{ MAX_LENGTH:number }>(
+    const r = await c.execute<{ MAX_LENGTH: number }>(
       `SELECT MIN(DATA_LENGTH) AS MAX_LENGTH FROM ALL_TAB_COLUMNS
        WHERE OWNER=:owner AND COLUMN_NAME='COMPANY_CODE'
          AND TABLE_NAME IN ('MS_COMPANY','MS_PS_FLOW_MASTER','MS_AC_L1','MS_AC_L2','MS_AC_L3','MS_AC_L4')
-         AND DATA_TYPE IN ('VARCHAR2','CHAR')`,{owner},options);
+         AND DATA_TYPE IN ('VARCHAR2','CHAR')`,
+      { owner },
+      options,
+    );
     return r.rows?.[0]?.MAX_LENGTH;
   }
 
@@ -687,7 +900,10 @@ export class PlatformAdminService {
       const cols = await this.columns(c, owner, table);
       if (!cols.length)
         throw new PlatformError("Resource is unavailable in this tenant", 404);
-      const companyCodeLimit=table==='MS_COMPANY'?await this.companyCodeLimit(c,owner):undefined;
+      const companyCodeLimit =
+        table === "MS_COMPANY"
+          ? await this.companyCodeLimit(c, owner)
+          : undefined;
       const visible = cols.filter((x) => !SECRETS.test(x.COLUMN_NAME));
       const binds: any = {};
       const clauses: string[] = [];
@@ -729,11 +945,15 @@ export class PlatformAdminService {
         columns: cols.map((x) => ({
           name: x.COLUMN_NAME,
           type: x.DATA_TYPE,
-          required: x.NULLABLE === "N",
+          required: x.NULLABLE === "N" || (["SEC_LOGIN", "SEC_LOGINTEST"].includes(table) && ["LOGINID", "USERNAME", "EMAIL_ID"].includes(x.COLUMN_NAME)) || (table === "MS_COMPANY" && ["COMPANY_CODE","COMPANY_NAME"].includes(x.COLUMN_NAME)),
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",
-          maxLength: /CHAR/.test(x.DATA_TYPE) ? (x.COLUMN_NAME==='COMPANY_CODE'&&companyCodeLimit?Math.min(x.DATA_LENGTH,companyCodeLimit):x.DATA_LENGTH) : undefined,
+          maxLength: /CHAR/.test(x.DATA_TYPE)
+            ? x.COLUMN_NAME === "COMPANY_CODE" && companyCodeLimit
+              ? Math.min(x.DATA_LENGTH, companyCodeLimit)
+              : x.DATA_LENGTH
+            : undefined,
           generated: this.generatedColumn(table, x),
         })),
         rows: r.rows || [],
@@ -779,6 +999,16 @@ export class PlatformAdminService {
     remove = false,
   ) {
     const access = await this.assertTenant(actor, tenantId);
+    if (table === "SEC_LOGIN" && !payload.rowid && !remove) {
+      const v = payload.values || {};
+      const result = await this.provisionUser(actor, tenantId, company, {
+        loginid: v.LOGINID,
+        username: v.USERNAME,
+        email: v.EMAIL_ID,
+        password: v.USERPASS || v.SEC_PASSWD || v.PASSWORD,
+      });
+      return { changed: 1, ...result };
+    }
     if (
       tenantId === "root" &&
       access.scope === "SCOPED" &&
@@ -828,18 +1058,31 @@ export class PlatformAdminService {
       if (rowid) {
         if (typeof rowid !== "string" || !/^[A-Za-z0-9+/]{18}$/.test(rowid))
           throw new PlatformError("Invalid record identifier");
+        // Match provisioning's lock order: central login before tenant user.
+        if (table === "SEC_LOGIN" && !remove)
+          await c.execute(
+            "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
+          );
         binds.rid = rowid;
         if (company && hasCompany) {
           where += " AND COMPANY_CODE=:scopeCompany";
           binds.scopeCompany = company;
         }
         const old = await c.execute<any>(
-          `SELECT ${table === "SEC_LOGINTEST" ? "LOGINID" : "1 AS FOUND"} FROM ${owner}.${table} WHERE ${where}`,
+          `SELECT ${["SEC_LOGINTEST", "SEC_LOGIN"].includes(table) ? "LOGINID" : "1 AS FOUND"} FROM ${owner}.${table} WHERE ${where}`,
           binds,
           options,
         );
         if (!old.rows?.length)
           throw new PlatformError("Record no longer exists in this scope", 404);
+        if (
+          ["SEC_LOGIN", "SEC_LOGINTEST"].includes(table) &&
+          payload.values?.LOGINID &&
+          payload.values.LOGINID !== old.rows[0].LOGINID
+        )
+          throw new PlatformError(
+            "Login IDs cannot be renamed here because they link the central and tenant accounts",
+          );
         if (table === "SEC_LOGINTEST") {
           const admin = await c.execute(
             "SELECT 1 FROM CUSTOMERS.SEC_PLATFORM_ADMIN WHERE LOGINID=:id",
@@ -863,8 +1106,11 @@ export class PlatformAdminService {
           throw new PlatformError("Company code and company name are required");
         if (!rowid) {
           values.COMPANY_CODE = String(values.COMPANY_CODE).trim();
-          const limit=await this.companyCodeLimit(c,owner);
-          if(limit && Buffer.byteLength(values.COMPANY_CODE,'utf8')>limit)throw new PlatformError(`Company code is too long. Use at most ${limit} characters to match the company setup tables.`);
+          const limit = await this.companyCodeLimit(c, owner);
+          if (limit && Buffer.byteLength(values.COMPANY_CODE, "utf8") > limit)
+            throw new PlatformError(
+              `Company code is too long. Use at most ${limit} characters to match the company setup tables.`,
+            );
           await c.execute(
             `LOCK TABLE ${owner}.MS_COMPANY IN EXCLUSIVE MODE WAIT 5`,
           );
@@ -1065,6 +1311,33 @@ export class PlatformAdminService {
           );
         if (result.rowsAffected !== 1)
           throw new PlatformError("Expected exactly one changed record");
+        if (table === "SEC_LOGIN" && rowid && !remove)
+          await this.syncCentralLogin(
+            c,
+            owner,
+            tenantId,
+            company,
+            actor,
+            rowid,
+            values,
+            access,
+          );
+        if (table === "MS_COMPANY" && !remove && !rowid && values.COMPANY_CODE) {
+          try {
+            console.log(`[PlatformAdmin] Auto-provisioning Finance setup for new company '${values.COMPANY_CODE}' in ${owner}`);
+            await c.execute(
+              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:code, NULL, :actor, :status, :msg); END;`,
+              {
+                code: String(values.COMPANY_CODE).trim(),
+                actor: actor || "ADMIN",
+                status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+                msg: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+              }
+            );
+          } catch (finErr: any) {
+            console.warn(`[PlatformAdmin] Finance auto-provision notice for '${values.COMPANY_CODE}':`, finErr.message);
+          }
+        }
         await this.audit(
           actor,
           tenantId,

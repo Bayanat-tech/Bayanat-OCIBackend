@@ -464,9 +464,18 @@ export const getWmsMaster = async (req: RequestWithUser, res: Response) => {
    // Extracting master type from request parameters
 const { master } = req.params;
 console.log("master", master);
+    const queryCompanyCode =
+      typeof req.query.company_code === "string" ? req.query.company_code.trim() : "";
 
+ if (queryCompanyCode && queryCompanyCode !== req.user.company_code) {
+      res.status(403).json({ success: false, message: "Company code mismatch" });
+      return;
+    }
 // Extracting user information from request
-const requestUser: IUser = req.user;
+    const requestUser: IUser = {
+      ...req.user,
+      company_code: queryCompanyCode || req.user.company_code,
+    };
 
 // Extracting unique codes from query parameters
 const uniqueCode = req.query.code;
@@ -2321,26 +2330,24 @@ break;
 
 case "uom": {
   try {
-    // Get pagination parameters
     const page = Number(req.query.page) || 1;
     const pageLimit = Number(req.query.limit) || 100;
-    
-    // Get all UOMs for the company
-    const allUoms = await UomService.findAll();
-    
-    // Apply search filter if present
+
+    // Scope to the user's company FIRST
+    const allUoms = (await UomService.findAll()).filter(
+      (uom) => uom.company_code === requestUser.company_code
+    );
+
     let filteredUoms = allUoms;
     if (filter.search && Array.isArray(filter.search) && filter.search.length > 0) {
-      // Handle UOM name search
       const nameSearch = filter.search.find((s: any) => s.field === 'uom_name' && s.values);
       if (nameSearch) {
-        filteredUoms = filteredUoms.filter(uom => 
+        filteredUoms = filteredUoms.filter(uom =>
           uom.uom_name &&
           uom.uom_name.toLowerCase().includes((nameSearch.values as unknown as string).toLowerCase())
         );
       }
-      
-      // Handle UOM code search
+
       const codeSearch = filter.search.find((s: any) => s.field === 'uom_code' && s.values);
       if (codeSearch) {
         const searchVal = (codeSearch.values as unknown as string).toLowerCase();
@@ -2349,28 +2356,17 @@ case "uom": {
         );
       }
     }
-    
-    // Apply sorting if requested
+
     if (filter?.sort && Object.keys(filter.sort).length > 0) {
       const { field_name, desc } = filter.sort;
-      filteredUoms.sort((a: any, b: any) => {
-        if (desc) {
-          return a[field_name] < b[field_name] ? 1 : -1;
-        } else {
-          return a[field_name] > b[field_name] ? 1 : -1;
-        }
-      });
+      filteredUoms.sort((a: any, b: any) =>
+        desc ? (a[field_name] < b[field_name] ? 1 : -1) : (a[field_name] > b[field_name] ? 1 : -1)
+      );
     }
-    
-    // Get total count before pagination
+
     totalCount = filteredUoms.length;
-    
-    // Apply pagination manually
     const startIndex = (page - 1) * pageLimit;
-    const endIndex = startIndex + pageLimit;
-    fetchedData = filteredUoms.slice(startIndex, endIndex);
-    
-    console.log("Fetched UOM data:", fetchedData); // Log the fetched data
+    fetchedData = filteredUoms.slice(startIndex, startIndex + pageLimit);
   } catch (error) {
     console.error("Error fetching UOMs:", error);
     fetchedData = [];
