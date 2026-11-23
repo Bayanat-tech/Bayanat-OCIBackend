@@ -1,7 +1,7 @@
 import * as express from "express";
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
 import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
-import {  getAcTree, getLevel3AcTreeNode, createLevel3AcTreeNode, getLevel4AcTreeNode, createLevel4AcTreeNode, updateLevel4AcTreeNode, getAccountChildrenAcTreeNode, createAccountChildrenAcTreeNode, updateLevel3AcTreeNode ,getLevel2AcTreeNode,createLevel2AcTreeNode,updateLevel2AcTreeNode,deleteLevel2AcTreeNode, deleteLevel3AcTreeNode, deleteLevel4AcTreeNode, deleteLevel5AcTreeNode, updateAccountChildrenAcTreeNode, saveFile, getVendorActivities} from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
+import {  getAcTree, getLevel3AcTreeNode, createLevel3AcTreeNode, getLevel4AcTreeNode, createLevel4AcTreeNode, updateLevel4AcTreeNode, getAccountChildrenAcTreeNode, createAccountChildrenAcTreeNode, updateLevel3AcTreeNode ,getLevel2AcTreeNode,createLevel2AcTreeNode,updateLevel2AcTreeNode,deleteLevel2AcTreeNode, deleteLevel3AcTreeNode, deleteLevel4AcTreeNode, deleteLevel5AcTreeNode, updateAccountChildrenAcTreeNode, saveFile, getVendorActivities, downloadAccountTemplate, importAccounts} from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
 
 const router = express.Router();
 
@@ -12,6 +12,10 @@ router.use(tenantContextMiddleware);
 //--------------------AC-Tree----------------
 // Get the entire account tree
 router.get("/ac_tree", getAcTree);
+
+// Excel template download & bulk import
+router.get("/ac_tree/download_template", downloadAccountTemplate);
+router.post("/ac_tree/import", importAccounts);
 
 // ------l2------
 // // Get, create, and update Level 2 account tree nodes

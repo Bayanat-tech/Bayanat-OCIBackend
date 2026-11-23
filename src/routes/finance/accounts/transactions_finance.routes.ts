@@ -112,7 +112,13 @@ import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interf
 import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
 import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
 
-import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+// import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+
+import { getPurchaseOrderReportCopyExcel, getPurchaseOrderReportCopyHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReportCopy";
+
+
+
+
 import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
 import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml, getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_report";
 import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountDetailsReportHtml, getPurchaseInvoiceReportExcel, getPurchaseInvoiceReportHtml, getPurchaseInvoiceTaxReportExcel, getPurchaseInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoicereports";
@@ -145,6 +151,7 @@ import { getPurchaseGrnListingReportHtml } from "../../../interfaces/Purchaseflo
 import { getSalesDnListingReportExcel, getSalesDnListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNListing";
 import { getSalesOrderListingReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderListingReport";
 import { getSalesOrderListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderListingReport";
+import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
 
 
 
@@ -255,6 +262,9 @@ router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExce
 
 router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
 router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
+
+router.post('/reports/PurchaseOrderReportCopy/html', getPurchaseOrderReportCopyHtml);
+router.post('/reports/PurchaseOrderReportCopy/excel', getPurchaseOrderReportCopyExcel);
 
 
 router.post('/reports/PR_RegisterOld_Summary/html', getPrRegisterOldSummaryReportHtml);
