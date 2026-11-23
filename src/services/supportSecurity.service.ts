@@ -14,64 +14,14 @@ export async function supportSecuritySchema(c: oracledb.Connection, _tenantId: s
     }
 }
 
-const activeColumns = new Map<string, boolean>();
-async function activeClause(c: oracledb.Connection, owner: string) {
-    let available = activeColumns.get(owner);
-    if (available === undefined) {
-        try {
-            available = (await read(c, "SELECT 1 FROM ALL_TAB_COLUMNS WHERE OWNER=:owner AND TABLE_NAME='SEC_MODULE_DATA' AND COLUMN_NAME='IS_ACTIVE'", { owner })).length > 0;
-        } catch {
-            available = false;
-        }
-        activeColumns.set(owner, available);
-    }
-    return available ? " AND NVL(m.IS_ACTIVE,'Y')='Y'" : '';
-}
-
 export async function nativeSupportRole(c: oracledb.Connection, id: SupportIdentity): Promise<'admin' | 'developer' | 'user'> {
-    const rawLogin = String(id.loginid || '').trim().toUpperCase();
-    if (rawLogin === 'DEVADMIN') return 'admin';
-
-    // 1. Check direct ADMIN in CUSTOMERS.SUPPORT_MEMBER
-    try {
-        const [adminMember] = await read(c, "SELECT 1 OK FROM CUSTOMERS.SUPPORT_MEMBER WHERE UPPER(LOGINID)=:loginid AND SUPPORT_ROLE='ADMIN' AND ACTIVE_FLAG='Y'", { loginid: rawLogin });
-        if (adminMember) return 'admin';
-    } catch {
-        // ignore
-    }
-
-    // 2. Check if developer in CUSTOMERS.SUPPORT_DEVELOPER or SUPPORT_MEMBER
-    try {
-        const [devDev] = await read(c, "SELECT 1 OK FROM CUSTOMERS.SUPPORT_DEVELOPER WHERE UPPER(LOGINID)=:loginid AND NVL(ACTIVE_FLAG,'Y')='Y'", { loginid: rawLogin });
-        if (devDev) return 'developer';
-
-        const [devMember] = await read(c, "SELECT 1 OK FROM CUSTOMERS.SUPPORT_MEMBER WHERE UPPER(LOGINID)=:loginid AND SUPPORT_ROLE='DEVELOPER' AND ACTIVE_FLAG='Y'", { loginid: rawLogin });
-        if (devMember) return 'developer';
-    } catch {
-        // ignore
-    }
-
-    // 3. Fallback to schema tenant tables if present
-    const owner = await supportSecuritySchema(c, id.tenantId);
-    if (owner) {
-        try {
-            const rows = await read(c, `WITH granted AS (
-                SELECT a.SERIAL_NO FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER u JOIN ${owner}.SEC_ROLE_APP_ACCESS a ON a.ROLE_ID=u.SERIAL_NO_OR_ROLE_ID
-                WHERE UPPER(u.LOGINID)=:loginid AND u.COMPANY_CODE=:companyCode
-                AND u.SSEARCH='Y' AND u.SSAVE='Y' AND u.SMODIFY='Y' AND a.SSEARCH='Y' AND a.SSAVE='Y' AND a.SMODIFY='Y'
-                UNION SELECT SERIAL_NO_OR_ROLE_ID FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(LOGINID)=:loginid AND COMPANY_CODE=:companyCode AND SSEARCH='Y' AND SSAVE='Y' AND SMODIFY='Y' AND SERIAL_NO_OR_ROLE_ID<90001
-            ) SELECT m.URL_PATH FROM ${owner}.SEC_MODULE_DATA m JOIN granted g ON g.SERIAL_NO=m.SERIAL_NO
-            WHERE LOWER(m.APP_CODE)='support' ${await activeClause(c, owner)}`, { loginid: id.loginid, companyCode: id.companyCode });
-            if (rows.some(r => r.URL_PATH === 'support/tickets' || r.URL_PATH === 'support/dashboard')) return 'admin';
-            if (rows.some(r => r.URL_PATH === 'support/assigned')) return 'developer';
-        } catch {
-            // ignore
-        }
-    }
-    return 'user';
+ if (id.loginid.trim().toUpperCase() !== 'DEVADMIN' || id.tenantId.trim().toUpperCase() !== 'WMSDEV_TENANT') return 'user';
+ const [approved] = await read(c, `SELECT 1 OK FROM CUSTOMERS.SEC_LOGINTEST s JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(TRIM(m.LOGINID))=UPPER(TRIM(s.LOGINID)) AND m.IS_DEFAULT='Y' JOIN CUSTOMERS.TENANT_REGISTRY t ON t.TENANT_ID=m.TENANT_ID AND t.IS_ACTIVE='Y' WHERE UPPER(TRIM(s.LOGINID))='DEVADMIN' AND s.ACTIVE_FLAG='Y' AND m.TENANT_ID='WMSDEV_TENANT' AND UPPER(t.SCHEMA_NAME)='WMSDEV' AND s.COMPANY_CODE=:companyCode`, {companyCode:id.companyCode});
+ return approved ? 'admin' : 'user';
 }
 
 export async function setNativeSupportAccess(c: oracledb.Connection, id: SupportIdentity, kind: 'ADMIN' | 'DEVELOPER', active: boolean, actor: string) {
+    if (kind !== 'ADMIN' || await nativeSupportRole(c, id) !== 'admin') return;
     const owner = await supportSecuritySchema(c, id.tenantId);
     if (!owner) return;
     const label = kind === 'ADMIN' ? 'Support Administrator' : 'Support Developer';
@@ -91,21 +41,9 @@ export async function setNativeSupportAccess(c: oracledb.Connection, id: Support
 }
 
 export async function prepareSupportAccess(c: oracledb.Connection, id: SupportIdentity) {
-    let [m] = await read(c, 'SELECT SUPPORT_ROLE,ACTIVE_FLAG,SECURITY_SYNCED FROM CUSTOMERS.SUPPORT_MEMBER WHERE LOGINID=:loginid AND TENANT_ID=:tenantId AND COMPANY_CODE=:companyCode', id);
-    if (m?.SECURITY_SYNCED === 'Y' || m?.ACTIVE_FLAG === 'N') return;
-    if (!m) {
-        const [approved] = await read(c, `SELECT 1 OK FROM CUSTOMERS.SEC_LOGINTEST s JOIN CUSTOMERS.USER_TENANT_MAPPING x ON UPPER(x.LOGINID)=UPPER(s.LOGINID) AND x.IS_DEFAULT='Y'
-            JOIN CUSTOMERS.SUPPORT_CONTACT a ON LOWER(a.EMAIL_ID)=LOWER(s.EMAIL_ID) AND a.CAN_MANAGE='Y' AND a.ACTIVE_FLAG='Y'
-            WHERE UPPER(s.LOGINID)=:loginid AND s.COMPANY_CODE=:companyCode AND x.TENANT_ID=:tenantId`, id);
-        if (!approved) return;
-        m = { SUPPORT_ROLE: 'ADMIN' };
-    }
-    try {
-        await setNativeSupportAccess(c, id, m.SUPPORT_ROLE, true, 'SUPPORT_SETUP');
-    } catch {
-        // ignore
-    }
-    await cacheSupportMember(c, id, m.SUPPORT_ROLE);
+    if (await nativeSupportRole(c, id) !== 'admin') return;
+    await setNativeSupportAccess(c, id, 'ADMIN', true, 'SUPPORT_SETUP');
+    await cacheSupportMember(c, id, 'ADMIN');
 }
 
 export async function cacheSupportMember(c: oracledb.Connection, id: SupportIdentity, kind: 'ADMIN' | 'DEVELOPER') {

@@ -21,7 +21,7 @@ export class CompanySecurityService {
     for (const key of ["username", "email_id", "contact_no", "active_flag"])
       if (Object.prototype.hasOwnProperty.call(input, key)) values[key.toUpperCase()] = input[key];
     if (input.userpass) {
-      if (typeof input.userpass !== "string" || input.userpass.length < 12) throw new PlatformError("Password must contain at least 12 characters");
+      if (typeof input.userpass !== "string" || (input.userpass.length < 8 || input.userpass.length > 20)) throw new PlatformError("Password must contain 8 to 20 characters");
       const hash = await bcrypt.hash(input.userpass, 12);
       for (const key of ["USERPASS", "SEC_PASSWD", "PASSWORD"]) values[key] = hash;
     }

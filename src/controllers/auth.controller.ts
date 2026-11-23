@@ -553,7 +553,8 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     // Support is a shared application: its screen catalogue and staff grants
     // live in the configured security tenant, while ticket data stays central.
     try {
-      const tenantApps = Array.isArray(permissionBasedMenuTree) ? permissionBasedMenuTree : [];
+      const tenantApps = (Array.isArray(permissionBasedMenuTree) ? permissionBasedMenuTree : []).filter((app: any) => !['support','btsupport'].includes(String(app.title || '').replace(/[^a-z]/gi, '').toLowerCase()));
+      permissionBasedMenuTree = tenantApps;
       let supportRows: any[] = [];
       try {
         supportRows = await withSupportDb(c => nativeSupportMenu(c, identity(supportIdentity)));
@@ -570,7 +571,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
           permissionBasedMenuTree = [...nonSupportTenantApps, ...supportTree];
         }
       } else {
-        // Preserve any support menus already present in tenantApps from user's tenant permissions
+        // Only the central policy can add the Support application.
         permissionBasedMenuTree = tenantApps;
       }
     } catch(e) { console.warn('Support menu could not load from the security catalogue', e); }

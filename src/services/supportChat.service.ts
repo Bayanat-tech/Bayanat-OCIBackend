@@ -187,7 +187,7 @@ export class SupportChatService {
 
             if (all) {
                 where = '1=1';
-            } else if (role === 'developer' || requestedRole === 'developer') {
+            } else if (role === 'developer') {
                 where = '(UPPER(t.DEVELOPER_LOGINID) = :loginid OR UPPER(t.ASSIGNED_TO) = :loginid)';
             } else {
                 where = '(UPPER(t.REQUESTER_LOGINID)=:loginid AND t.TENANT_ID=:tenantId AND t.COMPANY_CODE=:companyCode)';
@@ -613,39 +613,7 @@ export class SupportChatService {
                             console.warn(`[Support] Schema ${sch}.SEC_LOGIN sync notice:`, secLoginErr?.message || secLoginErr);
                         }
 
-                        // 5b. Ensure module entry and role function access in tenant schema
-                        const [modRow] = await query(c, `SELECT SERIAL_NO FROM ${sch}.SEC_MODULE_DATA WHERE URL_PATH='support/assigned'`);
-                        let modSerial = modRow?.SERIAL_NO;
-                        if (!modSerial) {
-                            const [maxRow] = await query(c, `SELECT NVL(MAX(SERIAL_NO), 980) + 1 AS MAX_ID FROM ${sch}.SEC_MODULE_DATA`);
-                            modSerial = maxRow?.MAX_ID || 981;
-                            await c.execute(
-                                `INSERT INTO ${sch}.SEC_MODULE_DATA (SERIAL_NO, LEVEL1, LEVEL2, POSITION, RIGHTS, TERMINATOR, URL_PATH, APP_CODE, COMPANY_CODE, CREATE_USER, CREATE_DATE)
-                                 VALUES (:modSerial, 'Developer desk', 'My assignments', 1, 'Y', 'Y', 'support/assigned', 'Support', :company, 'SYSTEM_SETUP', SYSDATE)`,
-                                { modSerial, company: devCompany }
-                            );
-                        }
-
-                        const flag = activeFlag; // 'Y' when active, 'N' when inactive
-                        const accessExists = await query(c,
-                            `SELECT 1 FROM ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(LOGINID)=UPPER(:loginid) AND SERIAL_NO_OR_ROLE_ID=:serialNo AND COMPANY_CODE=:company`,
-                            { loginid, serialNo: modSerial, company: devCompany }
-                        );
-
-                        if (accessExists.length > 0) {
-                            await c.execute(
-                                `UPDATE ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER
-                                 SET SSEARCH=:flag, SSAVE=:flag, SMODIFY=:flag, SNEW=:flag, SDELETE=:flag, SHELP=:flag, SPRINT=:flag, USERID=:actor, USER_DT=SYSDATE
-                                 WHERE UPPER(LOGINID)=UPPER(:loginid) AND SERIAL_NO_OR_ROLE_ID=:serialNo AND COMPANY_CODE=:company`,
-                                { loginid, serialNo: modSerial, company: devCompany, flag, actor: identity(u).loginid }
-                            );
-                        } else {
-                            await c.execute(
-                                `INSERT INTO ${sch}.SEC_ROLE_FUNCTION_ACCESS_USER (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE, SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP, USERID, CREATE_USER, CREATE_DATE)
-                                 VALUES (:company, UPPER(:loginid), :serialNo, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :flag, :actor, :actor, SYSDATE)`,
-                                { company: devCompany, loginid, serialNo: modSerial, flag, actor: identity(u).loginid }
-                            );
-                        }
+                        // Developer contacts are assignees only; full Support access remains central DEVADMIN.
                     } catch (perSchErr: any) {
                         console.warn(`[Support] Schema ${sch} sync notice:`, perSchErr?.message || perSchErr);
                     }

@@ -64,7 +64,7 @@ export class PlatformAdminService {
     input: any,
   ) {
     await this.assertTenant(actor, tenantId);
-    return this.provisionUserRecords(actor, tenantId, company, input);
+    return this.provisionUserRecords(actor, tenantId, company, input, true);
   }
 
   static async provisionCompanyUser(actor: string, tenantId: string, company: string, input: any) {
@@ -73,7 +73,7 @@ export class PlatformAdminService {
     return this.provisionUserRecords(actor, tenantId, company, input);
   }
 
-  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any) {
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any, companyAdmin = false) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
@@ -90,8 +90,8 @@ export class PlatformAdminService {
       throw new PlatformError(
         "Provide a login (up to 15 characters), name and valid email",
       );
-    if (typeof input.password !== "string" || input.password.length < 12)
-      throw new PlatformError("Password must contain at least 12 characters");
+    if (typeof input.password !== "string" || (input.password.length < 8 || input.password.length > 20))
+      throw new PlatformError("Password must contain 8 to 20 characters");
     if (await this.isAdmin(loginid))
       throw new PlatformError(
         "This login is reserved for a platform administrator",
@@ -187,6 +187,10 @@ export class PlatformAdminService {
         );
         const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
         const defaultMasters = await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
+        if (companyAdmin) {
+          const { seedCompanyAdminAccess } = await import('./defaultMasterAccess.service');
+          await seedCompanyAdminAccess(c, owner, tenantId, company, loginid);
+        }
         await this.audit(
           actor,
           tenantId,
@@ -580,7 +584,7 @@ export class PlatformAdminService {
           if (String(row[key] ?? "").trim().toUpperCase() === "NULL") row[key] = null;
         if (!unique.has(Number(row.SERIAL_NO))) unique.set(Number(row.SERIAL_NO), row);
       }
-      return [...unique.values()];
+      return [...unique.values()].filter(row => !['SUPPORT','BTSUPPORT'].includes(String(row.APP_CODE || '').replace(/[^a-z]/gi, '').toUpperCase()) && !/^\/?support\//i.test(String(row.URL_PATH || '')));
     });
   }
 
@@ -1215,9 +1219,9 @@ export class PlatformAdminService {
       }
       const password = values.USERPASS || values.SEC_PASSWD || values.PASSWORD;
       if (password) {
-        if (String(password).length < 12)
+        if ((String(password).length < 8 || String(password).length > 20))
           throw new PlatformError(
-            "Password must contain at least 12 characters",
+            "Password must contain 8 to 20 characters",
           );
         const hash = await bcrypt.hash(String(password), 12);
         for (const col of cols.filter((x) =>
