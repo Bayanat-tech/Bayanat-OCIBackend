@@ -19,7 +19,7 @@ export const createCountry = async (req: RequestWithUser, res: Response) => {
 
     const { country_code, country_name, company_code } = req.body;
 
-    const existingCountry = await CountryService.findDuplicate({ country_code, country_name });
+    const existingCountry = await CountryService.findDuplicate({ country_code, country_name ,company_code });
     if (existingCountry) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,

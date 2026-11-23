@@ -17,6 +17,7 @@ import { buildHierarchy } from "../../../../helpers/functions";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+import * as XLSX from "xlsx";
 
 function paramValue(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -1442,6 +1443,210 @@ export const getVendorActivities = async (req: RequestWithUser, res: Response): 
 
     res.json({ success: true, data: rows });
   } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    if (connection) await connection.close().catch(() => {});
+  }
+};
+
+// =========================================================================
+// 8. DOWNLOAD ACCOUNT EXCEL TEMPLATE
+// =========================================================================
+export const downloadAccountTemplate = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+  try {
+    const requestUser: IUser = req.user;
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant context not found" });
+      return;
+    }
+    connection = await TenantManager.getConnection(tenantId);
+
+    // Query available L3, L2, L1 for reference
+    const l3Res: any = await connection.execute(
+      `SELECT a.L1_CODE, l1.L1_DESCRIPTION, a.L2_CODE, l2.L2_DESCRIPTION, a.L3_CODE, a.L3_DESCRIPTION 
+       FROM MS_AC_L3 a
+       LEFT JOIN MS_AC_L2 l2 ON a.COMPANY_CODE = l2.COMPANY_CODE AND a.L2_CODE = l2.L2_CODE
+       LEFT JOIN MS_AC_L1 l1 ON a.COMPANY_CODE = l1.COMPANY_CODE AND a.L1_CODE = l1.L1_CODE
+       WHERE a.COMPANY_CODE = :cc
+       ORDER BY a.L1_CODE, a.L2_CODE, a.L3_CODE`,
+      { cc: requestUser.company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const sampleL3 = l3Res.rows?.[0]?.L3_CODE || "101";
+
+    const templateRows = [
+      {
+        L3_CODE: sampleL3,
+        L4_CODE: `${sampleL3}01`,
+        L4_DESCRIPTION: "Bank & Operating Accounts",
+        AC_CODE: `${sampleL3}010001`,
+        AC_NAME: "Main Operating Bank Account",
+        AC_TYPE: "D",
+        CURR_CODE: "INR",
+        CONTACT_PERSON: "Accounts Department",
+        PHONE: "9876543210",
+        EMAIL: "accounts@company.com",
+        CITY_NAME: "Mumbai",
+        TRN_NO: "GSTIN/VAT NO"
+      },
+      {
+        L3_CODE: l3Res.rows?.[1]?.L3_CODE || sampleL3,
+        L4_CODE: `${l3Res.rows?.[1]?.L3_CODE || sampleL3}01`,
+        L4_DESCRIPTION: "Trade Debtors Group",
+        AC_CODE: `${l3Res.rows?.[1]?.L3_CODE || sampleL3}010001`,
+        AC_NAME: "Sample Customer Pvt Ltd",
+        AC_TYPE: "D",
+        CURR_CODE: "INR",
+        CONTACT_PERSON: "John Doe",
+        PHONE: "9876543211",
+        EMAIL: "billing@samplecustomer.com",
+        CITY_NAME: "Delhi",
+        TRN_NO: "27AAAAA0000A1Z5"
+      },
+      {
+        L3_CODE: l3Res.rows?.[2]?.L3_CODE || sampleL3,
+        L4_CODE: `${l3Res.rows?.[2]?.L3_CODE || sampleL3}01`,
+        L4_DESCRIPTION: "Trade Creditors Group",
+        AC_CODE: `${l3Res.rows?.[2]?.L3_CODE || sampleL3}010001`,
+        AC_NAME: "Sample Vendor Enterprises",
+        AC_TYPE: "C",
+        CURR_CODE: "INR",
+        CONTACT_PERSON: "Jane Smith",
+        PHONE: "9876543212",
+        EMAIL: "sales@samplevendor.com",
+        CITY_NAME: "Bangalore",
+        TRN_NO: "29BBBBB0000B1Z6"
+      }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const wsTemplate = XLSX.utils.json_to_sheet(templateRows);
+    XLSX.utils.book_append_sheet(wb, wsTemplate, "Account_Import_Template");
+
+    if (l3Res.rows && l3Res.rows.length > 0) {
+      const wsL3 = XLSX.utils.json_to_sheet(l3Res.rows);
+      XLSX.utils.book_append_sheet(wb, wsL3, "Available_Level3_Groups");
+    }
+
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Disposition", `attachment; filename="Chart_of_Accounts_Template_${requestUser.company_code}.xlsx"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    if (connection) await connection.close().catch(() => {});
+  }
+};
+
+// =========================================================================
+// 9. IMPORT ACCOUNTS FROM EXCEL (via Database Stored Procedure PROC_IMPORT_ACCOUNT_LIST)
+// =========================================================================
+export const importAccounts = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+  try {
+    const requestUser: IUser = req.user;
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant context not found" });
+      return;
+    }
+
+    let accountsList: any[] = [];
+    if (Array.isArray(req.body.accounts)) {
+      accountsList = req.body.accounts;
+    } else if (req.body.fileData) {
+      const buf = Buffer.from(req.body.fileData, "base64");
+      const wb = XLSX.read(buf, { type: "buffer" });
+      const sheetName = wb.SheetNames[0];
+      accountsList = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+    }
+
+    if (!accountsList || accountsList.length === 0) {
+      res.status(400).json({ success: false, message: "No accounts found to import" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
+
+    let importedCount = 0;
+    const errors: any[] = [];
+
+    for (let i = 0; i < accountsList.length; i++) {
+      const row = accountsList[i];
+      const l3 = String(row.L3_CODE || row.l3_code || "").trim();
+      const l4 = String(row.L4_CODE || row.l4_code || "").trim();
+      const l4desc = String(row.L4_DESCRIPTION || row.l4_description || row.L4_DESC || "").trim();
+      const ac = String(row.AC_CODE || row.ac_code || "").trim();
+      const name = String(row.AC_NAME || row.ac_name || row.ACCOUNT_NAME || "").trim();
+      const type = String(row.AC_TYPE || row.ac_type || "N").trim().toUpperCase();
+      const curr = String(row.CURR_CODE || row.curr_code || "").trim().toUpperCase();
+      const contact = String(row.CONTACT_PERSON || row.contact_person || "").trim();
+      const phone = String(row.PHONE || row.phone || "").trim();
+      const email = String(row.EMAIL || row.email || row.E_MAIL || "").trim();
+      const city = String(row.CITY_NAME || row.city_name || row.CITY || "").trim();
+      const trn = String(row.TRN_NO || row.trn_no || row.TAX_NO || "").trim();
+
+      if (!ac || !name) {
+        errors.push({ row: i + 1, account: ac || "(empty)", error: "Missing Account Code or Account Name" });
+        continue;
+      }
+
+      try {
+        const spRes: any = await connection.execute(
+          `BEGIN 
+             PROC_IMPORT_ACCOUNT_LIST(
+               :cc, :l3, :l4, :l4desc, :ac, :name, :type, :curr,
+               :contact, :phone, :email, :city, :trn, :loginid,
+               :status, :msg
+             ); 
+           END;`,
+          {
+            cc: requestUser.company_code,
+            l3: l3 || null,
+            l4: l4 || null,
+            l4desc: l4desc || null,
+            ac,
+            name,
+            type: ["D", "C", "N"].includes(type) ? type : "N",
+            curr: curr || null,
+            contact: contact || null,
+            phone: phone || null,
+            email: email || null,
+            city: city || null,
+            trn: trn || null,
+            loginid: requestUser.loginid || "ADMIN",
+            status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+            msg: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+          }
+        );
+
+        if (spRes.outBinds?.status === "SUCCESS") {
+          importedCount++;
+        } else {
+          errors.push({ row: i + 1, account: ac, error: spRes.outBinds?.msg || "Failed to import" });
+        }
+      } catch (rowErr: any) {
+        errors.push({ row: i + 1, account: ac, error: rowErr.message });
+      }
+    }
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: `Import processed: ${importedCount} of ${accountsList.length} accounts imported successfully`,
+      total: accountsList.length,
+      imported: importedCount,
+      failed: errors.length,
+      errors: errors.slice(0, 50)
+    });
+  } catch (err: any) {
+    if (connection) await connection.rollback().catch(() => {});
     res.status(500).json({ success: false, message: err.message });
   } finally {
     if (connection) await connection.close().catch(() => {});

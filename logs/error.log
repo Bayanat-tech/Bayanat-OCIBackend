@@ -7967,3 +7967,15 @@ Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 6
     at Timeout.<anonymous> (C:\BT_OCI\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
     at listOnTimeout (node:internal/timers:588:17)
     at processTimers (node:internal/timers:523:7)
+2026-11-23 10:48:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-11-23T05:18:08.107Z 08DF484665B64BF6] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-11-23T05:18:08.107Z 08DF484665B64BF6]
+    at SMTPConnection._formatError (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:972:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:1813:34)
+    at SMTPConnection.<anonymous> (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:1773:18)
+    at SMTPConnection._processResponse (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:1200:20)
+    at SMTPConnection._onData (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:917:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\KUSH.T\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\dist\cjs\smtp-connection\index.js:218:44)
+    at TLSSocket.emit (node:events:514:20)
+    at addChunk (node:internal/streams/readable:605:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:556:3)
+    at TLSSocket.Readable.push (node:internal/streams/readable:436:5)
