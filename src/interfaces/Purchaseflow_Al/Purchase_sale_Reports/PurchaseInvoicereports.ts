@@ -540,10 +540,9 @@ function invoiceDetailPairs(header: InvoiceHeader): KvPair[] {
     [
       ["Doc No", header.doc_no],
       ["Date", dateText(header.doc_date)],
-      ["A/C Code", header.ac_code],
       ["Due Date", header.due_date ? dateText(header.due_date) : ""],
     ],
-    3
+    2
   );
 }
 
@@ -551,7 +550,6 @@ function invoiceTaxDetailPairs(header: InvoiceHeader): KvPair[] {
   return [
     ["Doc No", header.doc_no],
     ["Date", dateText(header.doc_date)],
-    ["A/C Code", header.ac_code],
     ["Tax Reg No", header.tax_reg_no],
   ];
 }
@@ -565,7 +563,7 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], _loginId: string): string 
   const bodyRows = rows.map((r, i) => `
   <tr>
     <td>${i + 1}</td>
-    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+  <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
     <td>${escapeHtml(r.p_uom)}</td>
     <td class="right">${qtyFmt(r.quantity)}</td>
     <td class="right">${amtFmt(r.unit_price)}</td>
@@ -580,11 +578,11 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], _loginId: string): string 
 
     ${invoiceTermsStripHtml(header)}
 
-    <table class="data-table si-items po-items">
+    <table class="data-table pi-items po-items">
       
       <thead>
         <tr>
-          <th>S.No.</th>
+          <th>S.No</th>
           <th>Product / Description</th>
           <th>Unit</th>
           <th class="right">Qty</th>
@@ -626,7 +624,7 @@ function renderPurchaseInvoiceTaxBody(
       return `
         <tr>
           <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml( r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(r.quantity)}</td>
           <td class="right">${amtFmt(r.unit_price)}</td>
@@ -647,7 +645,7 @@ function renderPurchaseInvoiceTaxBody(
 
     ${invoiceTermsStripHtml(header)}
 
-        <table class="data-table pi-portrait si-items-tax po-items po-items-ext" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
+       <table class="data-table pi-portrait pi-items-tax po-items po-items-ext" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
   <colgroup>
     ${isPortrait
       ? `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:6%">
@@ -659,7 +657,7 @@ function renderPurchaseInvoiceTaxBody(
   </colgroup>
   <thead>
     <tr>
-      <th>S.No.</th>
+      <th>S.No</th>
       <th>Product / Description</th>
       <th>Unit</th>
       <th class="right">Qty</th>
@@ -1160,7 +1158,7 @@ function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   rows.forEach((r, i) => {
     rows_.push([
       xlCell(i + 1, "data"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+     xlCell(text(r.full_prod_name || r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
@@ -1221,13 +1219,13 @@ function buildPurchaseInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
     xlCell("S.No", "header"), xlCell("Product / Description", "header"), xlCell("Unit", "header"),
     xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"),
     xlCell("Amount", "header"), xlCell("VAT %", "header"), xlCell("Amount Tax", "header"),
-    xlCell("Amount (Incl. Tax)", "header"),
+    xlCell("Amount (Incl.Tax)", "header"),
   ]);
 
   rows.forEach((r, i) => {
     rows_.push([
       xlCell(i + 1, "data"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+    xlCell(text(r.full_prod_name || r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),

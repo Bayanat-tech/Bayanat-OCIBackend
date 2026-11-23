@@ -10,32 +10,7 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 
 type ReportRow = Record<string, any>;
 
-
-
 type KvPair = [string, string];
-
-/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
-function kvBoxHtml(title: string, pairs: KvPair[]): string {
-  const rows = pairs
-    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
-    .join("");
-  return (
-    '<table class="pr-kv-box">' +
-      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody>" +
-    "</table>"
-  );
-}
-
-/** Two boxes side by side (50% / 50%). */
-function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
-  return (
-    '<table class="grn-two-col"><tbody><tr>' +
-      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
-      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
-    "</tr></tbody></table>"
-  );
-}
 
 interface ReqParams {
   loginid: string;
@@ -104,6 +79,35 @@ function amtFmt(value: unknown): string {
   if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
+
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box ' + cls + '">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+/** Two boxes side by side (To wider, Quotation Details narrower). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col po-two-col po-two-wide"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to gr-tight") + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details po-kv-wide gr-tight") + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
 
 // ─── Param extraction ───────────────────────────────────────────────────────
 
@@ -186,6 +190,9 @@ interface PurchaseQuotationHeader {
   delivery_to: string;
   dlvr_contact: string;
   dlvr_email: string;
+  payment_terms: string;
+  dlvr_term: string;
+  remarks: string;
   disc_hdr_price: number;
   disc_hdr_percent: number;
   curr_code: string;
@@ -209,6 +216,11 @@ function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeade
     delivery_to: text(h.delivery_to),
     dlvr_contact: text(h.dlvr_contact),
     dlvr_email: text(h.dlvr_email),
+    // ⚠ Check the "=== GENERATED SQL (Purchase Quotation) ===" console log: if the payment term /
+    // delivery term / remarks columns have different names, add them to these three lines.
+    payment_terms: text(h.payment_terms || h.pay_terms),
+    dlvr_term: text(h.dlvr_term || h.delivery_term),
+    remarks: text(h.remarks),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
@@ -240,61 +252,10 @@ function computeQuotationTotals(rows: ReportRow[], header: PurchaseQuotationHead
   return { totalAmount, overallDiscount, totalTax, grandTotal };
 }
 
-
-// ─── Shared visual system (identical extra CSS across all 3 reports) ──────
+// ─── Layout CSS ─────────────────────────────────────────────────────────────
 
 /** Report-specific layout CSS (shared header/footer/table CSS comes from report_common) */
 const PQ_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
-
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    background: #f8fafc;
-  }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 6px;
-    font-weight: 700;
-  }
-  .info-block .value-line {
-    font-size: 12px;
-    color: #0f172a;
-    line-height: 1.55;
-  }
-
   .totals-box {
     margin-top: 16px;
     margin-left: auto;
@@ -302,6 +263,7 @@ const PQ_EXTRA_CSS = `
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     overflow: hidden;
+    page-break-inside: avoid;
   }
   .totals-box .row {
     display: flex;
@@ -323,26 +285,41 @@ const PQ_EXTRA_CSS = `
     font-size: 10.5px;
     padding: 6px 6px;
   }
-    .totals-box { margin-bottom: 0; page-break-inside: avoid; }
 
-      .doc-title-row { margin: 2px 0 4px 0 !important; }
-  .doc-title-row .doc-sub { margin: 0 !important; }
-  .info-grid { margin-top: 0 !important; margin-bottom: 8px !important; }
+  /* ── PO-style layout (Quotation and Quotation With Rates) ── */
+  h1.center { text-align: center; margin: 4px 0 12px; font-size: 18px; font-weight: 800; color: #0b4ca1; letter-spacing: 1px; }
+
+  table.grn-two-col.po-two-col { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px 14px; }
+  table.po-two-col > tbody > tr > td { padding: 0 !important; border: 0; vertical-align: top; }
+  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
+
+  table.pr-kv-box { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; }
+  .pr-kv-box thead th { text-align: left; padding: 4px 10px; color: #0b4ca1; background: #eff6ff; font-size: 11px; font-weight: 700; border-bottom: 2px solid #0b4ca1; }
+  .pr-kv-box tbody td { padding: 3px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; overflow-wrap: anywhere; }
+  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
+  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 38%; }
+
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-top: 4px; margin-bottom: 12px; }
+  table.po-terms th, table.po-terms td { width: 33.333% !important; text-align: center; overflow-wrap: anywhere; padding-top: 3px; padding-bottom: 3px; }
+
+  table.pq-items { table-layout: fixed; width: 100%; }
+  table.pq-items th { white-space: nowrap; padding-top: 3px; padding-bottom: 3px; }
+  table.pq-items td { padding-top: 3px; padding-bottom: 3px; }
+
+  .sign-space { height: 32px; }
+  .sign-line { width: 100%; border-top: 1px solid #64748b; margin-bottom: 6px; }
+  .sign-label { font-size: 10px; font-weight: 700; color: #334155; }
+  table.dn-sign { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 12px 0; margin-top: 22px; page-break-inside: avoid; }
+  table.dn-sign td { border: 0 !important; padding: 0; text-align: center; }
 `;
 
-// function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
-//   return `
-//     <div class="doc-title-row">
-//       <div>
-//         <h1>${escapeHtml(title)}</h1>
-//         <div class="doc-sub">${escapeHtml(subtitle)}</div>
-//       </div>
-      
-//     </div>`;
-// }
-
-
-
+/** Old blue-line title (still used by Compare Quotations). */
 function docTitleRowHtml(title: string, _subtitle: string, _printDateTime: string, _loginId: string): string {
   return `
     <table class="si-top-line"><tbody><tr><td>
@@ -350,87 +327,88 @@ function docTitleRowHtml(title: string, _subtitle: string, _printDateTime: strin
     </td></tr></tbody></table>`;
 }
 
-// function partyInfoBlockHtml(header: PurchaseQuotationHeader): string {
-//   return `
-//       <div class="info-block">
-//         <div class="label">To</div>
-//         <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-//         <div class="value-line">${escapeHtml(header.party_address)}</div>
-//         <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-//         <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-//         ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
-//         ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
-//       </div>`;
-// }
+/** Centered, uppercase, underlined title (Purchase Order style). */
+function reportTitleHtml(title: string): string {
+  return `<h1 class="center"><u>${escapeHtml(title.toUpperCase())}</u></h1>`;
+}
 
-// function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
-//   return `
-//       <div class="info-block">
-//         <div class="label">Quotation Details</div>
-//         <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-//         <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-//         <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-//         <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
-//         <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
-//         <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
-//         <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
-//       </div>`;
-// }
+/** PAYMENT TERM | DELIVERY TERM / PERIOD | REMARKS strip. */
+function quotationTermsStripHtml(header: PurchaseQuotationHeader): string {
+  return `
+    <table class="data-table po-terms gr-tight">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
 
+/** Signature labels: the frontend pins this table to the footer of the last page. */
+function quotationSignTableHtml(): string {
+  const labels = ["Prepared By", "Checked By", "Approved By"];
+  return `
+    <table class="dn-sign"><tbody><tr>${labels
+      .map((l) => `<td><div class="sign-space"></div><div class="sign-line"></div><div class="sign-label">${escapeHtml(l)}</div></td>`)
+      .join("")}</tr></tbody></table>`;
+}
 
 function partyPairs(header: PurchaseQuotationHeader): KvPair[] {
-  const all: KvPair[] = [
-    ["Supplier", header.party_name],
-    ["Address", header.party_address],
-    ["Tel", header.party_phone],
-    ["Fax", header.party_fax],
-    ["Contact", header.dlvr_contact],
-    ["Email", header.dlvr_email],
-  ];
-  return all.filter(([, v], i) => i === 0 || !!text(v).trim());   // rikame skip
+  return keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+      ["Contact", header.dlvr_contact],
+      ["Email", header.dlvr_email],
+    ],
+    1
+  );
 }
 
 function quotationDetailPairs(header: PurchaseQuotationHeader): KvPair[] {
-  const all: KvPair[] = [
-    ["Quotation No", header.doc_no],
-    ["Date", dateText(header.doc_date)],
-    ["A/C Code", header.ac_code],
-    ["Quot Ref", header.quotation_refno],
-    ["Ref No", header.ref_no],
-    ["Ref Date", header.ref_date ? dateText(header.ref_date) : ""],
-    ["Deliver To", header.delivery_to],
-  ];
-  return all.filter(([, v], i) => i < 3 || !!text(v).trim());     // pahile 3 nehmi
+  return keepFilled(
+    [
+      ["Quotation No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      ["Quot Ref", header.quotation_refno],
+      ["Ref No", header.ref_no],
+      ["Ref Date", header.ref_date ? dateText(header.ref_date) : ""],
+      ["Deliver To", header.delivery_to],
+    ],
+    2
+  );
 }
 
 function quotationInfoBoxesHtml(header: PurchaseQuotationHeader): string {
   return kvTwoBoxesHtml("To", partyPairs(header), "Quotation Details", quotationDetailPairs(header));
 }
 
-// ─── Report 1: Quotation ────────────────────────────────────────────────────
-
-
-
-// ─── Shared items table (7 columns, fits portrait and landscape) ───────────
-
-
-
-
-
+// ─── Shared items table (7 columns, 8 with tax) ─────────────────────────────
 
 function quotationItemsTableHtml(rows: ReportRow[], withTax = false): string {
   const bodyRows = rows
     .map(
       (r) => `
       <tr>
-        <td>${escapeHtml(r.prod_code)}<br/><span class="muted">${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</span></td>
+        <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
         <td class="num">${qtyFmt(r.qty_puom)}<br/><span class="muted">${escapeHtml(r.p_uom)}</span></td>
         <td class="num">${qtyFmt(r.qty_luom)}<br/><span class="muted">${escapeHtml(r.l_uom)}</span></td>
         <td class="num">${qtyFmt(r.quantity)}</td>
         <td class="num">${amtFmt(r.unit_price)}</td>
         <td class="num">${amtFmt(r.disc_price)}<br/><span class="muted">${amtFmt(r.disc_percent)}%</span></td>
         <td class="num strong">${amtFmt(r.amount)}</td>
-                ${
+        ${
           withTax
             ? `<td class="num">${amtFmt(lineTaxOf(r))}${
                 num(r.tx_compnt_perc_1) ? `<br/><span class="muted">${amtFmt(r.tx_compnt_perc_1)}%</span>` : ""
@@ -441,27 +419,28 @@ function quotationItemsTableHtml(rows: ReportRow[], withTax = false): string {
     )
     .join("");
 
+  // Single-word headers so every column name stays on one line
   const headCols = withTax
     ? `
-          <th width="26%">Product / Description</th>
-          <th width="10%" class="right">P Qty / Uom</th>
-          <th width="8%"  class="right">L Qty / Uom</th>
-          <th width="9%"  class="right">Qty in LUOM</th>
-          <th width="11%" class="right">Unit Rate</th>
-          <th width="11%" class="right">Disc Amt / %</th>
-          <th width="12%" class="right">Amount</th>
-          <th width="13%" class="right">Tax</th>`
+          <th style="width:24%">Product / Description</th>
+          <th style="width:10%" class="right">P Qty</th>
+          <th style="width:9%"  class="right">L Qty</th>
+          <th style="width:10%" class="right">Net Qty</th>
+          <th style="width:12%" class="right">Unit Rate</th>
+          <th style="width:11%" class="right">Disc</th>
+          <th style="width:13%" class="right">Amount</th>
+          <th style="width:11%" class="right">Tax</th>`
     : `
-          <th width="30%">Product / Description</th>
-          <th width="11%" class="right">P Qty / Uom</th>
-          <th width="9%"  class="right">L Qty / Uom</th>
-          <th width="10%" class="right">Qty in LUOM</th>
-          <th width="12%" class="right">Unit Rate</th>
-          <th width="12%" class="right">Disc Amt / %</th>
-          <th width="16%" class="right">Amount</th>`;
+          <th style="width:31%">Product / Description</th>
+          <th style="width:11%" class="right">P Qty</th>
+          <th style="width:10%" class="right">L Qty</th>
+          <th style="width:11%" class="right">Net Qty</th>
+          <th style="width:13%" class="right">Unit Rate</th>
+          <th style="width:11%" class="right">Disc</th>
+          <th style="width:13%" class="right">Amount</th>`;
 
   return `
-    <table class="data-table" width="100%" style="table-layout:fixed;width:100%;max-width:100%;">
+    <table class="data-table pq-items${withTax ? " pq-items-tax" : ""} po-items gr-tight">
       <thead>
         <tr>${headCols}
         </tr>
@@ -469,83 +448,61 @@ function quotationItemsTableHtml(rows: ReportRow[], withTax = false): string {
       <tbody>${bodyRows}</tbody>
     </table>`;
 }
+
+// ─── Report 1: Quotation ────────────────────────────────────────────────────
+
 /** Body only – no full HTML document */
-function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
+function renderPurchaseQuotationBody(rows: ReportRow[], _loginId: string): string {
   const header = buildPurchaseQuotationHeader(rows);
-
-  // const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  // const overallDiscount = headerDiscOf(header, totalAmount);
-  // const grandTotal = totalAmount - overallDiscount;
   const t = computeQuotationTotals(rows, header);
 
-  const bodyRows = rows
-    .map(
-      (r) => `
-      <tr>
-        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-        <td class="center">${escapeHtml(r.p_uom)}</td>
-        <td class="right">${qtyFmt(r.qty_puom)}</td>
-        <td class="center">${escapeHtml(r.l_uom)}</td>
-        <td class="right">${qtyFmt(r.qty_luom)}</td>
-        <td class="right">${qtyFmt(r.quantity)}</td>
-        <td class="right">${amtFmt(r.unit_price)}</td>
-        <td class="right">${amtFmt(r.disc_percent)}%</td>
-        <td class="right">${amtFmt(r.disc_price)}</td>
-        <td class="right amount">${amtFmt(r.amount)}</td>
-      </tr>`
-    )
-    .join("");
-
   return `
-    ${docTitleRowHtml("Quotation", `Purchase Quotation — ${header.div_name}`, printDateTime, loginId)}
+    ${reportTitleHtml("Quotation")}
 
-        ${quotationInfoBoxesHtml(header)}
+    ${quotationInfoBoxesHtml(header)}
 
-        ${quotationItemsTableHtml(rows)}
+    ${quotationTermsStripHtml(header)}
 
-        <div class="totals-box">
+    ${quotationItemsTableHtml(rows)}
+
+    <div class="totals-box">
       <div class="row"><span>Total</span><span>${amtFmt(t.totalAmount)}</span></div>
       <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
       <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>
+
+    ${quotationSignTableHtml()}
   `;
 }
 
 // ─── Report 2: Quotation With Rates ─────────────────────────────────────────
 
 /** Body only – no full HTML document */
-function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
+function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], _loginId: string): string {
   const header = buildPurchaseQuotationHeader(rows);
-
   const t = computeQuotationTotals(rows, header);
 
-  
-
   return `
-    ${docTitleRowHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, printDateTime, loginId)}
+    ${reportTitleHtml("Quotation")}
 
-       ${quotationInfoBoxesHtml(header)}
+    ${quotationInfoBoxesHtml(header)}
 
-        ${quotationItemsTableHtml(rows, true)}
+    ${quotationTermsStripHtml(header)}
+
+    ${quotationItemsTableHtml(rows, true)}
 
     <div class="totals-box">
       <div class="row"><span>Total</span><span>${amtFmt(t.totalAmount)}</span></div>
-<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-<div class="row"><span>TAX Amt</span><span>${amtFmt(t.totalTax)}</span></div>
-<div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+      <div class="row"><span>TAX Amt</span><span>${amtFmt(t.totalTax)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>
+
+    ${quotationSignTableHtml()}
   `;
 }
 
-// ─── Report 3: Compare Quotations ───────────────────────────────────────────
+// ─── Report 3: Compare Quotations (unchanged layout) ────────────────────────
 
 /** Body only – no full HTML document */
 function renderCompareQuotationBody(rows: ReportRow[], loginId: string): string {
@@ -628,7 +585,7 @@ export const getPurchaseQuotationReportHtml = async (req: RequestWithUser, res: 
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-   const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid).replace(/>\s+</g, "><");
+    const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: `Quotation ${buildPurchaseQuotationHeader(rows).doc_no}`,
@@ -1001,75 +958,12 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
   return zip.toBuffer();
 }
 
+/** Payment / Delivery / Remarks line used in both quotation Excel files. */
+function termsLine(header: PurchaseQuotationHeader): string {
+  return `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`;
+}
+
 // ─── Excel builder 1: Quotation ─────────────────────────────────────────────
-
-// function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
-//   const header = buildPurchaseQuotationHeader(rows);
-//   const COL_COUNT = 10;
-//   const rows_: XlRow[] = [];
-//   const merges: XlMerge[] = [];
-
-//   rows_.push([xlCell("QUOTATION", "title"), null, null, null, null, null, null, null, null, null]);
-//   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
-//   rows_.push([
-//     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
-//     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-//     xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
-//   ]);
-//   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-//   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-//   merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
-
-//   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
-//   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
-
-//   rows_.push(new Array(COL_COUNT).fill(null));
-
-//   rows_.push([
-//     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
-//     xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
-//     xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
-//   ]);
-
-//   let totalAmount = 0;
-//   rows.forEach((r) => {
-//     totalAmount += num(r.amount);
-//     rows_.push([
-//       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-//       xlCell(text(r.p_uom), "data"),
-//       xlCell(num(r.qty_puom), "dataNum"),
-//       xlCell(text(r.l_uom), "data"),
-//       xlCell(num(r.qty_luom), "dataNum"),
-//       xlCell(num(r.quantity), "dataNum"),
-//       xlCell(num(r.unit_price), "dataNum"),
-//       xlCell(num(r.disc_percent), "dataNum"),
-//       xlCell(num(r.disc_price), "dataNum"),
-//       xlCell(num(r.amount), "dataNum"),
-//     ]);
-//   });
-
-//   const overallDiscount = header.disc_hdr_price;
-//   const grandTotal = totalAmount - overallDiscount;
-
-//   rows_.push(new Array(COL_COUNT).fill(null));
-
-//   const totalRow = rows_.length;
-//   rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-//   merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
-
-//   const discRow = rows_.length;
-//   rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-//   merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
-
-//   const grandRow = rows_.length;
-//   rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-//   merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
-
-//   rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
-
-//   return buildXlsxBuffer("Quotation", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
-// }
 
 function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildPurchaseQuotationHeader(rows);
@@ -1084,15 +978,17 @@ function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
 
   rows_.push([
     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), ...blank(COL_COUNT - 7),
+    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), ...blank(COL_COUNT - 4),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: COL_COUNT - 1 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), ...blank(COL_COUNT - 1)]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
+
+  // Payment Term / Delivery Term / Remarks
+  rows_.push([xlCell(termsLine(header), "meta"), ...blank(COL_COUNT - 1)]);
+  merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: COL_COUNT - 1 } });
 
   rows_.push(blank(COL_COUNT));
 
@@ -1104,7 +1000,7 @@ function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
 
   rows.forEach((r) => {
     rows_.push([
-      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      xlCell(text(r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.qty_puom), "dataNum"),
       xlCell(text(r.l_uom), "data"),
@@ -1140,79 +1036,6 @@ function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
 
 // ─── Excel builder 2: Quotation With Rates ──────────────────────────────────
 
-// function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
-//   const header = buildPurchaseQuotationHeader(rows);
-//   const COL_COUNT = 10;
-//   const rows_: XlRow[] = [];
-//   const merges: XlMerge[] = [];
-
-//   rows_.push([xlCell("QUOTATION (WITH RATES)", "title"), null, null, null, null, null, null, null, null, null]);
-//   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
-//   rows_.push([
-//     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
-//     xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-//     xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
-//   ]);
-//   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-//   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-//   merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
-
-//   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
-//   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
-
-//   rows_.push(new Array(COL_COUNT).fill(null));
-
-//   rows_.push([
-//     xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
-//     xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
-//     xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
-//   ]);
-
-//   let totalAmount = 0;
-//   let totalTax = 0;
-//   rows.forEach((r) => {
-//     totalAmount += num(r.amount);
-//     totalTax += num(r.tx_compnt_amt_1);
-//     rows_.push([
-//       xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-//       xlCell(text(r.p_uom), "data"),
-//       xlCell(num(r.qty_puom), "dataNum"),
-//       xlCell(text(r.l_uom), "data"),
-//       xlCell(num(r.qty_luom), "dataNum"),
-//       xlCell(num(r.quantity), "dataNum"),
-//       xlCell(num(r.unit_price), "dataNum"),
-//       xlCell(num(r.disc_percent), "dataNum"),
-//       xlCell(num(r.disc_price), "dataNum"),
-//       xlCell(num(r.amount), "dataNum"),
-//     ]);
-//   });
-
-//   const overallDiscount = header.disc_hdr_price;
-//   const grandTotal = totalAmount - overallDiscount + totalTax;
-
-//   rows_.push(new Array(COL_COUNT).fill(null));
-
-//   const totalRow = rows_.length;
-//   rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-//   merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
-
-//   const discRow = rows_.length;
-//   rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-//   merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
-
-//   const taxRow = rows_.length;
-//   rows_.push([xlCell("TAX Amt", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalTax, "groupTotalNum")]);
-//   merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 8 } });
-
-//   const grandRow = rows_.length;
-//   rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-//   merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
-
-//   rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
-
-//   return buildXlsxBuffer("Quotation With Rates", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
-// }
 function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildPurchaseQuotationHeader(rows);
   const t = computeQuotationTotals(rows, header);
@@ -1226,15 +1049,17 @@ function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
 
   rows_.push([
     xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), ...blank(COL_COUNT - 7),
+    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), ...blank(COL_COUNT - 4),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
-  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: COL_COUNT - 1 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push([xlCell(`To: ${header.party_name}`, "meta"), ...blank(COL_COUNT - 1)]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
+
+  // Payment Term / Delivery Term / Remarks
+  rows_.push([xlCell(termsLine(header), "meta"), ...blank(COL_COUNT - 1)]);
+  merges.push({ s: { r: 3, c: 0 }, e: { r: 3, c: COL_COUNT - 1 } });
 
   rows_.push(blank(COL_COUNT));
 
@@ -1247,7 +1072,7 @@ function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
 
   rows.forEach((r) => {
     rows_.push([
-      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      xlCell(text(r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.qty_puom), "dataNum"),
       xlCell(text(r.l_uom), "data"),

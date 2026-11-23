@@ -322,18 +322,14 @@ function renderInvoiceListingBody(rows: ReportRow[]): string {
 
   return `
   <div class="pi-listing" style="font-size:9.5px;line-height:1.25;color:#1e293b;">
-    <div style="margin:0 0 6px 0;padding:0;">
-      <h1 style="margin:0;padding:0;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;">
-        ${escapeHtml(REPORT_TITLE)}
-      </h1>
-    </div>
+        <h1 class="center pil-title" style="margin:0 0 6px 0;padding:0;text-align:center;font-size:16px;font-weight:800;color:#0b4ca1;line-height:1.2;"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}</u></h1>
 
     ${
       rows.length === 0
         ? `<div style="padding:28px;margin-top:8px;font-size:11px;text-align:center;color:#64748b;">No records found for the selected filters.</div>`
         : `
-      <table class="data-table" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
-        <colgroup><col style="width:24%"/><col style="width:7%"/><col style="width:9%"/><col style="width:11%"/><col style="width:10%"/><col style="width:11%"/><col style="width:7%"/><col style="width:9%"/><col style="width:12%"/></colgroup>
+            <table class="data-table pil-items" style="margin-top:8px;border-collapse:collapse;width:100%;table-layout:fixed;">
+        <colgroup><col style="width:26%"/><col style="width:6%"/><col style="width:8%"/><col style="width:11%"/><col style="width:10%"/><col style="width:12%"/><col style="width:7%"/><col style="width:10%"/><col style="width:10%"/></colgroup>
         <thead>
           <tr>
             <th style="${S.th}">Product / Description</th>
@@ -727,7 +723,7 @@ export const getPurchaseInvoiceListingReportHtml = async (req: RequestWithUser, 
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderInvoiceListingBody(rows);
+       const bodyHtml = renderInvoiceListingBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: REPORT_TITLE,

@@ -167,7 +167,7 @@ interface PoHeader {
   cancelled: boolean;
   total_tx_compnt_amt_1: number;
   logo_url: string | null;
-  project: string;
+ remarks: string;
   ref_no: string;
 }
 
@@ -191,7 +191,7 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
     logo_url: h.logo_url || null,
-    project: text(h.project_name || h.job_no),
+    remarks: text(h.remarks || "-"),
     ref_no: text(h.ref_no),
   };
 }
@@ -564,14 +564,14 @@ function poTermsStripHtml(header: PoHeader): string {
         <tr>
           <th class="center">PAYMENT TERM</th>
           <th class="center">DELIVERY TERM / PERIOD</th>
-          <th class="center">PROJECT</th>
+          <th class="center">REMARKS</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
           <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
-          <td class="center">${escapeHtml(header.project || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
         </tr>
       </tbody>
     </table>`;
@@ -582,7 +582,7 @@ function poDetailPairs(header: PoHeader): KvPair[] {
     [
       ["Doc No", header.doc_no],
       ["Date", dateText(header.doc_date)],
-      ["A/C Code", header.ac_code],
+    
 
     ],
     3
@@ -639,7 +639,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
           <tr>
             <th>S.No.</th>
             <th>Product / Description</th>
-            <th>Unit</th>
+            <th>UOM</th>
             <th class="right">Qty</th>
             <th class="right">Unit Rate</th>
             <th class="right">Gross Value</th>
@@ -734,7 +734,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: COL_COUNT - 1 } });
 
   rows_.push(fullRow(cell(
-    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Project: ${header.project || "-"}`,
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
     "meta"
   )));
   mergeFull();
@@ -742,7 +742,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   rows_.push(blank());
 
   rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
+    cell("S.No", "header"), cell("Product / Description", "header"), cell("UOM", "header"),
     cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
     cell("Disc", "header"),
   ]);
