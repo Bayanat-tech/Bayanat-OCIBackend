@@ -638,11 +638,39 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
 export async function initializeCompanyFinanceSetup(
   conn: oracledb.Connection,
   newCompany: string,
+  sourceCompany = 'BSG',
+  currency?: string
+): Promise<{ success: boolean; details: Record<string, any> }> {
+  try {
+    const result: any = await conn.execute(
+      `BEGIN PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:p_new_company, :p_source_company, :p_currency, 'ADMIN', :p_status, :p_message); END;`,
+      {
+        p_new_company: newCompany,
+        p_source_company: sourceCompany,
+        p_currency: currency || null,
+        p_status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        p_message: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      }
+    );
+    const status = result.outBinds?.p_status;
+    const message = result.outBinds?.p_message;
+    return {
+      success: status !== 'ERROR',
+      details: { message }
+    };
+  } catch (err: any) {
+    return { success: false, details: { error: err.message } };
+  }
+}
+
+export async function initializeCompanyGeneralMasters(
+  conn: oracledb.Connection,
+  newCompany: string,
   sourceCompany = 'BSG'
 ): Promise<{ success: boolean; details: Record<string, any> }> {
   try {
     const result: any = await conn.execute(
-      `BEGIN PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:p_new_company, :p_source_company, 'ADMIN', :p_status, :p_message); END;`,
+      `BEGIN PROC_INITIALIZE_COMPANY_GENERAL_MASTERS(:p_new_company, :p_source_company, 'ADMIN', :p_status, :p_message); END;`,
       {
         p_new_company: newCompany,
         p_source_company: sourceCompany,
@@ -827,16 +855,42 @@ export const initializeCompanyFinance = async (req: RequestWithUser, res: Respon
     conn = await getConn(req);
     const targetCompany = String(req.body.company_code || req.user.company_code || '').trim();
     const sourceCompany = String(req.body.source_company || 'BSG').trim();
+    const currency = req.body.currency ? String(req.body.currency).trim().toUpperCase() : undefined;
 
     if (!targetCompany) {
       res.status(400).json({ success: false, message: 'company_code is required' });
       return;
     }
 
-    const initResult = await initializeCompanyFinanceSetup(conn, targetCompany, sourceCompany);
+    const initResult = await initializeCompanyFinanceSetup(conn, targetCompany, sourceCompany, currency);
     res.json({
       success: true,
       message: `Finance setup successfully initialized for company ${targetCompany}`,
+      data: initResult.details,
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
+export const initializeCompanyGeneralMastersHandler = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const targetCompany = String(req.body.company_code || req.user.company_code || '').trim();
+    const sourceCompany = String(req.body.source_company || 'BSG').trim();
+
+    if (!targetCompany) {
+      res.status(400).json({ success: false, message: 'company_code is required' });
+      return;
+    }
+
+    const initResult = await initializeCompanyGeneralMasters(conn, targetCompany, sourceCompany);
+    res.json({
+      success: true,
+      message: `General masters successfully initialized for company ${targetCompany}`,
       data: initResult.details,
     });
   } catch (err) {
@@ -3345,12 +3399,36 @@ export const getCompanyFinanceSetup = async (req: RequestWithUser, res: Response
       (p: any) => p && p.FY_PERIOD && String(p.FY_PERIOD).trim().toLowerCase() !== "all" && p.DATE_FROM && p.DATE_TO
     );
 
+    // Query standard tax percentages from MS_TAX_COMPNTCATEGORY
+    let salesTax = 15;
+    let purchTax = 15;
+    try {
+      const taxRes = await conn.execute(
+        `SELECT TX_COMPNTCAT_CODE, TX_PERCNT FROM MS_TAX_COMPNTCATEGORY WHERE COMPANY_CODE = :cc AND TX_COMPNTCAT_CODE IN ('11100', '10100')`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      (taxRes.rows as any[])?.forEach((r) => {
+        if (r.TX_COMPNTCAT_CODE === '11100' && r.TX_PERCNT != null) salesTax = Number(r.TX_PERCNT);
+        if (r.TX_COMPNTCAT_CODE === '10100' && r.TX_PERCNT != null) purchTax = Number(r.TX_PERCNT);
+      });
+      if ((setupRows[0] as any)?.TAX_PERC != null) {
+        salesTax = Number((setupRows[0] as any).TAX_PERC);
+      }
+    } catch (taxErr) {
+      console.warn("Could not fetch tax rates from MS_TAX_COMPNTCATEGORY:", taxErr);
+    }
+
     res.json({
       success: true,
       data: {
         company_info: compRows[0] || null,
         ac_setup: setupRows[0] || null,
-        fy_periods: filteredFyPeriods
+        fy_periods: filteredFyPeriods,
+        tax_setup: {
+          std_sales_tax_perc: salesTax,
+          std_purchase_tax_perc: purchTax
+        }
       }
     });
   } catch (err) {
@@ -3481,6 +3559,29 @@ export const saveCompanyFinanceSetup = async (req: RequestWithUser, res: Respons
     if (status === 'ERROR') {
       res.status(400).json({ success: false, message: message || 'Failed to save company finance setup' });
       return;
+    }
+
+    // Save Standard Tax rates to MS_TAX_COMPNTCATEGORY and MS_AC_SETUP
+    if (body.std_sales_tax_perc != null || body.std_purchase_tax_perc != null) {
+      if (body.std_sales_tax_perc != null) {
+        const salesPerc = Number(body.std_sales_tax_perc);
+        await conn.execute(
+          `UPDATE MS_TAX_COMPNTCATEGORY SET TX_PERCNT = :perc WHERE COMPANY_CODE = :cc AND TX_COMPNTCAT_CODE = '11100'`,
+          { perc: salesPerc, cc: companyCode }
+        );
+        await conn.execute(
+          `UPDATE MS_AC_SETUP SET TAX_PERC = :perc WHERE COMPANY_CODE = :cc`,
+          { perc: salesPerc, cc: companyCode }
+        );
+      }
+      if (body.std_purchase_tax_perc != null) {
+        const purchPerc = Number(body.std_purchase_tax_perc);
+        await conn.execute(
+          `UPDATE MS_TAX_COMPNTCATEGORY SET TX_PERCNT = :perc WHERE COMPANY_CODE = :cc AND TX_COMPNTCAT_CODE = '10100'`,
+          { perc: purchPerc, cc: companyCode }
+        );
+      }
+      await conn.commit();
     }
 
     res.json({

@@ -27,6 +27,7 @@ import {
   saveCompanyFinanceSetup,
   saveFyPeriod,
   initializeCompanyFinance,
+  initializeCompanyGeneralMastersHandler,
   getDefaultTransactionDetails,
   getPurchaseHeader,
   getTransactionChildren,
@@ -487,6 +488,7 @@ router.get("/company-setup", getCompanyFinanceSetup);
 router.post("/company-setup", saveCompanyFinanceSetup);
 router.post("/company-setup/fy-period", saveFyPeriod);             
 router.post("/initialize_company_finance", initializeCompanyFinance);
+router.post("/initialize_company_general_masters", initializeCompanyGeneralMastersHandler);
 router.get("/default_details", getDefaultTransactionDetails);  
 router.get("/cheque_detail", getChequeDetail);                 
 router.get("/header/:doc_no", getChequePaymentHeader);   

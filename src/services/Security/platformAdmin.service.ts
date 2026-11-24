@@ -620,6 +620,18 @@ export class PlatformAdminService {
     );
   }
 
+  static async moduleEditorRows(actor: string, tenantId: string) {
+    await this.assertTenant(actor, tenantId);
+    if(tenantId==='root')throw new PlatformError('Select a tenant to maintain module screens');
+    return this.scope(tenantId,async(c,owner)=>{
+      const columns=await this.columns(c,owner,'SEC_MODULE_DATA');
+      const fields=['SERIAL_NO','APP_CODE','LEVEL1','LEVEL2','LEVEL3','URL_PATH','ICON','POSITION','COMPANY_CODE','IS_ACTIVE'].filter(name=>columns.some(col=>col.COLUMN_NAME===name));
+      if(!fields.length)throw new PlatformError('Module screens are unavailable in this tenant',404);
+      const order=['APP_CODE','POSITION','SERIAL_NO'].filter(name=>fields.includes(name));
+      return (await c.execute<any>(`SELECT ${fields.join(',')} FROM ${owner}.SEC_MODULE_DATA ${order.length?'ORDER BY '+order.join(','):''} FETCH FIRST 10000 ROWS ONLY`,{},options)).rows||[];
+    });
+  }
+
   static async editorOptions(tenantId: string, company: string, actor: string) {
     const access = await this.assertTenant(actor, tenantId);
     return this.scope(tenantId, async (c, owner) => {
@@ -1008,6 +1020,7 @@ export class PlatformAdminService {
     remove = false,
   ) {
     const access = await this.assertTenant(actor, tenantId);
+    if(table==='MS_COMPANY'&&remove)throw new PlatformError('Use the company deletion preview to remove a company and its related data',409);
     if (table === "SEC_LOGIN" && !payload.rowid && !remove) {
       const v = payload.values || {};
       const result = await this.provisionUser(actor, tenantId, company, {
@@ -1185,6 +1198,12 @@ export class PlatformAdminService {
         !(table === "MS_COMPANY" && !rowid)
       )
         values.COMPANY_CODE = company;
+      if(table==='SEC_MODULE_DATA'&&!remove){
+        for(const key of ['APP_CODE','LEVEL1','LEVEL2','LEVEL3','ICON','URL_PATH'])if(key in values)values[key]=String(values[key]??'').trim();
+        if(!values.APP_CODE||!values.LEVEL1)throw new PlatformError('Choose App Code and Level 1 for this screen');
+        if(!Number.isInteger(Number(values.POSITION))||Number(values.POSITION)<1)throw new PlatformError('Position must be a whole number of at least 1');
+        if(!values.URL_PATH)values.URL_PATH=[values.APP_CODE,values.LEVEL1,values.LEVEL2,values.LEVEL3].filter(Boolean).join('/').toLowerCase();
+      }
       // IDs on older schemas have no sequence/default. Hold the table lock until commit.
       if (!rowid && !remove) {
         for (const col of cols.filter(
