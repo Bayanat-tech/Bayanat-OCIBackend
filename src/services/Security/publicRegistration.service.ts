@@ -1,8 +1,9 @@
+import {registrationCountries,registrationContact} from './registrationCountries.service';
 import crypto from 'crypto';
 import oracledb from 'oracledb';
 import { PlatformAdminService as Platform, PlatformError } from './platformAdmin.service';
-import { seedCompanyAdminAccess } from './defaultMasterAccess.service';
-import { registrationQuote, reservedPublicModule, validRegistrationPassword, publicModuleKey } from './registrationPolicy';
+import { seedCompanyAdminAccess, seedDefaultMasterAccess, isDefaultCompanyMaster } from './defaultMasterAccess.service';
+import { registrationSelection, hiddenRegistrationModule, cleanRegistrationLabel, reservedPublicModule, validRegistrationPassword, publicModuleKey } from './registrationPolicy';
 import { billingMailConfigured, sendRegistrationMail } from '../../scheduler/billingEmail';
 import { addDays, billingToday, periodStart } from './billingCalendar';
 import {registrationAppUrl, registrationStorageAvailable} from './registrationRuntime.service';
@@ -39,8 +40,8 @@ export class PublicRegistrationService {
     if (!Array.isArray(input.offers) || input.offers.length>30) throw new PlatformError('Configure up to 30 modules');
     const seen=new Set<string>();
     const offers=input.offers.map((offer:any)=>{
-      const code=publicModuleKey(offer.code),price=Number(offer.price);
-      if (seen.has(code)||reservedPublicModule(code)||!catalog.some(s=>publicModuleKey(s.APP_CODE)===code)||!(price>0)||price>100000000||Math.abs(price*100-Math.round(price*100))>0.001) throw new PlatformError('Each offer needs a unique available module and a positive price with two decimal places');
+      const code=publicModuleKey(offer.code),price=offer.price===''||offer.price==null?null:Number(offer.price);
+      if (seen.has(code)||reservedPublicModule(code)||!catalog.some(s=>publicModuleKey(s.APP_CODE)===code)||(price!==null&&(!Number.isFinite(price)||price<=0||price>100000000||Math.abs(price*100-Math.round(price*100))>0.001))) throw new PlatformError('Each offer needs a unique available module and, when supplied, a positive price with two decimal places');
       seen.add(code);return {code,label:String(offer.label||code).trim().slice(0,80),price,enabled:offer.enabled===true};
     });
     const publicAppUrl=String(input.publicAppUrl ?? previous.settings.publicAppUrl ?? '').trim();
@@ -68,8 +69,8 @@ export class PublicRegistrationService {
     if (!await registrationStorageAvailable()) return {enabled:false,modules:[],reason:'SETUP_REQUIRED'};
     const config=await this.settings();
     if(!config.enabled) return {enabled:false,modules:[],reason:'PAUSED'};
-    const limits=await Platform.scope(config.tenant,async(c,owner)=>{const columns=await Platform.columns(c,owner,'MS_COMPANY');return {companyCode:Math.min(7,columns.find(col=>col.COLUMN_NAME==='COMPANY_CODE')?.DATA_LENGTH||7),companyName:Math.min(80,columns.find(col=>col.COLUMN_NAME==='COMPANY_NAME')?.DATA_LENGTH||80)};});
-    return {enabled:true,currency:config.currency,trialDays:7,testMode:config.tenant==='WMSTST_TENANT',modules:config.offers.filter((o:any)=>o.enabled),limits};
+    const limits=await Platform.scope(config.tenant,async(c,owner)=>{const columns=await Platform.columns(c,owner,'MS_COMPANY');return {companyCode:Math.min(8,columns.find(col=>col.COLUMN_NAME==='COMPANY_CODE')?.DATA_LENGTH||8),companyName:Math.min(80,columns.find(col=>col.COLUMN_NAME==='COMPANY_NAME')?.DATA_LENGTH||80)};});
+    return {enabled:true,trialDays:7,modules:config.offers.filter((o:any)=>o.enabled&&!hiddenRegistrationModule(o.code)).map((o:any)=>({code:o.code,label:cleanRegistrationLabel(o.label||o.code)})),countries:await registrationCountries(config.tenant),includedMasters:['Country','Currency','Ports','Harmonized codes','UOM','Division','Department'],limits};
   }
   static async request(input:any) {
     const config=await this.settings();if(!config.enabled)throw unavailable();
@@ -77,14 +78,15 @@ export class PublicRegistrationService {
     const adminEmail=email(input.email),copyEmails=[...new Set([email(input.billingEmail),email(input.alternateEmail)].filter(Boolean))].filter(x=>x!==adminEmail);
     const company=String(input.companyCode||'').trim().toUpperCase(),name=String(input.companyName||'').trim(),loginid=String(input.loginid||'').trim(),username=String(input.adminName||'').trim();
     if(!validEmail(adminEmail)||copyEmails.some(x=>!validEmail(x)))throw new PlatformError('Enter valid contact email addresses');
-    if(!/^[A-Z][A-Z0-9]{1,6}$/.test(company)||!name||name.length>80||!username||username.length>50||!/^[A-Za-z0-9_.-]{3,15}$/.test(loginid))throw new PlatformError('Provide a company code (2–7 letters/digits), company name, admin name and login (3–15 characters)');
+    if(!/^[A-Z0-9]{2,8}$/.test(company)||!name||name.length>80||!username||username.length>50||!/^[A-Za-z0-9_.-]{3,15}$/.test(loginid))throw new PlatformError('Provide a company code (2–7 letters/digits), company name, admin name and login (3–15 characters)');
     if(input.acceptTerms!==true)throw new PlatformError('Confirm the trial and payment terms');
     await Platform.scope(config.tenant,async(c,owner)=>{
       const columns=await Platform.columns(c,owner,'MS_COMPANY');
       for(const [key,value] of [['COMPANY_CODE',company],['COMPANY_NAME',name]]){const max=columns.find(col=>col.COLUMN_NAME===key)?.DATA_LENGTH;if(max&&Buffer.byteLength(value,'utf8')>max)throw new PlatformError(`${key==='COMPANY_CODE'?'Company code':'Company name'} must fit within ${max} characters in the registration tenant.`);}
     });
-    let quote;try{quote=registrationQuote(input.modules,config.offers);}catch(e:any){throw new PlatformError(e.message);}
-    const payload={company,name,loginid,username,adminEmail,copyEmails,quote,currency:config.currency,tenant:config.tenant,address:String(input.address||'').trim().slice(0,100),phone:String(input.phone||'').trim().slice(0,30),country:String(input.country||'').trim().slice(0,5)};
+    let quote;try{quote=registrationSelection(input.modules,config.offers);}catch(e:any){throw new PlatformError(e.message);}
+    const contact=registrationContact(input,await registrationCountries(config.tenant));
+    const payload={company,name,loginid,username,adminEmail,copyEmails,quote,pricingDeferred:true,currency:config.currency,tenant:config.tenant,address:String(input.address||'').trim().slice(0,100),phone:contact.phone,country:contact.country};
     if(await Platform.isAdmin(loginid))throw new PlatformError('Choose another login ID');
     // Never accept tenant, price, permissions or trial dates from the caller.
     const token=crypto.randomBytes(32).toString('hex');
@@ -102,7 +104,7 @@ export class PublicRegistrationService {
       }catch(e){await c.rollback();throw e;}
     });
     const link=new URL('/register/verify',appUrl);link.hash=token;
-    await sendRegistrationMail(adminEmail,'Verify your Bayanat company registration',`Hello ${username},\n\nVerify your email and choose your admin password:\n${link}\n\nCompany: ${name} (${company})\nAdmin login: ${loginid}\nModules: ${quote.modules.join(', ')}\nMonthly subscription: ${config.currency} ${quote.amount.toFixed(2)}\nYour seven-day trial starts only after you finish setup. Payment is recorded by Bayanat billing; this email does not collect payments. This link expires in 24 hours.\n\nIf you did not request this registration, ignore this email.`);
+    await sendRegistrationMail(adminEmail,'Verify your Bayanat company registration',`Hello ${username},\n\nVerify your email and choose your admin password:\n${link}\n\nCompany: ${name} (${company})\nAdmin login: ${loginid}\nModules: ${quote.modules.join(', ')}\nBilling will be configured separately by Bayanat. No invoice is created at registration.\nYour seven-day trial starts only after you finish setup. Payment is recorded by Bayanat billing; this email does not collect payments. This link expires in 24 hours.\n\nIf you did not request this registration, ignore this email.`);
     return {message:'Check your admin email to verify your company and set your password. The link expires in 24 hours.'};
   }
   static async complete(input:any) {
@@ -113,8 +115,8 @@ export class PublicRegistrationService {
     if(!pending||pending.STATE!=='PENDING')throw new PlatformError('This verification link is invalid or already used. Sign in or request a new link.',400);
     const p=JSON.parse(pending.PAYLOAD);
     if(config.tenant!==p.tenant)throw new PlatformError('Registration settings changed. Please register again.',409);
-    let quote;try{quote=registrationQuote(p.quote.modules,config.offers);}catch(e:any){throw new PlatformError(e.message);}
-    if(quote.amount!==p.quote.amount||config.currency!==p.currency)throw new PlatformError('Module pricing changed. Please register again to review the new price.',409);
+    let quote;try{quote=registrationSelection(p.quote.modules,config.offers);}catch(e:any){throw new PlatformError(e.message);}
+
     const catalog=await Platform.screenCatalog(p.tenant,p.company);
     const selected=catalog.filter(s=>quote.modules.includes(publicModuleKey(s.APP_CODE))&&!reservedPublicModule(s.APP_CODE));
     if(quote.modules.some(code=>!selected.some(s=>publicModuleKey(s.APP_CODE)===code)))throw new PlatformError('A selected module is not available in the registration tenant');
@@ -134,18 +136,16 @@ export class PublicRegistrationService {
         const flags=['SNEW','SMODIFY','SDELETE','SSAVE','SSEARCH','SSAVEAS','SUPLOAD','SUNDO','SPRINT','SPRINTSETUP','SHELP'];
         // Only selected modules are enabled. Internal users cannot delegate beyond this ceiling.
         for(const screen of catalog){
-          const enabled=selected.some(s=>Number(s.SERIAL_NO)===Number(screen.SERIAL_NO))||/^security\/masters\/gm\/(sec_login|access_assign_user|company)\/?$/i.test(String(screen.URL_PATH||'').replace(/^\//,''));
+          const enabled=isDefaultCompanyMaster(screen)||selected.some(s=>Number(s.SERIAL_NO)===Number(screen.SERIAL_NO))||/^security\/masters\/gm\/(sec_login|access_assign_user|company)\/?$/i.test(String(screen.URL_PATH||'').replace(/^\//,''));
           await c.execute('INSERT INTO CUSTOMERS.SEC_COMPANY_SCREEN_ACCESS(TENANT_ID,COMPANY_CODE,SERIAL_NO,IS_ENABLED,UPDATED_BY) VALUES(:tenant,:company,:serial,:enabled,\'PUBLIC_REGISTRATION\')',{tenant:p.tenant,company:p.company,serial:Number(screen.SERIAL_NO),enabled:enabled?'Y':'N'});
         }
-        for(const screen of selected)await c.execute(`INSERT INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER(COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(',')},USERID) VALUES(:company,:loginid,:serial,${flags.map(()=>"'Y'").join(',')},:loginid)`,{company:p.company,loginid:p.loginid,serial:Number(screen.SERIAL_NO)});
-        const start=billingToday(),next=periodStart(start,'MONTHLY',1),due=addDays(start,7);
+        await seedDefaultMasterAccess(c,owner,p.tenant,p.company,p.loginid,catalog);
+        for(const screen of selected.filter(s=>!isDefaultCompanyMaster(s)))await c.execute(`INSERT INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER(COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(',')},USERID) VALUES(:company,:loginid,:serial,${flags.map(()=>"'Y'").join(',')},:loginid)`,{company:p.company,loginid:p.loginid,serial:Number(screen.SERIAL_NO)});
+        const start=billingToday();
         await c.execute(`INSERT INTO CUSTOMERS.SEC_COMPANY_SUBSCRIPTION(TENANT_ID,COMPANY_CODE,PLAN_NAME,STATUS,BILLING_CYCLE,CURRENCY,AMOUNT,NEXT_BILL_DATE,BILLING_ENABLED,START_DATE,MODULE_CODES,BILLING_EMAIL,DUE_DAYS,GRACE_DAYS,SUSPENDED,PERIOD_NO,VERSION_NO,UPDATED_BY)
-          VALUES(:tenant,:company,'Self-service monthly','DRAFT','MONTHLY',:currency,:amount,TO_DATE(:next,'YYYY-MM-DD'),'Y',TO_DATE(:start,'YYYY-MM-DD'),:modules,:email,7,0,'N',1,1,'PUBLIC_REGISTRATION')`,{tenant:p.tenant,company:p.company,currency:p.currency,amount:quote.amount,next,start,modules:quote.modules.join(','),email:p.adminEmail});
-        await c.execute(`INSERT INTO CUSTOMERS.SEC_BILLING_INVOICE(TENANT_ID,COMPANY_CODE,PERIOD_START,PERIOD_END,DUE_DATE,GRACE_END,PLAN_NAME,MODULE_CODES,CURRENCY,AMOUNT)
-          VALUES(:tenant,:company,TO_DATE(:start,'YYYY-MM-DD'),TO_DATE(:end,'YYYY-MM-DD'),TO_DATE(:due,'YYYY-MM-DD'),TO_DATE(:due,'YYYY-MM-DD'),'Self-service monthly',:modules,:currency,:amount)`,{tenant:p.tenant,company:p.company,start,end:addDays(next,-1),due,modules:quote.modules.join(','),currency:p.currency,amount:quote.amount});
-        await c.execute(`INSERT INTO CUSTOMERS.SEC_BILLING_REMINDER(INVOICE_ID,KIND,EMAIL_TO) SELECT INVOICE_ID,'ISSUED',:email FROM CUSTOMERS.SEC_BILLING_INVOICE WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND PERIOD_START=TO_DATE(:start,'YYYY-MM-DD')`,{email:p.adminEmail,tenant:p.tenant,company:p.company,start});
+          VALUES(:tenant,:company,'Awaiting billing setup','DRAFT','MONTHLY',:currency,NULL,NULL,'N',TO_DATE(:start,'YYYY-MM-DD'),:modules,:email,0,0,'N',0,1,'PUBLIC_REGISTRATION')`,{tenant:p.tenant,company:p.company,currency:p.currency,start,modules:quote.modules.join(','),email:p.adminEmail});
         await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET STATE='COMPLETE',TOKEN_HASH=NULL,WELCOME_STATUS='PENDING',UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:p.adminEmail});
-        await Platform.audit(p.loginid,p.tenant,p.company,'REGISTER','PUBLIC_COMPANY',{modules:quote.modules,amount:quote.amount,trialDays:7},c);
+        await Platform.audit(p.loginid,p.tenant,p.company,'REGISTER','PUBLIC_COMPANY',{modules:quote.modules,billingEnabled:false,trialDays:7},c);
         await c.commit();return {loginid:p.loginid,company:p.company,trialDays:7};
       }catch(e){await c.rollback();throw e;}
     });
@@ -165,7 +165,7 @@ export class PublicRegistrationService {
       const start=billingToday(),next=periodStart(start,'MONTHLY',1),due=addDays(start,7);
       // Delayed setup must not consume the customer's trial or invoice period.
       await c.execute(`UPDATE CUSTOMERS.SEC_BILLING_INVOICE SET PERIOD_START=TO_DATE(:start,'YYYY-MM-DD'),PERIOD_END=TO_DATE(:end,'YYYY-MM-DD'),DUE_DATE=TO_DATE(:due,'YYYY-MM-DD'),GRACE_END=TO_DATE(:due,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='PENDING'`,{tenant:p.tenant,company:p.company,start,end:addDays(next,-1),due});
-      await c.execute("UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET STATUS='ACTIVE',START_DATE=TO_DATE(:start,'YYYY-MM-DD'),NEXT_BILL_DATE=TO_DATE(:next,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='DRAFT'",{tenant:p.tenant,company:p.company,start,next});
+      await c.execute("UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET STATUS=CASE WHEN BILLING_ENABLED='Y' THEN 'ACTIVE' ELSE STATUS END,START_DATE=TO_DATE(:start,'YYYY-MM-DD'),NEXT_BILL_DATE=TO_DATE(:next,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='DRAFT'",{tenant:p.tenant,company:p.company,start,next});
       await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET SETUP_STATUS='READY',TRIAL_END_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)+INTERVAL '7' DAY WHERE EMAIL=:email AND STATE='COMPLETE' AND SETUP_STATUS='PENDING'",{email:p.adminEmail});await c.commit();
     });
   }
@@ -180,7 +180,7 @@ export class PublicRegistrationService {
       if(!claimed)continue;
       let status='SENT';try{
         const p=JSON.parse(row.PAYLOAD);
-        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready',`Company: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',appUrl)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nMonthly invoice: ${p.currency} ${p.quote.amount.toFixed(2)}\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
+        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready',`Company: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',appUrl)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nBilling is inactive until Bayanat configures and confirms your subscription.\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
       }catch{status='FAILED';}
       await Platform.root(async c=>{await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS=:status,UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:row.EMAIL,status});await c.commit();});
     }
