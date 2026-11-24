@@ -1,3 +1,5 @@
+import { PlatformError } from '../../services/Security/platformAdmin.service';
+import { operationTemplate } from '../../services/Security/operationTemplate.service';
 import { Response } from "express";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
@@ -138,9 +140,7 @@ export const getOperationalMaster = async (
       return;
     }
 
-    const operations = await AccessRoleService.getOperationsByModule(
-      Number(serial_no)
-    );
+    const operations = await operationTemplate(String(req.user?.tenantId || ''), String(req.user?.company_code || ''), Number(serial_no));
 
     if (operations.length === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -156,7 +156,7 @@ export const getOperationalMaster = async (
     });
   } catch (error: any) {
     console.error("Error in getOperationalMaster:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    res.status(error instanceof PlatformError ? error.status : constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: error.message,
     });

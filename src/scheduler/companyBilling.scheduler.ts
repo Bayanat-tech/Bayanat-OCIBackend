@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { PlatformAdminService as Platform } from "../services/Security/platformAdmin.service";
 import { CompanyBillingService as Billing } from "../services/Security/companyBilling.service";
 import { deliverBillingReminders } from "./billingEmail";
+import { PublicRegistrationService } from '../services/Security/publicRegistration.service';
 
 let running = false;
 export async function runCompanyBilling() {
@@ -14,6 +15,7 @@ export async function runCompanyBilling() {
       catch { console.error("Billing cycle processing failed", { tenant: row.TENANT_ID, company: row.COMPANY_CODE }); }
     }
     await deliverBillingReminders();
+    await PublicRegistrationService.deliverWelcome();
   } catch { console.error("Company billing scheduler failed; retrying on next scheduled run"); }
   finally { running = false; }
 }

@@ -18,8 +18,8 @@ export async function seedDefaultMasterAccess(c: oracledb.Connection, owner: str
 }
 
 // Only platform-provisioned accounts receive internal company administration.
-export async function seedCompanyAdminAccess(c: oracledb.Connection, owner: string, tenant: string, company: string, loginid: string) {
-  const screens = (await Platform.screenCatalog(tenant, company)).filter(s => /^security\/masters\/gm\/(sec_login|access_assign_user|company)\/?$/i.test(String(s.URL_PATH || '').replace(/^\//, '')));
+export async function seedCompanyAdminAccess(c: oracledb.Connection, owner: string, tenant: string, company: string, loginid: string, catalog?: any[]) {
+  const screens = (catalog ?? await Platform.screenCatalog(tenant, company)).filter(s => /^security\/masters\/gm\/(sec_login|access_assign_user|company)\/?$/i.test(String(s.URL_PATH || '').replace(/^\//, '')));
   const rows = [...new Map(screens.map(s => [Number(s.SERIAL_NO), s])).values()];
   const flags = ['SNEW','SMODIFY','SDELETE','SSAVE','SSEARCH','SSAVEAS','SUPLOAD','SUNDO','SPRINT','SPRINTSETUP','SHELP'];
   for (const screen of rows) {

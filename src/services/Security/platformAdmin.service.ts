@@ -73,7 +73,11 @@ export class PlatformAdminService {
     return this.provisionUserRecords(actor, tenantId, company, input);
   }
 
-  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any, companyAdmin = false) {
+  static async provisionRegistrationUser(c: oracledb.Connection, owner: string, tenant: string, company: string, input: any) {
+    return this.provisionUserRecords('PUBLIC_REGISTRATION',tenant,company,input,true,{c,owner});
+  }
+
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any, companyAdmin=false, transaction?: {c:oracledb.Connection;owner:string}) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
@@ -98,7 +102,7 @@ export class PlatformAdminService {
         403,
       );
     const hash = await bcrypt.hash(input.password, 12);
-    return this.scope(tenantId, async (c, owner) => {
+    const provision = async (c: oracledb.Connection, owner: string) => {
       const valid = await c.execute(
         `SELECT 1 FROM ${owner}.MS_COMPANY WHERE COMPANY_CODE=:company`,
         { company },
@@ -113,7 +117,7 @@ export class PlatformAdminService {
           "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
         );
         const existing = await c.execute(
-          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(LOGINID)=LOWER(:loginid) OR LOWER(EMAIL_ID)=LOWER(:email)",
+          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID))=LOWER(TRIM(:loginid)) OR LOWER(TRIM(EMAIL_ID))=LOWER(TRIM(:email))",
           { loginid, email },
           options,
         );
@@ -186,10 +190,10 @@ export class PlatformAdminService {
           { loginid, tenantId },
         );
         const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
-        const defaultMasters = await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
-        if (companyAdmin) {
+        const defaultMasters = transaction ? 0 : await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
+        if (companyAdmin && !transaction) {
           const { seedCompanyAdminAccess } = await import('./defaultMasterAccess.service');
-          await seedCompanyAdminAccess(c, owner, tenantId, company, loginid);
+          await seedCompanyAdminAccess(c,owner,tenantId,company,loginid);
         }
         await this.audit(
           actor,
@@ -197,7 +201,7 @@ export class PlatformAdminService {
           company,
           "ATTEMPT",
           "PROVISION_USER",
-          { loginid },
+          { loginid }, c,
         );
         await this.audit(
           actor,
@@ -210,13 +214,14 @@ export class PlatformAdminService {
           },
           c,
         );
-        await c.commit();
+        if (!transaction) await c.commit();
         return { loginid, defaultMasters, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created with view-only general masters across modules. Assign operational module and transaction permissions before use." };
       } catch (e) {
         await c.rollback();
         throw e;
       }
-    });
+    };
+    return transaction ? provision(transaction.c,transaction.owner) : this.scope(tenantId,provision);
   }
 
   static async userAccess(tenantId: string, company: string, loginid: string) {
