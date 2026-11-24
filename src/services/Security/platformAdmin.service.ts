@@ -64,7 +64,7 @@ export class PlatformAdminService {
     input: any,
   ) {
     await this.assertTenant(actor, tenantId);
-    return this.provisionUserRecords(actor, tenantId, company, input);
+    return this.provisionUserRecords(actor, tenantId, company, input, true);
   }
 
   static async provisionCompanyUser(actor: string, tenantId: string, company: string, input: any) {
@@ -73,7 +73,11 @@ export class PlatformAdminService {
     return this.provisionUserRecords(actor, tenantId, company, input);
   }
 
-  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any) {
+  static async provisionRegistrationUser(c: oracledb.Connection, owner: string, tenant: string, company: string, input: any) {
+    return this.provisionUserRecords('PUBLIC_REGISTRATION',tenant,company,input,true,{c,owner});
+  }
+
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any, companyAdmin=false, transaction?: {c:oracledb.Connection;owner:string}) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
@@ -90,15 +94,15 @@ export class PlatformAdminService {
       throw new PlatformError(
         "Provide a login (up to 15 characters), name and valid email",
       );
-    if (typeof input.password !== "string" || input.password.length < 12)
-      throw new PlatformError("Password must contain at least 12 characters");
+    if (typeof input.password !== "string" || (input.password.length < 8 || input.password.length > 20))
+      throw new PlatformError("Password must contain 8 to 20 characters");
     if (await this.isAdmin(loginid))
       throw new PlatformError(
         "This login is reserved for a platform administrator",
         403,
       );
     const hash = await bcrypt.hash(input.password, 12);
-    return this.scope(tenantId, async (c, owner) => {
+    const provision = async (c: oracledb.Connection, owner: string) => {
       const valid = await c.execute(
         `SELECT 1 FROM ${owner}.MS_COMPANY WHERE COMPANY_CODE=:company`,
         { company },
@@ -113,7 +117,7 @@ export class PlatformAdminService {
           "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
         );
         const existing = await c.execute(
-          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(LOGINID)=LOWER(:loginid) OR LOWER(EMAIL_ID)=LOWER(:email)",
+          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID))=LOWER(TRIM(:loginid)) OR LOWER(TRIM(EMAIL_ID))=LOWER(TRIM(:email))",
           { loginid, email },
           options,
         );
@@ -186,14 +190,18 @@ export class PlatformAdminService {
           { loginid, tenantId },
         );
         const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
-        const defaultMasters = await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
+        const defaultMasters = transaction ? 0 : await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
+        if (companyAdmin && !transaction) {
+          const { seedCompanyAdminAccess } = await import('./defaultMasterAccess.service');
+          await seedCompanyAdminAccess(c,owner,tenantId,company,loginid);
+        }
         await this.audit(
           actor,
           tenantId,
           company,
           "ATTEMPT",
           "PROVISION_USER",
-          { loginid },
+          { loginid }, c,
         );
         await this.audit(
           actor,
@@ -206,13 +214,14 @@ export class PlatformAdminService {
           },
           c,
         );
-        await c.commit();
+        if (!transaction) await c.commit();
         return { loginid, defaultMasters, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created with view-only general masters across modules. Assign operational module and transaction permissions before use." };
       } catch (e) {
         await c.rollback();
         throw e;
       }
-    });
+    };
+    return transaction ? provision(transaction.c,transaction.owner) : this.scope(tenantId,provision);
   }
 
   static async userAccess(tenantId: string, company: string, loginid: string) {
@@ -1215,9 +1224,9 @@ export class PlatformAdminService {
       }
       const password = values.USERPASS || values.SEC_PASSWD || values.PASSWORD;
       if (password) {
-        if (String(password).length < 12)
+        if ((String(password).length < 8 || String(password).length > 20))
           throw new PlatformError(
-            "Password must contain at least 12 characters",
+            "Password must contain 8 to 20 characters",
           );
         const hash = await bcrypt.hash(String(password), 12);
         for (const col of cols.filter((x) =>

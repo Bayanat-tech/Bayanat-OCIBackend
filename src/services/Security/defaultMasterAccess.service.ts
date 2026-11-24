@@ -16,3 +16,12 @@ export async function seedDefaultMasterAccess(c: oracledb.Connection, owner: str
     VALUES (:company,:loginid,:serial,'N','N','N','N','Y','N','N','N','N','N','N',:loginid)`, serials.map(serial => ({ company, loginid, serial })));
   return serials.length;
 }
+
+export async function seedCompanyAdminAccess(c: oracledb.Connection, owner: string, tenant: string, company: string, loginid: string, catalog?: any[]) {
+ const screens=(catalog || await Platform.screenCatalog(tenant,company)).filter(s=>/^security\/masters\/gm\/(sec_login|access_assign_user|company)\/?$/i.test(String(s.URL_PATH || '').replace(/^\//,'')));
+ const flags=['SNEW','SMODIFY','SDELETE','SSAVE','SSEARCH','SSAVEAS','SUPLOAD','SUNDO','SPRINT','SPRINTSETUP','SHELP'];
+ for(const screen of screens){ const isCompany=/\/company\/?$/i.test(String(screen.URL_PATH));
+ await c.execute(`MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING(SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL)s ON(t.COMPANY_CODE=s.COMPANY_CODE AND t.LOGINID=s.LOGINID AND t.SERIAL_NO_OR_ROLE_ID=s.SERIAL_NO_OR_ROLE_ID) WHEN NOT MATCHED THEN INSERT(COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(',')},USERID) VALUES(:company,:loginid,:serial,${flags.map(f=>isCompany&&['SNEW','SDELETE'].includes(f)?"'N'":"'Y'").join(',')},:loginid)`,{company,loginid,serial:Number(screen.SERIAL_NO)});
+ }
+ return screens.length;
+}
