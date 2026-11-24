@@ -5,17 +5,18 @@ import { seedCompanyAdminAccess } from './defaultMasterAccess.service';
 import { registrationQuote, reservedPublicModule, validRegistrationPassword, publicModuleKey } from './registrationPolicy';
 import { billingMailConfigured, sendRegistrationMail } from '../../scheduler/billingEmail';
 import { addDays, billingToday, periodStart } from './billingCalendar';
+import {registrationAppUrl, registrationStorageAvailable} from './registrationRuntime.service';
 
 const options = {outFormat:oracledb.OUT_FORMAT_OBJECT, fetchInfo:{CONFIG_JSON:{type:oracledb.STRING},PAYLOAD:{type:oracledb.STRING}}};
 const digest = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 const email = (value: unknown) => String(value || '').trim().toLowerCase();
 const validEmail = (value: string) => value.length <= 254 && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(value);
 const unavailable = () => new PlatformError('Online registration is not open yet. Please contact Bayanat to create your company.',503);
-const installed = () => { if (process.env.PUBLIC_REGISTRATION_INSTALLED !== 'true') throw unavailable(); };
+const installed = async () => { if (!await registrationStorageAvailable()) throw unavailable(); };
 
 export class PublicRegistrationService {
   static async settings() {
-    installed();
+    await installed();
     return Platform.root(async c => {
       const r=await c.execute<any>("SELECT CONFIG_JSON FROM CUSTOMERS.SEC_REGISTRATION_CONFIG WHERE CONFIG_ID=1",{},options);
       return r.rows?.[0] ? JSON.parse(r.rows[0].CONFIG_JSON) : {enabled:false,tenant:'',currency:'INR',offers:[],version:0};
@@ -25,10 +26,10 @@ export class PublicRegistrationService {
     if ((await Platform.getAccess(actor))?.scope!=='ALL') throw new PlatformError('Only PRODADMIN can configure public registration',403);
     const settings=await this.settings();
     const tenants=(await Platform.tenants(actor)).filter((t:any)=>t.IS_ACTIVE==='Y' && !['CUSTOMERS','WMSDEV'].includes(String(t.SCHEMA_NAME).toUpperCase()));
-    return {settings,tenants};
+    return {settings:{...settings,publicAppUrl:settings.publicAppUrl||process.env.PUBLIC_APP_URL||''},tenants};
   }
   static async saveSettings(actor:string,input:any) {
-    await this.adminSettings(actor);
+    const previous=await this.adminSettings(actor);
     const tenant=String(input.tenant||'');
     if (!tenant || tenant==='root') throw new PlatformError('Choose the dedicated registration tenant');
     const catalog=await Platform.screenCatalog(tenant);
@@ -42,7 +43,9 @@ export class PublicRegistrationService {
       if (seen.has(code)||reservedPublicModule(code)||!catalog.some(s=>publicModuleKey(s.APP_CODE)===code)||!(price>0)||price>100000000||Math.abs(price*100-Math.round(price*100))>0.001) throw new PlatformError('Each offer needs a unique available module and a positive price with two decimal places');
       seen.add(code);return {code,label:String(offer.label||code).trim().slice(0,80),price,enabled:offer.enabled===true};
     });
-    if (input.enabled && (!offers.some((o:any)=>o.enabled)||!billingMailConfigured()||!/^https:\/\//.test(process.env.PUBLIC_APP_URL||'')||process.env.SCHEDULER_ENABLED?.toLowerCase()==='false')) throw new PlatformError('Configure HTTPS PUBLIC_APP_URL, billing SMTP, scheduler and a priced module before enabling registration');
+    const publicAppUrl=String(input.publicAppUrl ?? previous.settings.publicAppUrl ?? '').trim();
+    if(publicAppUrl || input.enabled)registrationAppUrl({publicAppUrl});
+    if (input.enabled && (!offers.some((o:any)=>o.enabled)||!billingMailConfigured()||process.env.SCHEDULER_ENABLED?.toLowerCase()==='false')) throw new PlatformError('Configure billing SMTP, scheduler and a priced module before enabling registration');
     if(input.enabled)await Platform.scope(tenant,async(c,owner)=>{
       for(const table of ['MS_COMPANY','SEC_LOGIN','SEC_MODULE_DATA','SEC_ROLE_FUNCTION_ACCESS_USER'])if(!(await Platform.columns(c,owner,table)).length)throw new PlatformError(`Prepare ${table} in the registration tenant before enabling signup`);
       const required=['sec_login','access_assign_user','company'];
@@ -54,7 +57,7 @@ export class PublicRegistrationService {
         const r=await c.execute<any>('SELECT CONFIG_JSON FROM CUSTOMERS.SEC_REGISTRATION_CONFIG WHERE CONFIG_ID=1 FOR UPDATE',{},options);
         const current=r.rows?.[0]?JSON.parse(r.rows[0].CONFIG_JSON):{version:0};
         if (Number(input.version)!==Number(current.version)) throw new PlatformError('Registration settings changed. Reload before saving.',409);
-        const config={enabled:input.enabled===true,tenant,currency:input.currency,offers,version:Number(current.version)+1};
+        const config={enabled:input.enabled===true,tenant,currency:input.currency,publicAppUrl,offers,version:Number(current.version)+1};
         await c.execute('UPDATE CUSTOMERS.SEC_REGISTRATION_CONFIG SET CONFIG_JSON=:json,UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE CONFIG_ID=1',{json:JSON.stringify(config),actor});
         await Platform.audit(actor,'root','','UPDATE','PUBLIC_REGISTRATION_SETTINGS',{tenant,enabled:config.enabled,modules:offers.map((o:any)=>o.code)},c);
         await c.commit();return config;
@@ -62,14 +65,15 @@ export class PublicRegistrationService {
     });
   }
   static async catalog() {
-    if (process.env.PUBLIC_REGISTRATION_INSTALLED!=='true') return {enabled:false,modules:[]};
+    if (!await registrationStorageAvailable()) return {enabled:false,modules:[],reason:'SETUP_REQUIRED'};
     const config=await this.settings();
-    if(!config.enabled) return {enabled:false,modules:[]};
+    if(!config.enabled) return {enabled:false,modules:[],reason:'PAUSED'};
     const limits=await Platform.scope(config.tenant,async(c,owner)=>{const columns=await Platform.columns(c,owner,'MS_COMPANY');return {companyCode:Math.min(7,columns.find(col=>col.COLUMN_NAME==='COMPANY_CODE')?.DATA_LENGTH||7),companyName:Math.min(80,columns.find(col=>col.COLUMN_NAME==='COMPANY_NAME')?.DATA_LENGTH||80)};});
-    return {enabled:true,currency:config.currency,trialDays:7,modules:config.offers.filter((o:any)=>o.enabled),limits};
+    return {enabled:true,currency:config.currency,trialDays:7,testMode:config.tenant==='WMSTST_TENANT',modules:config.offers.filter((o:any)=>o.enabled),limits};
   }
   static async request(input:any) {
     const config=await this.settings();if(!config.enabled)throw unavailable();
+    const appUrl=registrationAppUrl(config);
     const adminEmail=email(input.email),copyEmails=[...new Set([email(input.billingEmail),email(input.alternateEmail)].filter(Boolean))].filter(x=>x!==adminEmail);
     const company=String(input.companyCode||'').trim().toUpperCase(),name=String(input.companyName||'').trim(),loginid=String(input.loginid||'').trim(),username=String(input.adminName||'').trim();
     if(!validEmail(adminEmail)||copyEmails.some(x=>!validEmail(x)))throw new PlatformError('Enter valid contact email addresses');
@@ -97,12 +101,12 @@ export class PublicRegistrationService {
         await c.commit();
       }catch(e){await c.rollback();throw e;}
     });
-    const link=new URL('/register/verify',process.env.PUBLIC_APP_URL);link.hash=token;
+    const link=new URL('/register/verify',appUrl);link.hash=token;
     await sendRegistrationMail(adminEmail,'Verify your Bayanat company registration',`Hello ${username},\n\nVerify your email and choose your admin password:\n${link}\n\nCompany: ${name} (${company})\nAdmin login: ${loginid}\nModules: ${quote.modules.join(', ')}\nMonthly subscription: ${config.currency} ${quote.amount.toFixed(2)}\nYour seven-day trial starts only after you finish setup. Payment is recorded by Bayanat billing; this email does not collect payments. This link expires in 24 hours.\n\nIf you did not request this registration, ignore this email.`);
     return {message:'Check your admin email to verify your company and set your password. The link expires in 24 hours.'};
   }
   static async complete(input:any) {
-    installed();if(!/^[a-f0-9]{64}$/.test(String(input.token||''))||!validRegistrationPassword(input.password))throw new PlatformError('Use a valid verification link and a password of 8 to 20 characters');
+    await installed();if(!/^[a-f0-9]{64}$/.test(String(input.token||''))||!validRegistrationPassword(input.password))throw new PlatformError('Use a valid verification link and a password of 8 to 20 characters');
     const config=await this.settings();if(!config.enabled)throw unavailable();
     const tokenHash=digest(input.token);
     const pending=await Platform.root(async c=>(await c.execute<any>("SELECT PAYLOAD,STATE FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE TOKEN_HASH=:tokenHash",{tokenHash},options)).rows?.[0]);
@@ -166,7 +170,8 @@ export class PublicRegistrationService {
     });
   }
   static async deliverWelcome(send=sendRegistrationMail) {
-    if(process.env.PUBLIC_REGISTRATION_INSTALLED!=='true')return;
+    if(!await registrationStorageAvailable())return;
+    const appUrl=registrationAppUrl(await this.settings());
     await Platform.root(async c=>{await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS='FAILED' WHERE WELCOME_STATUS='SENDING' AND UPDATED_AT<CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)-INTERVAL '30' MINUTE");await c.commit();});
     const rows=await Platform.root(async c=>(await c.execute<any>("SELECT EMAIL,PAYLOAD,TO_CHAR(TRIAL_END_AT,'YYYY-MM-DD HH24:MI') TRIAL_END FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE STATE='COMPLETE' AND WELCOME_STATUS IN ('PENDING','FAILED') AND MAIL_ATTEMPTS<5 AND UPDATED_AT<CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)-INTERVAL '1' MINUTE FETCH FIRST 10 ROWS ONLY",{},options)).rows||[]);
     for(const row of rows){
@@ -175,7 +180,7 @@ export class PublicRegistrationService {
       if(!claimed)continue;
       let status='SENT';try{
         const p=JSON.parse(row.PAYLOAD);
-        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready',`Company: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',process.env.PUBLIC_APP_URL)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nMonthly invoice: ${p.currency} ${p.quote.amount.toFixed(2)}\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
+        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready',`Company: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',appUrl)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nMonthly invoice: ${p.currency} ${p.quote.amount.toFixed(2)}\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
       }catch{status='FAILED';}
       await Platform.root(async c=>{await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS=:status,UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:row.EMAIL,status});await c.commit();});
     }

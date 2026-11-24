@@ -1,10 +1,11 @@
 import oracledb from 'oracledb';
+import {registrationStorageAvailable} from './registrationRuntime.service';
 import { PlatformAdminService as Platform, PlatformError } from './platformAdmin.service';
 
 // Restriction is evaluated on login AND on existing JWTs. No scheduler timing gap.
 // Existing companies have no registration row and retain their existing billing policy.
 export async function assertRegistrationAccess(tenant: string, company: string) {
-  if (process.env.PUBLIC_REGISTRATION_INSTALLED !== 'true') return;
+  if (!await registrationStorageAvailable()) return;
   const blocked = await Platform.root(async c => (await c.execute(`SELECT 1 FROM CUSTOMERS.SEC_PUBLIC_SIGNUP r
     JOIN CUSTOMERS.SEC_COMPANY_SUBSCRIPTION s ON s.TENANT_ID=r.TENANT_ID AND s.COMPANY_CODE=r.COMPANY_CODE
     WHERE r.TENANT_ID=:tenant AND r.COMPANY_CODE=:company AND r.STATE='COMPLETE' AND s.BILLING_ENABLED='Y'

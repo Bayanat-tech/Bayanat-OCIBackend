@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 import oracledb from "oracledb";
 import { PlatformAdminService as Platform } from "../services/Security/platformAdmin.service";
+import {registrationStorageAvailable} from '../services/Security/registrationRuntime.service';
 
 function mailConfig() {
   const user = process.env.BILLING_SMTP_USER || process.env.EMAIL_USER;
@@ -30,7 +31,7 @@ export async function sendBillingMail(row: any) {
     : { service: "Outlook365", auth: { user: c.user, pass: c.pass }, connectionTimeout: 10000, socketTimeout: 30000 });
   const label = row.KIND === "ISSUED" ? "New invoice" : row.KIND === "GRACE_EXPIRED" ? "Payment grace period expired" : "Payment overdue";
   let cc:string[]=[],publicSignup=false;
-  if(process.env.PUBLIC_REGISTRATION_INSTALLED==='true') {
+  if(await registrationStorageAvailable()) {
     const signup=await Platform.root(async connection=>(await connection.execute<any>("SELECT PAYLOAD FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATE='COMPLETE'",{tenant:row.TENANT_ID,company:row.COMPANY_CODE},{outFormat:oracledb.OUT_FORMAT_OBJECT,fetchInfo:{PAYLOAD:{type:oracledb.STRING}}})).rows?.[0]);
     if(signup){publicSignup=true;cc=JSON.parse(signup.PAYLOAD).copyEmails||[];}
   }
@@ -46,6 +47,7 @@ export async function sendBillingMail(row: any) {
 
 export async function deliverBillingReminders(limit = 20, send = sendBillingMail) {
   if (!billingMailConfigured()) return;
+  const registrationInstalled=await registrationStorageAvailable();
   for (let n = 0; n < limit; n++) {
     const row = await Platform.root(async c => {
       // UPDATED_AT is a timezone-less TIMESTAMP. Cast the server clock to the
@@ -57,7 +59,7 @@ export async function deliverBillingReminders(limit = 20, send = sendBillingMail
         FROM CUSTOMERS.SEC_BILLING_REMINDER r JOIN CUSTOMERS.SEC_BILLING_INVOICE i ON i.INVOICE_ID=r.INVOICE_ID
         JOIN CUSTOMERS.SEC_COMPANY_SUBSCRIPTION s ON s.TENANT_ID=i.TENANT_ID AND s.COMPANY_CODE=i.COMPANY_CODE
         WHERE (r.EMAIL_STATUS='PENDING' OR (r.EMAIL_STATUS='FAILED' AND r.UPDATED_AT<CAST(SYSTIMESTAMP AS TIMESTAMP)-INTERVAL '10' MINUTE)) AND r.ATTEMPTS<5 AND s.BILLING_ENABLED='Y' AND i.STATUS='PENDING' AND ROWNUM<=1
-        ${process.env.PUBLIC_REGISTRATION_INSTALLED==='true'?"AND NOT EXISTS(SELECT 1 FROM CUSTOMERS.SEC_PUBLIC_SIGNUP signup WHERE signup.TENANT_ID=i.TENANT_ID AND signup.COMPANY_CODE=i.COMPANY_CODE AND signup.STATE='COMPLETE' AND signup.SETUP_STATUS<>'READY')":''}
+        ${registrationInstalled?"AND NOT EXISTS(SELECT 1 FROM CUSTOMERS.SEC_PUBLIC_SIGNUP signup WHERE signup.TENANT_ID=i.TENANT_ID AND signup.COMPANY_CODE=i.COMPANY_CODE AND signup.STATE='COMPLETE' AND signup.SETUP_STATUS<>'READY')":''}
         FOR UPDATE OF r.EMAIL_STATUS SKIP LOCKED`, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
       const item = result.rows?.[0];
       if (item) await c.execute("UPDATE CUSTOMERS.SEC_BILLING_REMINDER SET EMAIL_STATUS='SENDING',ATTEMPTS=ATTEMPTS+1,UPDATED_AT=SYSTIMESTAMP WHERE REMINDER_ID=:id", { id: item.REMINDER_ID });
