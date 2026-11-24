@@ -78,7 +78,10 @@ export class PublicRegistrationService {
     const adminEmail=email(input.email),copyEmails=[...new Set([email(input.billingEmail),email(input.alternateEmail)].filter(Boolean))].filter(x=>x!==adminEmail);
     const company=String(input.companyCode||'').trim().toUpperCase(),name=String(input.companyName||'').trim(),loginid=String(input.loginid||'').trim(),username=String(input.adminName||'').trim();
     if(!validEmail(adminEmail)||copyEmails.some(x=>!validEmail(x)))throw new PlatformError('Enter valid contact email addresses');
-    if(!/^[A-Z0-9]{2,8}$/.test(company)||!name||name.length>80||!username||username.length>50||!/^[A-Za-z0-9_.-]{3,15}$/.test(loginid))throw new PlatformError('Provide a company code (2–7 letters/digits), company name, admin name and login (3–15 characters)');
+    if(!/^[A-Z0-9]{2,8}$/.test(company))throw new PlatformError('Company code must contain 2 to 8 letters or digits. Example: BIT.');
+    if(!name||name.length>80)throw new PlatformError('Enter a company name of 1 to 80 characters.');
+    if(!username||username.length>50)throw new PlatformError('Enter an administrator name of 1 to 50 characters.');
+    if(!/^[A-Za-z0-9_.-]{3,15}$/.test(loginid))throw new PlatformError('Admin login ID must contain 3 to 15 letters, digits, dots, underscores or hyphens. Use a username such as bitadmin; enter your email in Admin email.');
     if(input.acceptTerms!==true)throw new PlatformError('Confirm the trial and payment terms');
     await Platform.scope(config.tenant,async(c,owner)=>{
       const columns=await Platform.columns(c,owner,'MS_COMPANY');
