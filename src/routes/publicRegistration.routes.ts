@@ -19,7 +19,14 @@ router.use((req,res,next)=>{
 });
 const handle=(fn:(req:any)=>Promise<any>)=>async(req:any,res:any)=>{
   try{res.json({success:true,data:await fn(req)});}
-  catch(e){res.status(e instanceof PlatformError?e.status:503).json({success:false,message:e instanceof PlatformError?e.message:'Registration could not be completed. Please try again or contact Bayanat.'});}
+  catch(e){
+    if(!(e instanceof PlatformError)) {
+      const error=e as {code?:string;errorNum?:number;name?:string};
+      // Keep credentials, verification tokens and request bodies out of logs.
+      console.error('[registration] Operation failed',{path:req.path,code:error?.code,errorNum:error?.errorNum,name:error?.name});
+    }
+    res.status(e instanceof PlatformError?e.status:503).json({success:false,message:e instanceof PlatformError?e.message:'Registration could not be completed. Please try again or contact Bayanat.'});
+  }
 };
 router.get('/catalog',handle(()=>Registration.catalog()));
 router.post('/request',handle(req=>Registration.request(req.body)));

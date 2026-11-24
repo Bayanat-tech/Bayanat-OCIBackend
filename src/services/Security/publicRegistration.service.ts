@@ -146,7 +146,7 @@ export class PublicRegistrationService {
         for(const screen of selected.filter(s=>!isDefaultCompanyMaster(s)))await c.execute(`INSERT INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER(COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(',')},USERID) VALUES(:company,:loginid,:serial,${flags.map(()=>"'Y'").join(',')},:loginid)`,{company:p.company,loginid:p.loginid,serial:Number(screen.SERIAL_NO)});
         const start=billingToday();
         await c.execute(`INSERT INTO CUSTOMERS.SEC_COMPANY_SUBSCRIPTION(TENANT_ID,COMPANY_CODE,PLAN_NAME,STATUS,BILLING_CYCLE,CURRENCY,AMOUNT,NEXT_BILL_DATE,BILLING_ENABLED,START_DATE,MODULE_CODES,BILLING_EMAIL,DUE_DAYS,GRACE_DAYS,SUSPENDED,PERIOD_NO,VERSION_NO,UPDATED_BY)
-          VALUES(:tenant,:company,'Awaiting billing setup','DRAFT','MONTHLY',:currency,NULL,NULL,'N',TO_DATE(:start,'YYYY-MM-DD'),:modules,:email,0,0,'N',0,1,'PUBLIC_REGISTRATION')`,{tenant:p.tenant,company:p.company,currency:p.currency,start,modules:quote.modules.join(','),email:p.adminEmail});
+          VALUES(:tenant,:company,'Awaiting billing setup','DRAFT','MONTHLY',:currency,NULL,NULL,'N',TO_DATE(:periodStartDate,'YYYY-MM-DD'),:modules,:email,0,0,'N',0,1,'PUBLIC_REGISTRATION')`,{tenant:p.tenant,company:p.company,currency:p.currency,periodStartDate:start,modules:quote.modules.join(','),email:p.adminEmail});
         await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET STATE='COMPLETE',TOKEN_HASH=NULL,WELCOME_STATUS='PENDING',UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:p.adminEmail});
         await Platform.audit(p.loginid,p.tenant,p.company,'REGISTER','PUBLIC_COMPANY',{modules:quote.modules,billingEnabled:false,trialDays:7},c);
         await c.commit();return {loginid:p.loginid,company:p.company,trialDays:7};
@@ -167,8 +167,8 @@ export class PublicRegistrationService {
       }
       const start=billingToday(),next=periodStart(start,'MONTHLY',1),due=addDays(start,7);
       // Delayed setup must not consume the customer's trial or invoice period.
-      await c.execute(`UPDATE CUSTOMERS.SEC_BILLING_INVOICE SET PERIOD_START=TO_DATE(:start,'YYYY-MM-DD'),PERIOD_END=TO_DATE(:end,'YYYY-MM-DD'),DUE_DATE=TO_DATE(:due,'YYYY-MM-DD'),GRACE_END=TO_DATE(:due,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='PENDING'`,{tenant:p.tenant,company:p.company,start,end:addDays(next,-1),due});
-      await c.execute("UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET STATUS=CASE WHEN BILLING_ENABLED='Y' THEN 'ACTIVE' ELSE STATUS END,START_DATE=TO_DATE(:start,'YYYY-MM-DD'),NEXT_BILL_DATE=TO_DATE(:next,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='DRAFT'",{tenant:p.tenant,company:p.company,start,next});
+      await c.execute(`UPDATE CUSTOMERS.SEC_BILLING_INVOICE SET PERIOD_START=TO_DATE(:periodStartDate,'YYYY-MM-DD'),PERIOD_END=TO_DATE(:periodEndDate,'YYYY-MM-DD'),DUE_DATE=TO_DATE(:due,'YYYY-MM-DD'),GRACE_END=TO_DATE(:due,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='PENDING'`,{tenant:p.tenant,company:p.company,periodStartDate:start,periodEndDate:addDays(next,-1),due});
+      await c.execute("UPDATE CUSTOMERS.SEC_COMPANY_SUBSCRIPTION SET STATUS=CASE WHEN BILLING_ENABLED='Y' THEN 'ACTIVE' ELSE STATUS END,START_DATE=TO_DATE(:periodStartDate,'YYYY-MM-DD'),NEXT_BILL_DATE=TO_DATE(:nextBillDate,'YYYY-MM-DD') WHERE TENANT_ID=:tenant AND COMPANY_CODE=:company AND STATUS='DRAFT'",{tenant:p.tenant,company:p.company,periodStartDate:start,nextBillDate:next});
       await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET SETUP_STATUS='READY',TRIAL_END_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)+INTERVAL '7' DAY WHERE EMAIL=:email AND STATE='COMPLETE' AND SETUP_STATUS='PENDING'",{email:p.adminEmail});await c.commit();
     });
   }
