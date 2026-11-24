@@ -810,7 +810,12 @@ export const createLevel4AcTreeNode = async (req: RequestWithUser, res: Response
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${l4_code} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`
+      message: `${l4_code} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+      data: {
+        l4_code,
+        l3_code,
+        l4_description,
+      }
     });
     return;
   } catch (error: any) {
@@ -1118,7 +1123,13 @@ export const createAccountChildrenAcTreeNode = async (req: RequestWithUser, res:
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${ac_code} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`
+      message: `${ac_code} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+      data: {
+        ac_code,
+        ac_name: data.ac_name,
+        l4_code,
+        curr_code: data.curr_code || null,
+      }
     });
     return;
   } catch (error: any) {

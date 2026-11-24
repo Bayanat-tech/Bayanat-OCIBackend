@@ -5,7 +5,7 @@ import constants from "../../helpers/constants";
 import { companySchema } from "../../validation/Security/Security.validation";
 import { CompanyService } from "../../services/Security/company.service";
 import { getConn, closeConn } from "../../res/oracleDbConnect";
-import { initializeCompanyFinanceSetup } from "../finance/accounts/transactions/transactionFinance.controller";
+import { initializeCompanyFinanceSetup, initializeCompanyGeneralMasters } from "../finance/accounts/transactions/transactionFinance.controller";
 
 export const createcompanymaster = async (
   req: RequestWithUser,
@@ -73,17 +73,21 @@ export const createcompanymaster = async (
       return;
     }
 
-    // Auto-provision standard Finance setup for the new company
+    // Auto-provision standard Finance setup & General Masters for the new company
     try {
       const conn = await getConn(req);
       try {
-        await initializeCompanyFinanceSetup(conn, company_code);
-        console.log(`[createcompanymaster] Finance setup auto-provisioned for company '${company_code}'`);
+        const currency = req.body.currency ? String(req.body.currency).trim().toUpperCase() : undefined;
+        await initializeCompanyFinanceSetup(conn, company_code, undefined, currency);
+        console.log(`[createcompanymaster] Finance setup auto-provisioned for company '${company_code}' (currency: ${currency || 'auto'})`);
+
+        await initializeCompanyGeneralMasters(conn, company_code);
+        console.log(`[createcompanymaster] General Masters auto-provisioned for company '${company_code}'`);
       } finally {
         await closeConn(conn);
       }
     } catch (finErr: any) {
-      console.warn(`[createcompanymaster] Finance auto-provision notice for '${company_code}':`, finErr.message);
+      console.warn(`[createcompanymaster] Auto-provision notice for '${company_code}':`, finErr.message);
     }
 
     res.status(constants.STATUS_CODES.OK).json({
