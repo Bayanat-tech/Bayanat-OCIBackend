@@ -15,6 +15,19 @@ export async function supportSecuritySchema(c: oracledb.Connection, _tenantId: s
 }
 
 export async function nativeSupportRole(c: oracledb.Connection, id: SupportIdentity): Promise<'admin' | 'developer' | 'user'> {
+ if (id.tenantId.trim().toUpperCase() === 'BTIND_TENANT') {
+   const [developer] = await read(c, `SELECT 1 OK FROM CUSTOMERS.SUPPORT_DEVELOPER d
+     JOIN CUSTOMERS.SEC_LOGINTEST s ON UPPER(TRIM(s.LOGINID))=UPPER(TRIM(d.LOGINID))
+     JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(TRIM(m.LOGINID))=UPPER(TRIM(s.LOGINID))
+     JOIN CUSTOMERS.TENANT_REGISTRY t ON t.TENANT_ID=m.TENANT_ID
+     WHERE UPPER(TRIM(d.LOGINID))=UPPER(TRIM(:loginid))
+       AND d.ACTIVE_FLAG='Y' AND s.ACTIVE_FLAG='Y'
+       AND m.TENANT_ID='BTIND_TENANT' AND t.IS_ACTIVE='Y' AND UPPER(TRIM(t.SCHEMA_NAME))='BTIND'
+       AND UPPER(TRIM(d.COMPANY_CODE))=UPPER(TRIM(:companyCode))
+       AND EXISTS (SELECT 1 FROM BTIND.SEC_LOGIN l WHERE UPPER(TRIM(l.LOGINID))=UPPER(TRIM(s.LOGINID))
+         AND UPPER(TRIM(l.COMPANY_CODE))=UPPER(TRIM(:companyCode)))`, {loginid:id.loginid,companyCode:id.companyCode});
+   return developer ? 'developer' : 'user';
+ }
  if (id.loginid.trim().toUpperCase() !== 'DEVADMIN' || id.tenantId.trim().toUpperCase() !== 'WMSDEV_TENANT') return 'user';
  const [approved] = await read(c, `SELECT 1 OK FROM CUSTOMERS.SEC_LOGINTEST s JOIN CUSTOMERS.USER_TENANT_MAPPING m ON UPPER(TRIM(m.LOGINID))=UPPER(TRIM(s.LOGINID)) AND m.IS_DEFAULT='Y' JOIN CUSTOMERS.TENANT_REGISTRY t ON t.TENANT_ID=m.TENANT_ID AND t.IS_ACTIVE='Y' WHERE UPPER(TRIM(s.LOGINID))='DEVADMIN' AND s.ACTIVE_FLAG='Y' AND m.TENANT_ID='WMSDEV_TENANT' AND UPPER(t.SCHEMA_NAME)='WMSDEV' AND s.COMPANY_CODE=:companyCode`, {companyCode:id.companyCode});
  return approved ? 'admin' : 'user';
