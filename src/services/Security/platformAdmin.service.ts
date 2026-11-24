@@ -1020,6 +1020,7 @@ export class PlatformAdminService {
     remove = false,
   ) {
     const access = await this.assertTenant(actor, tenantId);
+    if(table==='MS_COMPANY'&&remove)throw new PlatformError('Use the company deletion preview to remove a company and its related data',409);
     if (table === "SEC_LOGIN" && !payload.rowid && !remove) {
       const v = payload.values || {};
       const result = await this.provisionUser(actor, tenantId, company, {
