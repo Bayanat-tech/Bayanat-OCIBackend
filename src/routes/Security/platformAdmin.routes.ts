@@ -34,6 +34,7 @@ const handle =
       });
     }
   };
+router.get('/:tenant/module-editor',handle(req=>PlatformAdminService.moduleEditorRows(req.user.loginid,req.params.tenant)));
 router.get('/registration/settings',handle(req=>PublicRegistrationService.adminSettings(req.user.loginid)));
 router.post('/registration/settings',handle(req=>PublicRegistrationService.saveSettings(req.user.loginid,req.body)));
 router.get('/registration/modules/:id',handle(async req=>{
