@@ -1,5 +1,18 @@
 export const publicModuleKey = (value: unknown) => String(value || '').trim().toUpperCase();
 export const reservedPublicModule = (value: unknown) => ['SECURITY', 'SUPPORT', 'BTSUPPORT', 'BTSECURITY'].includes(publicModuleKey(value).replace(/[^A-Z]/g, ''));
+export const hiddenRegistrationModule = (value:unknown) => reservedPublicModule(value)||['ATTENDANCE','CRM','CMS','MASTERS','BTMASTERS'].includes(publicModuleKey(value).replace(/[^A-Z]/g,''));
+export const cleanRegistrationLabel=(value:unknown)=>String(value||'').replace(/\s*\(TEST\)\s*/gi,' ').trim();
+export function registrationSelection(selected:unknown,offers:any[]) {
+  if(!Array.isArray(selected)||!selected.length||selected.length>30)throw new Error('Choose at least one application module');
+  const modules=[...new Set(selected.map(publicModuleKey))].filter(code=>!['MASTERS','BTMASTERS'].includes(code.replace(/[^A-Z]/g,'')));
+  if(!modules.length)throw new Error('Choose at least one application module; general masters are already included');
+  const items=modules.map(code=>{
+    const offer=offers.find(o=>publicModuleKey(o.code)===code&&o.enabled===true);
+    if(!offer||hiddenRegistrationModule(code))throw new Error('A selected module is unavailable. Refresh the module list.');
+    return {code,label:cleanRegistrationLabel(offer.label||code)};
+  });
+  return {modules,items};
+}
 export function registrationQuote(selected: unknown, offers: any[]) {
   if (!Array.isArray(selected) || !selected.length || selected.length > 30) throw new Error('Choose at least one module');
   const modules = [...new Set(selected.map(publicModuleKey))];
