@@ -36,7 +36,12 @@ export class CompanySecurityService {
     }
     return PlatformAdminService.scope(actor.tenantId,async(c,owner)=>{
       try {
-        await c.execute(`LOCK TABLE ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER IN SHARE ROW EXCLUSIVE MODE WAIT 5`);
+        // Serialize assignments for this company user without requiring LOCK ANY TABLE.
+        // A table-wide lock on another schema fails for the central backend account.
+        const target=await c.execute(`SELECT LOGINID FROM ${owner}.SEC_LOGIN
+          WHERE COMPANY_CODE=:company AND UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) FOR UPDATE WAIT 5`,
+          {company:actor.company_code,loginid:input.loginid});
+        if(!target.rows?.length)throw new PlatformError('Select a user in your own company',403);
         // Read every operation template before the first write; a failed batch never partially assigns.
         const templates=await readOperationTemplates(c,owner,actor.company_code);
         const bySerial=new Map<number,any>();for(const row of templates)if(!bySerial.has(Number(row.SERIAL_NO)))bySerial.set(Number(row.SERIAL_NO),row);
@@ -51,7 +56,7 @@ export class CompanySecurityService {
         }
         await PlatformAdminService.audit(actor.loginid,actor.tenantId,actor.company_code,remove?'DELETE':'UPDATE','BULK_USER_ACCESS',{loginid:input.loginid,serials},c);
         await c.commit();return {changed:serials.length};
-      }catch(e){await c.rollback();throw e;}
+      }catch(e:any){await c.rollback();if([54,30006].includes(e?.errorNum))throw new PlatformError("This user's screen access is being updated. Please retry shortly. No changes were saved.",409);throw e;}
     });
   }
   static async updateUser(actor: CompanyActor, input: any) {
