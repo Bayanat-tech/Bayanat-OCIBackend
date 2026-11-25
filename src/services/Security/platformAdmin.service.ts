@@ -1354,9 +1354,10 @@ export class PlatformAdminService {
           try {
             console.log(`[PlatformAdmin] Auto-provisioning Finance setup for new company '${values.COMPANY_CODE}' in ${owner}`);
             await c.execute(
-              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:code, NULL, :actor, :status, :msg); END;`,
+              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(p_new_company=>:code, p_source_company=>NULL, p_currency=>:currency, p_loginid=>:actor, p_status=>:status, p_message=>:msg); END;`,
               {
                 code: String(values.COMPANY_CODE).trim(),
+                currency: values.CURR_CODE ? String(values.CURR_CODE).trim() : null,
                 actor: actor || "ADMIN",
                 status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
                 msg: { dir: oracledb.BIND_OUT, type: oracledb.STRING },

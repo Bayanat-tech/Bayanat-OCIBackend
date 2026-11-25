@@ -62,7 +62,7 @@ export class CompanySubscriptionService {
           try {
             console.log(`[CompanySubscription] Ensuring Finance setup is provisioned for company '${company}' in ${owner}`);
             await c.execute(
-              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:company, NULL, :actor, :status, :msg); END;`,
+              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(p_new_company=>:company, p_source_company=>NULL, p_currency=>NULL, p_loginid=>:actor, p_status=>:status, p_message=>:msg); END;`,
               {
                 company,
                 actor: actor || "ADMIN",
