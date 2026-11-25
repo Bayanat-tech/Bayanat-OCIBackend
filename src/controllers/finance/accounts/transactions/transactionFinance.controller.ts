@@ -772,6 +772,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     let companyBaseCurr = "";
     let lcurDecimalNos: number | null = null;
     let amountDecimalNos: number | null = null;
+    let priceDecimalNos: number | null = null;
 
     try {
       const compInfoRes: any = await conn.execute(
@@ -786,7 +787,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
 
       const acSetupRes: any = await conn.execute(
         `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS,
-                FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO, DOC_DATE_EDITABLE
+                FINANCIAL_YR_START, FINANCIAL_YR_END, DOC_EDIT_FROM, DOC_EDIT_TO, DOC_DATE_EDITABLE,PRICE_DECIMAL_NOS
          FROM MS_AC_SETUP
          WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:cc))
            AND ROWNUM = 1`,
@@ -798,6 +799,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
         if (acRow.BASE_CURR_CODE) companyBaseCurr = String(acRow.BASE_CURR_CODE).trim().toUpperCase();
         if (acRow.LCUR_DECIMAL_NOS != null) lcurDecimalNos = Number(acRow.LCUR_DECIMAL_NOS);
         if (acRow.AMOUNT_DECIMAL_NOS != null) amountDecimalNos = Number(acRow.AMOUNT_DECIMAL_NOS);
+        if (acRow.PRICE_DECIMAL_NOS != null) priceDecimalNos = Number(acRow.PRICE_DECIMAL_NOS);
         normalizedData.financial_yr_start = acRow.FINANCIAL_YR_START || null;
         normalizedData.financial_yr_end = acRow.FINANCIAL_YR_END || null;
         normalizedData.doc_edit_from = acRow.DOC_EDIT_FROM || null;
@@ -829,7 +831,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     }
 
     const effectiveCurr = companyCurrency || companyBaseCurr || normalizedData.currency || normalizedData.base_curr_code || "INR";
-    let effectiveDecimals = amountDecimalNos ?? lcurDecimalNos ?? normalizedData.amount_decimal_nos ?? normalizedData.lcur_decimal_nos;
+    let effectiveDecimals = amountDecimalNos ?? lcurDecimalNos ?? normalizedData.amount_decimal_nos ?? normalizedData.lcur_decimal_nos ?? normalizedData.priceDecimalNos;
     if (effectiveDecimals == null || isNaN(effectiveDecimals)) {
       if (["OMR", "BHD", "KWD"].includes(effectiveCurr)) {
         effectiveDecimals = 3;
@@ -843,6 +845,7 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
     normalizedData.decimals = Number(effectiveDecimals);
     normalizedData.lcur_decimal_nos = Number(effectiveDecimals);
     normalizedData.amount_decimal_nos = Number(effectiveDecimals);
+    normalizedData.price_decimal_nos = Number(priceDecimalNos ?? effectiveDecimals);
     normalizedData.tax_treatment_labels = await getCompanyTaxLabels(conn, companyCode);
 
     res.json({ success: true, data: normalizedData });

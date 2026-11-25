@@ -706,7 +706,7 @@ export const getSalesOrderListingReportHtml = async (req: RequestWithUser, res: 
       endLabel: "Powered by Bayanat Technology",
     });
   const bodyHtml = renderSalesOrderListingBody(rows).replace(/>\s+</g, "><");
-
+ 
     const html = buildReportDocument({
       title: REPORT_TITLE,
       headerHtml,
