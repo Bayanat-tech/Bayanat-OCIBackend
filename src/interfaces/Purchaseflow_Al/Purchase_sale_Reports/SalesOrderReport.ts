@@ -59,11 +59,21 @@ function dateText(value: unknown): string {
 }
 
 function escapeHtml(value: unknown): string {
-  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function escapeXml(value: unknown): string {
-  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function qtyFmt(value: unknown): string {
@@ -77,6 +87,125 @@ function amtFmt(value: unknown): string {
   if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+/** Table cells: show nothing instead of 0 / 0.00 */
+const qtyBlank = (value: unknown): string => (num(value) === 0 ? "" : qtyFmt(value));
+const amtBlank = (value: unknown): string => (num(value) === 0 ? "" : amtFmt(value));
+
+function numberToWords(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "Zero";
+  n = Math.abs(Math.floor(n));
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen",
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const chunk = (x: number): string => {
+    if (x === 0) return "";
+    if (x < 20) return ones[x];
+    if (x < 100) return tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
+    return ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + chunk(x % 100) : "");
+  };
+  let r = "";
+  const m = Math.floor(n / 1_000_000);
+  const t = Math.floor((n % 1_000_000) / 1000);
+  const rem = n % 1000;
+  if (m) r += chunk(m) + " Million";
+  if (t) r += (r ? " " : "") + chunk(t) + " Thousand";
+  if (rem) r += (r ? " " : "") + chunk(rem);
+  return r || "Zero";
+}
+
+function currencyInfo(code: string): { name: string; sub: string; dec: number } {
+  switch ((code || "").toUpperCase()) {
+    case "OMR": return { name: "OMANI RIAL", sub: "Baisa", dec: 3 };
+    case "QAR":
+    case "QR":  return { name: "QATARI RIYAL", sub: "Dirham", dec: 2 };
+    case "INR": return { name: "INDIAN RUPEES", sub: "Paise", dec: 2 };
+    case "AED": return { name: "UAE DIRHAM", sub: "Fils", dec: 2 };
+    default:    return { name: code || "AMOUNT", sub: "", dec: 2 };
+  }
+}
+
+function amountToWords(value: number, currCode: string): string {
+  const { name, sub, dec } = currencyInfo(currCode);
+  const factor = Math.pow(10, dec);
+  const total = Math.round(Math.abs(value) * factor);
+  const whole = Math.floor(total / factor);
+  const frac = total % factor;
+  let words = numberToWords(whole);
+  if (frac > 0) words += ` and ${numberToWords(frac)} ${sub}`.trimEnd();
+  return `${name} - ${value < 0 ? "Minus " : ""}${words} Only`;
+}
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
+
+const grossValue = (r: ReportRow): number => num(r.quantity) * num(r.unit_price);
+
+const lineDiscOf = (r: ReportRow): number => {
+  const gross = num(r.quantity) * num(r.unit_price);
+  return round2(num(r.disc_price) || (gross * num(r.disc_percent)) / 100);
+};
+
+const netOf = (r: ReportRow): number =>
+  r.amount != null && r.amount !== "" ? round2(num(r.amount)) : round2(grossValue(r) - lineDiscOf(r));
+
+const vatOf = (r: ReportRow): number =>
+  r.tx_compnt_amt_1 != null && r.tx_compnt_amt_1 !== ""
+    ? round2(num(r.tx_compnt_amt_1))
+    : round2((netOf(r) * num(r.tx_compnt_perc_1)) / 100);
+
+const discText = (r: ReportRow): string => {
+  const pct = num(r.disc_percent);
+  return pct > 0 ? `${amtFmt(pct)} (%)` : amtFmt(lineDiscOf(r));
+};
+
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+
+type KvPair = [string, string];
+
+function kvBoxHtml(title: string, pairs: KvPair[]): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col grn-flush po-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
+
+// ─── Editable print texts ───────────────────────────────────────────────────
+
+const PO_NOTES: string[] = [
+  "1. Our order number is to be quoted on all relevant Invoices & Delivery Notes.",
+  "2. Goods once sold will not be taken back.",
+];
+
+const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
+const PO_FOOTER_TEXT = "";
+const PO_STANDARD_TERMS: { title: string; text: string }[] = [];
 
 // ─── Param extraction ───────────────────────────────────────────────────────
 
@@ -141,8 +270,6 @@ async function loadSalesOrderData(req: RequestWithUser, p: ReqParams): Promise<R
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
-    console.log("=== GENERATED SQL (Sales Order) ===\n", rawSql, "\n=== END ===");
-
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return normalize(dataResult.rows as any[]);
   } finally {
@@ -150,212 +277,150 @@ async function loadSalesOrderData(req: RequestWithUser, p: ReqParams): Promise<R
   }
 }
 
-// ─── Cancel helpers ─────────────────────────────────────────────────────────
-
-const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
-const isCancelledRow = (r: ReportRow): boolean =>
-  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
-/** Document is cancelled when every line is cancelled */
-const isCancelledDoc = (rows: ReportRow[]): boolean =>
-  rows.length > 0 && rows.every(isCancelledRow);
-
 // ─── Header model ───────────────────────────────────────────────────────────
 
-interface SoHeader {
+interface PoHeader {
   doc_no: string;
   doc_date: any;
-  doc_type: string;
   div_name: string;
   ac_code: string;
   party_name: string;
   party_address: string;
   party_phone: string;
   party_fax: string;
-  cust_mobile: string;
-  cust_email: string;
-  user_id: string;
-  payment_terms: string;
+  party_mobile: string;
+  party_email: string;
+  buyer: string;
+  delivery_to: string;
+  dlvr_contact: string;
+  dlvr_mobile: string;
   dlvr_term: string;
-  remarks: string;
+  payment_terms: string;
   ref_no: string;
-  total_discount: number;
+  pr_no: string;
+  wo_no: string;
+  project: string;
+  scope: string;
+  curr_code: string;
   disc_hdr_price: number;
   disc_hdr_percent: number;
   cancelled: boolean;
 }
 
-function buildHeader(rows: ReportRow[]): SoHeader {
+function buildHeader(rows: ReportRow[]): PoHeader {
   const h = rows[0] || {};
   return {
     doc_no: text(h.doc_no),
     doc_date: h.doc_date,
-    doc_type: text(h.doc_type),
     div_name: text(h.div_name),
     ac_code: text(h.ac_code),
     party_name: text(h.party_name),
     party_address: text(h.party_address),
     party_phone: text(h.party_phone),
     party_fax: text(h.party_fax),
-    cust_mobile: text(h.cust_mobile),
-    cust_email: text(h.cust_email || h.e_mail),
-    user_id: text(h.user_id),
+    party_mobile: text(h.mobile_no || h.cust_mobile),
+    party_email: text(h.e_mail || h.cust_email),
+    buyer: text(h.buyer || h.user_id),
+    delivery_to: text(h.delivery_to),
+    dlvr_contact: text(h.dlvr_contact),
+    dlvr_mobile: text(h.dlvr_mobile),
+    dlvr_term: text(h.dlvr_term),
     payment_terms: text(h.payment_terms),
-    // ⚠ Check the "=== GENERATED SQL (Sales Order) ===" console log: if the delivery term /
-    // remarks / reference columns have different names, add them to these lines.
-    dlvr_term: text(h.dlvr_term || h.delivery_term),
-    remarks: text(h.remarks || h.hdr_remarks),
     ref_no: text(h.ref_no),
+    pr_no: text(h.pr_no || h.ref_doc_no),
+    wo_no: text(h.wo_number || h.wo_no),
+    project: text(h.project_name || h.job_no),
+    scope: text(h.scope_of_work),
+    curr_code: text(h.curr_code),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
-    total_discount: num(h.total_discount),
     cancelled: isCancelledDoc(rows),
   };
 }
 
-// ─── Line / totals calculations (unchanged logic) ──────────────────────────
-
-const lineDiscOf = (r: ReportRow) =>
-  num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100;
-
-function computeTotals(rows: ReportRow[], header: SoHeader) {
+function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-
-  // Gross = qty × rate
-  const totalAmount = rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0);
-
-  const lineDiscount = rows.reduce((s, r) => s + lineDiscOf(r), 0);
-
+  const totalAmount = round2(rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0));
+  const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
   const lineNet = totalAmount - lineDiscount;
-  const headerDiscount =
-    header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100;
-
-  const discount = lineDiscount + headerDiscount;
-  const exclusiveVat = totalAmount - discount;
-  const vatAmount = 0;
-  const inclusiveVat = exclusiveVat + vatAmount;
-
-  return { totalQty, totalAmount, discount, exclusiveVat, vatAmount, inclusiveVat };
+  const headerDiscount = round2(header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100);
+  const discount = round2(lineDiscount + headerDiscount);
+  const exclusiveVat = round2(totalAmount - discount);
+  const vat = round2(rows.reduce((s, r) => s + vatOf(r), 0));
+  const inclusiveVat = round2(exclusiveVat + vat);
+  return { totalQty, totalAmount, discount, exclusiveVat, vat, inclusiveVat };
 }
 
-/** Product name (+ line remarks). The product code is intentionally not shown. */
-const productText = (r: ReportRow) =>
-  `${text(r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`;
+// ─── HTML renderer (13 columns, portrait) ───────────────────────────────────
 
-// ─── Layout CSS — same visual system as Sales Invoice ──────────────────────
-
-const SALES_ORDER_EXTRA_CSS = `
-  .center { text-align: center; }
-  h1.center { margin: 4px 0 12px; font-size: 18px; font-weight: 800; color: #0b4ca1; letter-spacing: 1px; }
-  .si-cancel-text { text-align: center; color: #dc2626; font-weight: 700; font-size: 12px; margin: -6px 0 10px; letter-spacing: 1px; }
-
-  table.grn-two-col { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px 14px; }
-  .grn-two-col > tbody > tr > td { vertical-align: top; padding: 0; }
-  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
-  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
-
-  table.pr-kv-box { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; }
-  .pr-kv-box thead th { text-align: left; padding: 4px 10px; color: #0b4ca1; background: #eff6ff; font-size: 11px; font-weight: 700; border-bottom: 2px solid #0b4ca1; }
-  .pr-kv-box tbody td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; overflow-wrap: anywhere; }
-  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
-  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
-  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
-  .pr-kv-box.po-kv-details tbody td:first-child { width: 38%; }
-
-  /* Payment / Delivery / Remarks strip + items table: same grid look */
-  table.po-terms, table.po-items { border-collapse: collapse; }
-  table.po-terms th, table.po-terms td,
-  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
-  table.po-terms { margin-bottom: 12px; }
-  table.po-terms th, table.po-terms td { width: 33.333% !important; text-align: center; overflow-wrap: anywhere; }
-
-  .data-table { width: 100%; table-layout: auto; }
-  .data-table th, .data-table td { font-size: 10.5px; padding: 6px 5px; }
-  .data-table td:nth-child(2) { min-width: 140px; }
-
-  .status-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    vertical-align: middle;
-  }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-
-  .totals-box {
-    margin-top: 16px;
-    margin-left: auto;
-    width: 280px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    overflow: hidden;
-    page-break-inside: avoid;
-  }
-  .totals-box .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 14px;
-    font-size: 11.5px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .totals-box .row.grand {
-    background: #0b4ca1;
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    border-bottom: none;
-  }
-
-  /* 4 signature labels (the frontend pins these to the page footer in the PDF) */
-  .dn-sign { width: 100%; margin-top: 40px; border-collapse: collapse; page-break-inside: avoid; }
-  .dn-sign td { width: 25%; text-align: center; padding-top: 28px; border-top: 1px solid #64748b; font-size: 10px; }
+const PO_EXTRA_CSS = `
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .so-items { font-size: 7.5px; }
+  .so-items th, .so-items td { padding: 3px 2px !important; }
 `;
 
-const REPORT_TITLE = "Sales Order";
+function renderPoBody(rows: ReportRow[]): string {
+  const header = buildHeader(rows);
+  const totals = computeTotals(rows, header);
+  const cancelled = header.cancelled ? " — CANCELLED" : "";
 
-// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+  let sumLine = 0, sumDisc = 0, sumNet = 0, sumVat = 0, sumGrand = 0;
 
-type KvPair = [string, string];
+  const bodyRows = rows
+    .map((r, i) => {
+      const line = round2(grossValue(r));
+      const disc = lineDiscOf(r);
+      const net = netOf(r);
+      const vatAmt = vatOf(r);
+      const grand = round2(net + vatAmt);
+      sumLine += line;
+      sumDisc += disc;
+      sumNet += net;
+      sumVat += vatAmt;
+      sumGrand += grand;
 
-/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
-function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
-  const rows = pairs
-    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+      return `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="num">${qtyBlank(r.qty_puom)}</td>
+          <td class="center">${escapeHtml(r.p_uom)}</td>
+          <td class="num">${qtyBlank(r.qty_luom)}</td>
+          <td class="center">${escapeHtml(r.l_uom)}</td>
+          <td class="num">${amtBlank(r.unit_price)}</td>
+          <td class="num">${amtBlank(line)}</td>
+          <td class="num">${amtBlank(disc)}</td>
+          <td class="num">${amtBlank(net)}</td>
+          <td class="num">${amtBlank(r.tx_compnt_perc_1)}</td>
+          <td class="num">${amtBlank(vatAmt)}</td>
+          <td class="num">${amtBlank(grand)}</td>
+        </tr>`;
+    })
     .join("");
-  return (
-    '<table class="pr-kv-box ' + cls + '">' +
-    '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
-    "<tbody>" + rows + "</tbody>" +
-    "</table>"
-  );
-}
 
-/** Two boxes side by side (To wider 60%, SO Details narrower 40%). */
-function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
-  return (
-    '<table class="grn-two-col po-two-col po-two-wide"><tbody><tr>' +
-    "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to") + "</td>" +
-    "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details po-kv-wide") + "</td>" +
-    "</tr></tbody></table>"
-  );
-}
+  const notesHtml = PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("");
+  const companyName = header.div_name || "Company";
 
-/** First `required` pairs are always shown; the rest only when filled. */
-const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
-  pairs.filter(([, v], i) => i < required || !!text(v).trim());
-
-/** Centered, uppercase, underlined title (+ red CANCELLED line when the document is cancelled). */
-function reportTitleHtml(title: string, cancelled = false): string {
-  return (
-    `<h1 class="center"><u>${escapeHtml(title.toUpperCase())}</u></h1>` +
-    (cancelled ? `<p class="center si-cancel-text">CANCELLED</p>` : "")
-  );
-}
-
-/** PAYMENT TERM | DELIVERY TERM / PERIOD | REMARKS strip. */
-function soTermsStripHtml(header: SoHeader): string {
   return `
+    <h1 class="report-title center"><u>SALES ORDER${cancelled}</u></h1>
+
+    ${kvTwoBoxesHtml(
+      "To",
+      keepFilled([
+        ["Customer", header.party_name],
+        ["Address", header.party_address],
+        ["Tel", header.party_phone],
+        ["Fax", header.party_fax],
+      ], 1),
+      "SO Details",
+      keepFilled([
+        ["SO No", header.doc_no],
+        ["Date", dateText(header.doc_date)],
+        ["Sold By", header.buyer],
+      ], 2)
+    )}
+
+    <!-- Payment / Delivery / Remarks -->
     <table class="data-table po-terms">
       <thead>
         <tr>
@@ -368,104 +433,85 @@ function soTermsStripHtml(header: SoHeader): string {
         <tr>
           <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
           <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
-          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+          <td class="center">${escapeHtml(header.ref_no || "-")}</td>
         </tr>
       </tbody>
-    </table>`;
-}
+    </table>
 
-const SIGN_LABELS = ["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"];
-
-function signHtml(labels: string[] = SIGN_LABELS): string {
-  return `<table class="dn-sign"><tbody><tr>${labels
-    .map((label) => `<td class="center"><strong>${escapeHtml(label)}</strong></td>`)
-    .join("")}</tr></tbody></table>`;
-}
-
-// ─── Body ───────────────────────────────────────────────────────────────────
-
-function renderSalesOrderBody(rows: ReportRow[], _loginId: string): string {
-  const header = buildHeader(rows);
-  const totals = computeTotals(rows, header);
-
-  const bodyRows = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(productText(r))}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right">${amtFmt(lineDiscOf(r))}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
-        </tr>`
-    )
-    .join("");
-
-  const partyPairs: KvPair[] = keepFilled(
-    [
-      ["Customer", header.party_name],
-      ["Address", header.party_address],
-      ["Tel", header.party_phone],
-      ["Fax", header.party_fax],
-      ["Mobile", header.cust_mobile],
-      ["Email", header.cust_email],
-    ],
-    1
-  );
-
-  const detailPairs: KvPair[] = keepFilled(
-    [
-      ["SO No", header.doc_no],
-      ["Date", dateText(header.doc_date)],
-      // ["A/C Code", header.ac_code],
-      ["Sold By", header.user_id],
-    ],
-    3
-  );
-
-  return `
-    ${reportTitleHtml(REPORT_TITLE, header.cancelled)}
-
-    ${kvTwoBoxesHtml("To", partyPairs, "SO Details", detailPairs)}
-
-    ${rows.length === 0
-      ? `<div class="empty">No line items found for this order.</div>`
-      : `
-      ${soTermsStripHtml(header)}
-
-      <table class="data-table si-items po-items">
+    ${
+      rows.length === 0
+        ? `<div class="empty">No line items found for this order.</div>`
+        : `
+      <!-- 13-column items table -->
+      <table class="data-table so-items po-items">
         <thead>
           <tr>
-            <th>S.No</th>
+            <th class="center">S.No</th>
             <th>Product / Description</th>
-            <th>Unit</th>
-            <th class="right">Qty</th>
-            <th class="right">Unit Rate</th>
-            <th class="right">Disc</th>
-            <th class="right">Amount</th>
+            <th class="right">P.Qty</th>
+            <th class="center">P.UOM</th>
+            <th class="right">L.Qty</th>
+            <th class="center">L.UOM</th>
+            <th class="right">Unit Price</th>
+            <th class="right">Line Value</th>
+            <th class="right">Disc Amt</th>
+            <th class="right">Net Amt</th>
+            <th class="right">VAT %</th>
+            <th class="right">VAT Amt</th>
+            <th class="right">Grand Total</th>
           </tr>
         </thead>
-        <tbody>${bodyRows}</tbody>
+        <tbody>
+          ${header.scope ? `<tr><td colspan="13"><b>Scope of Work:- ${escapeHtml(header.scope)}</b></td></tr>` : ""}
+          ${bodyRows}
+          <tr class="subtotal-row">
+            <td colspan="7" class="right"><b>Total</b></td>
+            <td class="num"><b>${amtBlank(sumLine)}</b></td>
+            <td class="num"><b>${amtBlank(sumDisc)}</b></td>
+            <td class="num"><b>${amtBlank(sumNet)}</b></td>
+            <td></td>
+            <td class="num"><b>${amtBlank(sumVat)}</b></td>
+            <td class="num"><b>${amtBlank(sumGrand)}</b></td>
+          </tr>
+        </tbody>
       </table>
 
       <div class="totals-box">
         <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
         <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
         <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
-        <div class="row grand"><span>Net Amount</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
-      </div>
-
-      ${header.ref_no ? `<p><strong>Reference:</strong> ${escapeHtml(header.ref_no)}</p>` : ""}
-      ${signHtml()}`
+        <div class="row"><span>Net Amount</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
+        ${totals.vat ? `<div class="row"><span>VAT Amount</span><span>${amtFmt(totals.vat)}</span></div>
+        <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>` : ""}
+      </div>`
     }
+
+    <div style="margin-top:8px;font-size:10px;">
+      <b>Reference:</b> ${escapeHtml(header.ref_no || "-")}
+    </div>
+
+    <!-- Signature line like your PDF -->
+    <table class="data-table dn-sign">
+      <tbody>
+        <tr>
+          <td class="center">Prepared By</td>
+          <td class="center">Checked By</td>
+          <td class="center">Delivered By</td>
+          <td class="center">Receiver's Name &amp; Signature</td>
+        </tr>
+      </tbody>
+    </table>
   `;
 }
 
-// ─── Excel builder ───────────────────────────────────────────────────────
+// ─── Excel builder (13 columns) ─────────────────────────────────────────────
 
-function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
+function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
   const GREEN_BG = "FFD1FAE5";
@@ -473,7 +519,7 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 7; // S.No, Product, Unit, Qty, Unit Rate, Disc, Amount
+  const COL_COUNT = 13;
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -481,60 +527,89 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const blank = (): Row => new Array(COL_COUNT).fill(null);
+  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
+  const mergeFull = () =>
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
 
-  // Row 0: title
+  rows_.push(fullRow(cell(`SALES ORDER${header.cancelled ? " (CANCELLED)" : ""}`, "title")));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Sales Order No: ${header.doc_no}   Date: ${dateText(header.doc_date)}   Sold By: ${header.buyer}   Print: ${printDateTime} (${loginId})`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Customer: ${header.ac_code} ${header.party_name}, ${header.party_address}   TEL: ${header.party_phone}   FAX: ${header.party_fax}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Delivery Address: ${header.delivery_to}   Contact: ${header.dlvr_contact} ${header.dlvr_mobile}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Project: ${header.project || "-"}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(blank());
+
   rows_.push([
-    cell(`${REPORT_TITLE} - ${header.doc_no}${header.cancelled ? " (CANCELLED)" : ""}`, "title"),
-    ...new Array(COL_COUNT - 1).fill(null),
-  ]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
-  // Row 1: To | Date / A/C / Sold By
-  rows_.push([
-    cell(`To: ${[header.party_name, header.party_address].filter(Boolean).join(", ")}`, "meta"), null, null,
-    cell(
-      `Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}${header.user_id ? `   Sold By: ${header.user_id}` : ""}`,
-      "meta"
-    ),
-    null, null, null,
-  ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
-
-  // Row 2: Payment Term / Delivery Term / Remarks
-  rows_.push([
-    cell(
-      `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
-      "meta"
-    ),
-    ...new Array(COL_COUNT - 1).fill(null),
-  ]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
-
-  rows_.push(new Array(COL_COUNT).fill(null));
-
-  rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Disc", "header"), cell("Amount", "header"),
+    cell("S.No", "header"), cell("Product / Description", "header"),
+    cell("P.Qty", "header"), cell("P.UOM", "header"), cell("L.Qty", "header"), cell("L.UOM", "header"),
+    cell("Unit Price", "header"), cell("Line Value", "header"), cell("Disc Amt", "header"),
+    cell("Net Amt", "header"), cell("VAT %", "header"), cell("VAT Amt", "header"), cell("Grand Total", "header"),
   ]);
 
+  let sumLine = 0, sumDisc = 0, sumNet = 0, sumVat = 0, sumGrand = 0;
   rows.forEach((r, i) => {
+    const line = round2(grossValue(r));
+    const disc = lineDiscOf(r);
+    const net = netOf(r);
+    const vatAmt = vatOf(r);
+    const grand = round2(net + vatAmt);
+    sumLine += line; sumDisc += disc; sumNet += net; sumVat += vatAmt; sumGrand += grand;
+
     rows_.push([
       cell(i + 1, "data"),
-      cell(productText(r), "data"),
+      cell(`${text(r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`, "data"),
+      cell(num(r.qty_puom), "dataNum"),
       cell(text(r.p_uom), "data"),
-      cell(num(r.quantity), "dataNum"),
+      cell(num(r.qty_luom), "dataNum"),
+      cell(text(r.l_uom), "data"),
       cell(num(r.unit_price), "dataNum"),
-      cell(lineDiscOf(r), "dataNum"),
-      cell(num(r.amount), "dataNum"),
+      cell(line, "dataNum"),
+      cell(disc, "dataNum"),
+      cell(net, "dataNum"),
+      cell(num(r.tx_compnt_perc_1), "dataNum"),
+      cell(vatAmt, "dataNum"),
+      cell(grand, "dataNum"),
     ]);
   });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  const tRow = rows_.length;
+  const totalLine: Row = blank();
+  totalLine[0] = cell(`Total: ${amountToWords(totals.inclusiveVat, header.curr_code)}`, "groupTotal");
+  totalLine[7] = cell(round2(sumLine), "groupTotalNum");
+  totalLine[8] = cell(round2(sumDisc), "groupTotalNum");
+  totalLine[9] = cell(round2(sumNet), "groupTotalNum");
+  totalLine[11] = cell(round2(sumVat), "groupTotalNum");
+  totalLine[12] = cell(round2(sumGrand), "groupTotalNum");
+  rows_.push(totalLine);
+  merges.push({ s: { r: tRow, c: 0 }, e: { r: tRow, c: 6 } });
+
+  rows_.push(blank());
 
   const addTotal = (label: string, value: number, grand = false) => {
     const r = rows_.length;
-    const arr: Row = new Array(COL_COUNT).fill(null);
+    const arr: Row = blank();
     arr[0] = cell(label, grand ? "grandTotal" : "groupTotal");
     arr[COL_COUNT - 1] = cell(value, grand ? "grandTotalNum" : "groupTotalNum");
     rows_.push(arr);
@@ -543,20 +618,37 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   addTotal("Total Quantity", totals.totalQty);
   addTotal("Total Amount", totals.totalAmount);
   addTotal("Overall Discount", totals.discount);
-  addTotal("Net Amount", totals.inclusiveVat, true);
+  addTotal("Net Amount (Excl. VAT)", totals.exclusiveVat);
+  addTotal("VAT Amount", totals.vat);
+  addTotal("Grand Total", totals.inclusiveVat, true);
 
-  // Signature row (same 4 labels as the browser / PDF)
-  rows_.push(new Array(COL_COUNT).fill(null));
-  rows_.push([
-    cell("Prepared By", "sign"), null, cell("Checked By", "sign"), null,
-    cell("Delivered By", "sign"), null, cell("Receiver's Name & Signature", "sign"),
-  ]);
-  rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  rows_.push(blank());
+  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
+  mergeFull();
 
-  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
-  interface FillDef { color?: string; }
-  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
-  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
+  PO_NOTES.forEach((n) => {
+    rows_.push(fullRow(cell(n, "meta")));
+    mergeFull();
+  });
+
+  rows_.push(blank());
+  const sRow = rows_.length;
+  const signRow: Row = blank();
+  signRow[0] = cell("For Customer — Signature / Date", "meta");
+  signRow[6] = cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta");
+  rows_.push(signRow);
+  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 5 } });
+  merges.push({ s: { r: sRow, c: 6 }, e: { r: sRow, c: COL_COUNT - 1 } });
+
+  const footRow: Row = blank();
+  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
+  rows_.push(footRow);
+
+  // ── styles + OOXML builder (same as your original) ──
+  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string }
+  interface FillDef { color?: string }
+  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string }
+  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean }
 
   const styleDefs: Record<string, any> = {
     title: {
@@ -598,11 +690,6 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.00",
     },
-    sign: {
-      font: { bold: true, sz: 9, color: { rgb: "FF334155" } },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: { top: { color: { rgb: "FF64748B" } } },
-    },
     footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
 
@@ -638,7 +725,8 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
-      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb, left: b.left?.color?.rgb, right: b.right?.color?.rgb,
+      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb, right: b.right?.color?.rgb,
     };
     if (!def.top && !def.bottom && !def.left && !def.right) return 0;
     const key = `border:${JSON.stringify(def)}`;
@@ -677,7 +765,7 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
   const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="20" customWidth="1"/>`
+    `<col min="${i + 1}" max="${i + 1}" width="${i === 1 ? 36 : 14}" customWidth="1"/>`
   ).join("");
 
   let sheetDataXml = "";
@@ -698,9 +786,9 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
     sheetDataXml += rowXml;
   });
 
-  const mergesXml = merges.map((m) =>
-    `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
-  ).join("");
+  const mergesXml = merges
+    .map((m) => `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`)
+    .join("");
   const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
 
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -717,11 +805,11 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
 
   const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
     <font>
-        ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
-        ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
-        <name val="Arial"/>
-        ${f.bold ? "<b/>" : ""}
-        ${f.italic ? "<i/>" : ""}
+      ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+      ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+      <name val="Arial"/>
+      ${f.bold ? "<b/>" : ""}
+      ${f.italic ? "<i/>" : ""}
     </font>`).join("")}
 </fonts>`;
 
@@ -730,21 +818,21 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
     <fill><patternFill patternType="gray125"/></fill>
     ${fills.slice(2).map((f) => `
     <fill>
-        <patternFill patternType="solid">
-            <fgColor rgb="${f.color}"/>
-            <bgColor rgb="${f.color}"/>
-        </patternFill>
+      <patternFill patternType="solid">
+        <fgColor rgb="${f.color}"/>
+        <bgColor rgb="${f.color}"/>
+      </patternFill>
     </fill>`).join("")}
 </fills>`;
 
   const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
   const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
     <border>
-        <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
-        <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
-        <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
-        <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
-        <diagonal/>
+      <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+      <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+      <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+      <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+      <diagonal/>
     </border>`).join("")}
 </borders>`;
 
@@ -754,20 +842,20 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
     <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
         applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
         applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
-        ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+      ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
     </xf>`;
   }).join("")}
 </cellXfs>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    ${numFmtsXml}
-    ${fontsXml}
-    ${fillsXml}
-    ${bordersXml}
-    <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-    ${cellXfsXml}
-    <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+  ${numFmtsXml}
+  ${fontsXml}
+  ${fillsXml}
+  ${bordersXml}
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  ${cellXfsXml}
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -789,10 +877,10 @@ function buildExcelBuffer(rows: ReportRow[], _loginId: string): Buffer {
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml"  ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`;
 
   const zip = new AdmZip();
@@ -819,28 +907,31 @@ export const getSalesOrderReportHtml = async (req: RequestWithUser, res: Respons
     const companyCode = resolveCompanyCode(req, params);
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
-      reportName: "rpt_sales_order",
+      reportName: "Sales Order",
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesOrderBody(rows, params.loginid).replace(/>\s+</g, "><");
+    const bodyHtml = renderPoBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
-      title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,
+      title: `Sales Order ${buildHeader(rows).doc_no}`,
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: SALES_ORDER_EXTRA_CSS,
+      extraCss: PO_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
-      orientation: "portrait",
+      orientation: "portrait",          // ← portrait
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
     console.error("Sales Order Report HTML error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
   }
 };
 
@@ -852,6 +943,7 @@ export const getSalesOrderReportExcel = async (req: RequestWithUser, res: Respon
       res.status(200).json({ success: false, message: "No data found for this order." });
       return;
     }
+    // Keep your existing buildExcelBuffer
     const buffer = buildExcelBuffer(rows, params.loginid);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -859,6 +951,9 @@ export const getSalesOrderReportExcel = async (req: RequestWithUser, res: Respon
     res.end(buffer);
   } catch (error: any) {
     console.error("Sales Order Report Excel error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate Excel",
+    });
   }
 };
