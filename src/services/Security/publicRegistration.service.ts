@@ -1,3 +1,4 @@
+import {RegistrationReviewService as Review,validReviewEmail} from './registrationReview.service';
 import {registrationCountries,registrationContact} from './registrationCountries.service';
 import crypto from 'crypto';
 import oracledb from 'oracledb';
@@ -24,13 +25,28 @@ export class PublicRegistrationService {
     });
   }
   static async adminSettings(actor:string) {
-    if ((await Platform.getAccess(actor))?.scope!=='ALL') throw new PlatformError('Only PRODADMIN can configure public registration',403);
-    const settings=await this.settings();
-    const tenants=(await Platform.tenants(actor)).filter((t:any)=>t.IS_ACTIVE==='Y' && !['CUSTOMERS','WMSDEV'].includes(String(t.SCHEMA_NAME).toUpperCase()));
-    return {settings:{...settings,publicAppUrl:settings.publicAppUrl||process.env.PUBLIC_APP_URL||''},tenants};
+    const access=await Review.access(actor),settings=await this.settings();
+    const allowed=access.scope==='ALL'||access.tenants.includes(settings.tenant);
+    const tenants=(await Platform.tenants(actor)).filter((t:any)=>t.IS_ACTIVE==='Y'&&!['CUSTOMERS','WMSDEV'].includes(String(t.SCHEMA_NAME).toUpperCase()));
+    return {settings:allowed?{...settings,reviewEmail:settings.reviewEmail||'',publicAppUrl:settings.publicAppUrl||process.env.PUBLIC_APP_URL||''}:null,tenants,canManageSettings:access.scope==='ALL',canEditReviewEmail:allowed};
+  }
+  static async saveReviewEmail(actor:string,input:any) {
+    const previous=await this.adminSettings(actor),address=email(input.email);
+    if(!previous.canEditReviewEmail||!previous.settings||input.tenant!==previous.settings.tenant)throw new PlatformError('You may update notification email only for your allowed registration tenant',403);
+    if(!validReviewEmail(address))throw new PlatformError('Enter one valid system-admin notification email address');
+    return Platform.root(async c=>{try{
+      const [row]=(await c.execute<any>('SELECT CONFIG_JSON FROM CUSTOMERS.SEC_REGISTRATION_CONFIG WHERE CONFIG_ID=1 FOR UPDATE',{},options)).rows||[];
+      const config=JSON.parse(row.CONFIG_JSON);
+      if(Number(config.version)!==Number(input.version)||config.tenant!==input.tenant)throw new PlatformError('Settings changed. Reload before saving.',409);
+      config.reviewEmail=address;config.version=Number(config.version)+1;
+      await c.execute('UPDATE CUSTOMERS.SEC_REGISTRATION_CONFIG SET CONFIG_JSON=:json,UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE CONFIG_ID=1',{json:JSON.stringify(config),actor});
+      await Review.updateRecipient(c,config.tenant,address);
+      await Platform.audit(actor,config.tenant,'','UPDATE','REGISTRATION_NOTIFICATION_EMAIL',{email:address},c);await c.commit();return config;
+    }catch(e){await c.rollback();throw e;}});
   }
   static async saveSettings(actor:string,input:any) {
     const previous=await this.adminSettings(actor);
+    if(!previous.canManageSettings)throw new PlatformError('Only PRODADMIN can change public registration settings',403);
     const tenant=String(input.tenant||'');
     if (!tenant || tenant==='root') throw new PlatformError('Choose the dedicated registration tenant');
     const catalog=await Platform.screenCatalog(tenant);
@@ -44,9 +60,11 @@ export class PublicRegistrationService {
       if (seen.has(code)||reservedPublicModule(code)||!catalog.some(s=>publicModuleKey(s.APP_CODE)===code)||(price!==null&&(!Number.isFinite(price)||price<=0||price>100000000||Math.abs(price*100-Math.round(price*100))>0.001))) throw new PlatformError('Each offer needs a unique available module and, when supplied, a positive price with two decimal places');
       seen.add(code);return {code,label:String(offer.label||code).trim().slice(0,80),price,enabled:offer.enabled===true};
     });
+    const reviewEmail=email(input.reviewEmail??previous.settings.reviewEmail??'');
+    if(input.enabled&&!validReviewEmail(reviewEmail))throw new PlatformError('Enter a system-admin notification email before enabling registration');
     const publicAppUrl=String(input.publicAppUrl ?? previous.settings.publicAppUrl ?? '').trim();
     if(publicAppUrl || input.enabled)registrationAppUrl({publicAppUrl});
-    if (input.enabled && (!offers.some((o:any)=>o.enabled)||!billingMailConfigured()||process.env.SCHEDULER_ENABLED?.toLowerCase()==='false')) throw new PlatformError('Configure billing SMTP, scheduler and a priced module before enabling registration');
+    if (input.enabled && (!offers.some((o:any)=>o.enabled&&!hiddenRegistrationModule(o.code))||!billingMailConfigured()||process.env.SCHEDULER_ENABLED?.toLowerCase()==='false')) throw new PlatformError('Configure email delivery, scheduler and an available public module before enabling registration');
     if(input.enabled)await Platform.scope(tenant,async(c,owner)=>{
       for(const table of ['MS_COMPANY','SEC_LOGIN','SEC_MODULE_DATA','SEC_ROLE_FUNCTION_ACCESS_USER'])if(!(await Platform.columns(c,owner,table)).length)throw new PlatformError(`Prepare ${table} in the registration tenant before enabling signup`);
       const required=['sec_login','access_assign_user','company'];
@@ -58,8 +76,9 @@ export class PublicRegistrationService {
         const r=await c.execute<any>('SELECT CONFIG_JSON FROM CUSTOMERS.SEC_REGISTRATION_CONFIG WHERE CONFIG_ID=1 FOR UPDATE',{},options);
         const current=r.rows?.[0]?JSON.parse(r.rows[0].CONFIG_JSON):{version:0};
         if (Number(input.version)!==Number(current.version)) throw new PlatformError('Registration settings changed. Reload before saving.',409);
-        const config={enabled:input.enabled===true,tenant,currency:input.currency,publicAppUrl,offers,version:Number(current.version)+1};
+        const config={enabled:input.enabled===true,tenant,currency:input.currency,publicAppUrl,reviewEmail,offers,version:Number(current.version)+1};
         await c.execute('UPDATE CUSTOMERS.SEC_REGISTRATION_CONFIG SET CONFIG_JSON=:json,UPDATED_BY=:actor,UPDATED_AT=SYSTIMESTAMP WHERE CONFIG_ID=1',{json:JSON.stringify(config),actor});
+        if(validReviewEmail(reviewEmail))await Review.updateRecipient(c,tenant,reviewEmail);
         await Platform.audit(actor,'root','','UPDATE','PUBLIC_REGISTRATION_SETTINGS',{tenant,enabled:config.enabled,modules:offers.map((o:any)=>o.code)},c);
         await c.commit();return config;
       } catch(e){await c.rollback();throw e;}
@@ -107,11 +126,11 @@ export class PublicRegistrationService {
       }catch(e){await c.rollback();throw e;}
     });
     const link=new URL('/register/verify',appUrl);link.hash=token;
-    await sendRegistrationMail(adminEmail,'Verify your Bayanat company registration',`Hello ${username},\n\nVerify your email and choose your admin password:\n${link}\n\nCompany: ${name} (${company})\nAdmin login: ${loginid}\nModules: ${quote.modules.join(', ')}\nBilling will be configured separately by Bayanat. No invoice is created at registration.\nYour seven-day trial starts only after you finish setup. Payment is recorded by Bayanat billing; this email does not collect payments. This link expires in 24 hours.\n\nIf you did not request this registration, ignore this email.`);
+    await sendRegistrationMail(adminEmail,'Verify your Bayanat company registration',`Hello ${username},\n\nVerify your email and choose your admin password:\n${link}\n\nCompany: ${name} (${company})\nAdmin login: ${loginid}\nModules: ${quote.modules.join(', ')}\nBilling will be configured separately by Bayanat. No invoice is created at registration.\nYour seven-day trial starts only after administrator approval and company setup. Sign-in is blocked until approval. Payment is recorded by Bayanat billing; this email does not collect payments. This link expires in 24 hours.\n\nIf you did not request this registration, ignore this email.`);
     return {message:'Check your admin email to verify your company and set your password. The link expires in 24 hours.'};
   }
   static async complete(input:any) {
-    await installed();if(!/^[a-f0-9]{64}$/.test(String(input.token||''))||!validRegistrationPassword(input.password))throw new PlatformError('Use a valid verification link and a password of 8 to 20 characters');
+    await installed();await Review.ready();if(!/^[a-f0-9]{64}$/.test(String(input.token||''))||!validRegistrationPassword(input.password))throw new PlatformError('Use a valid verification link and a password of 8 to 20 characters');
     const config=await this.settings();if(!config.enabled)throw unavailable();
     const tokenHash=digest(input.token);
     const pending=await Platform.root(async c=>(await c.execute<any>("SELECT PAYLOAD,STATE FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE TOKEN_HASH=:tokenHash",{tokenHash},options)).rows?.[0]);
@@ -147,16 +166,18 @@ export class PublicRegistrationService {
         const start=billingToday();
         await c.execute(`INSERT INTO CUSTOMERS.SEC_COMPANY_SUBSCRIPTION(TENANT_ID,COMPANY_CODE,PLAN_NAME,STATUS,BILLING_CYCLE,CURRENCY,AMOUNT,NEXT_BILL_DATE,BILLING_ENABLED,START_DATE,MODULE_CODES,BILLING_EMAIL,DUE_DAYS,GRACE_DAYS,SUSPENDED,PERIOD_NO,VERSION_NO,UPDATED_BY)
           VALUES(:tenant,:company,'Awaiting billing setup','DRAFT','MONTHLY',:currency,NULL,NULL,'N',TO_DATE(:periodStartDate,'YYYY-MM-DD'),:modules,:email,0,0,'N',0,1,'PUBLIC_REGISTRATION')`,{tenant:p.tenant,company:p.company,currency:p.currency,periodStartDate:start,modules:quote.modules.join(','),email:p.adminEmail});
-        await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET STATE='COMPLETE',TOKEN_HASH=NULL,WELCOME_STATUS='PENDING',UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:p.adminEmail});
+        await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET STATE='COMPLETE',TENANT_ID=:tenant,COMPANY_CODE=:company,TOKEN_HASH=NULL,WELCOME_STATUS='PENDING',UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:p.adminEmail,tenant:p.tenant,company:p.company});
+        await Review.create(c,p.adminEmail,email(config.reviewEmail));
         await Platform.audit(p.loginid,p.tenant,p.company,'REGISTER','PUBLIC_COMPANY',{modules:quote.modules,billingEnabled:false,trialDays:7},c);
         await c.commit();return {loginid:p.loginid,company:p.company,trialDays:7};
       }catch(e){await c.rollback();throw e;}
     });
-    // Finance procedure owns its transaction, so it must run after the signup commit.
-    try { await this.finishSetup(p); return {...result,setupReady:true}; }
-    catch { return {...result,setupReady:false,message:'Your company was created. Initial module setup will retry automatically; contact Bayanat if sign-in remains unavailable.'}; }
+    // Provisioning is complete, but approval gates sign-in and the trial clock.
+    void Review.processNotifications().catch(()=>console.error('Registration review notification will retry'));
+    return {...result,setupReady:false,approvalPending:true,message:'Your registration is complete and awaiting administrator approval. We will email you when your company is ready. Your seven-day trial has not started yet.'};
   }
   static async finishSetup(p:any) {
+    await Review.assertApproved(p.tenant,p.company);
     await Platform.scope(p.tenant,async(c,owner)=>{
       const state=await c.execute<any>("SELECT SETUP_STATUS FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE EMAIL=:email AND STATE='COMPLETE'",{email:p.adminEmail},options);
       if(state.rows?.[0]?.SETUP_STATUS==='READY')return;
@@ -176,14 +197,16 @@ export class PublicRegistrationService {
     if(!await registrationStorageAvailable())return;
     const appUrl=registrationAppUrl(await this.settings());
     await Platform.root(async c=>{await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS='FAILED' WHERE WELCOME_STATUS='SENDING' AND UPDATED_AT<CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)-INTERVAL '30' MINUTE");await c.commit();});
-    const rows=await Platform.root(async c=>(await c.execute<any>("SELECT EMAIL,PAYLOAD,TO_CHAR(TRIAL_END_AT,'YYYY-MM-DD HH24:MI') TRIAL_END FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE STATE='COMPLETE' AND WELCOME_STATUS IN ('PENDING','FAILED') AND MAIL_ATTEMPTS<5 AND UPDATED_AT<CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)-INTERVAL '1' MINUTE FETCH FIRST 10 ROWS ONLY",{},options)).rows||[]);
+    const rows=await Platform.root(async c=>(await c.execute<any>("SELECT EMAIL,PAYLOAD,TO_CHAR(TRIAL_END_AT,'YYYY-MM-DD HH24:MI') TRIAL_END FROM CUSTOMERS.SEC_PUBLIC_SIGNUP r WHERE STATE='COMPLETE' AND NOT EXISTS(SELECT 1 FROM CUSTOMERS.SEC_REGISTRATION_REVIEW v WHERE v.SIGNUP_ID=r.SIGNUP_ID AND v.STATUS<>'APPROVED') AND WELCOME_STATUS IN ('PENDING','FAILED') AND MAIL_ATTEMPTS<5 AND UPDATED_AT<CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP)-INTERVAL '1' MINUTE FETCH FIRST 10 ROWS ONLY",{},options)).rows||[]);
     for(const row of rows){
       try{await this.finishSetup(JSON.parse(row.PAYLOAD));}catch{continue;}
       const claimed=await Platform.root(async c=>{const r=await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS='SENDING',MAIL_ATTEMPTS=MAIL_ATTEMPTS+1,UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email AND WELCOME_STATUS IN ('PENDING','FAILED')",{email:row.EMAIL});await c.commit();return r.rowsAffected;});
       if(!claimed)continue;
       let status='SENT';try{
+        const current=await Platform.root(async c=>(await c.execute<any>("SELECT TO_CHAR(TRIAL_END_AT,'YYYY-MM-DD HH24:MI') TRIAL_END FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE EMAIL=:email",{email:row.EMAIL},options)).rows?.[0]);
+        row.TRIAL_END=current?.TRIAL_END||row.TRIAL_END;
         const p=JSON.parse(row.PAYLOAD);
-        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready',`Company: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',appUrl)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nBilling is inactive until Bayanat configures and confirms your subscription.\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
+        await send([p.adminEmail,...p.copyEmails].join(','),'Your Bayanat company is ready to use',`Your registration is approved and company setup is complete.\n\nCompany: ${p.name} (${p.company})\nAdmin login: ${p.loginid}\nSign in: ${new URL('/login',appUrl)}\nModules: ${p.quote.modules.join(', ')}\nTrial ends: ${row.TRIAL_END} UTC\nBilling is inactive until Bayanat configures and confirms your subscription.\n\nYour password was chosen securely by the admin and is never emailed. Contact Bayanat billing to pay your invoice before the trial ends. Access continues after Bayanat records payment. You can create internal users and assign only your company's enabled screens.`);
       }catch{status='FAILED';}
       await Platform.root(async c=>{await c.execute("UPDATE CUSTOMERS.SEC_PUBLIC_SIGNUP SET WELCOME_STATUS=:status,UPDATED_AT=CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP) WHERE EMAIL=:email",{email:row.EMAIL,status});await c.commit();});
     }
