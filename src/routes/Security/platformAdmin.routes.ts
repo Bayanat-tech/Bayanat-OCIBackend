@@ -1,3 +1,4 @@
+import {CompanyDeletionService} from '../../services/Security/companyDeletion.service';
 import { Router } from "express";
 import passport from "passport";
 import { requirePlatformAdmin } from "../../middleware/platformAdmin.middleware";
@@ -9,6 +10,7 @@ import { oracleDb } from "../../database/connection";
 import { CompanySubscriptionService } from "../../services/Security/companySubscription.service";
 import { CompanyBillingService } from "../../services/Security/companyBilling.service";
 import { companyModuleReadiness } from "../../services/Security/companyReadiness.service";
+import { PublicRegistrationService } from '../../services/Security/publicRegistration.service';
 
 const router = Router();
 router.use(
@@ -33,6 +35,15 @@ const handle =
       });
     }
   };
+router.post('/:tenant/companies/:company/deletion-preview',handle(req=>CompanyDeletionService.preview(req.user.loginid,req.params.tenant,req.params.company)));
+router.delete('/:tenant/companies/:company',handle(req=>CompanyDeletionService.remove(req.user.loginid,req.params.tenant,req.params.company,req.body)));
+router.get('/:tenant/module-editor',handle(req=>PlatformAdminService.moduleEditorRows(req.user.loginid,req.params.tenant)));
+router.get('/registration/settings',handle(req=>PublicRegistrationService.adminSettings(req.user.loginid)));
+router.post('/registration/settings',handle(req=>PublicRegistrationService.saveSettings(req.user.loginid,req.body)));
+router.get('/registration/modules/:id',handle(async req=>{
+  await CompanyBillingService.production(req.user.loginid);
+  return (await PlatformAdminService.screenCatalog(req.params.id)).map(s=>String(s.APP_CODE||'').trim().toUpperCase()).filter((x,i,a)=>x&&a.indexOf(x)===i).sort();
+}));
 router.get(
   "/tenants",
   handle((req) => PlatformAdminService.tenants(req.user.loginid)),

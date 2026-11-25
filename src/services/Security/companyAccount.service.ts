@@ -1,5 +1,6 @@
 import { PlatformAdminService as Platform, PlatformError } from "./platformAdmin.service";
 import oracledb from "oracledb";
+import { assertRegistrationAccess } from './registrationAccess.service';
 const inactive = (value: any) => ["N","I","INACTIVE","DISABLED","0"].includes(String(value || "").trim().toUpperCase());
 export class CompanyAccountService {
   private static async stateProjection(c: oracledb.Connection, owner: string, table: string, candidates: string[]) {
@@ -11,6 +12,7 @@ export class CompanyAccountService {
   }
   static async assertActive(tenant: string, company: string, loginid: string) {
     if (!tenant || !company || !loginid) throw new PlatformError("Select your tenant company", 403);
+    await assertRegistrationAccess(tenant,company);
     return Platform.scope(tenant, async (c, owner) => {
       const companyState = await this.stateProjection(c, owner, "MS_COMPANY", ["STATUS", "ACTIVE_FLAG", "IS_ACTIVE"]);
       const companyRow = await c.execute<any>(`SELECT ${companyState} FROM ${owner}.MS_COMPANY WHERE COMPANY_CODE=:company`, { company }, { outFormat: oracledb.OUT_FORMAT_OBJECT });

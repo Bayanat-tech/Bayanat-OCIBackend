@@ -9,7 +9,7 @@ export async function companyAccountGate(req: Request, res: Response, next: Next
   let actor: any;
   try { actor = jwt.verify(token, constants.AUTHENTICATION.APP_SECRET || process.env.APP_SECRET || "BAYANAT"); } catch { return next(); }
   // Login and password recovery remain available with an expired/old session.
-  if (/^\/api\/auth\/(login|forgotPassword|resetPassword|change-password|reset-password-loginid)(\/|$)/i.test(req.originalUrl.split("?")[0])) return next();
+  if (/^\/api\/auth\/(login|registration|forgotPassword|resetPassword|change-password|reset-password-loginid)(\/|$)/i.test(req.originalUrl.split("?")[0])) return next();
   if (!actor.tenantId || !actor.company_code || !actor.loginid) return next();
   try {
     const admin = await PlatformAdminService.getAccess(actor.loginid);
