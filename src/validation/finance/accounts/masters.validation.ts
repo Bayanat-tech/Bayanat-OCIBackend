@@ -54,6 +54,12 @@ export const accountLevelFourFinanceSchema = (
 // Contains comprehensive validation rules for all account related information
 export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
   const schema = Joi.object().keys({
+    ac_code: Joi.string().optional().allow(null).allow(""),
+    ac_type: Joi.string().optional().allow(null).allow(""),
+    ac_active: Joi.string().optional().allow(null).allow(""),
+    ac_status: Joi.string().optional().allow(null).allow(""),
+    exp_alloc: Joi.string().optional().allow(null).allow(""),
+
     //--------contact---------
     // Basic account identification and contact details
     l4_code: Joi.string().required(),        // Required level 4 code identifier
@@ -118,6 +124,6 @@ export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
     exp_type_description: Joi.string().optional().allow(null).allow(""),  // Expense type description
     exp_subtype_description: Joi.string().optional().allow(null).allow(""), // Expense subtype description
     exp_subtype_code: Joi.string().optional().allow(null).allow(""),  // Expense subtype code
-  });
+  }).unknown(true);
   return schema.validate(data);
 };
