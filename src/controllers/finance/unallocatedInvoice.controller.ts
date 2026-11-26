@@ -56,8 +56,11 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
         INV_NO,
         TO_CHAR(MAX(INV_DATE), 'YYYY-MM-DD') AS INV_DATE,
         SUM(LCUR_AMOUNT * SIGN_IND) AS BALANCE_AMOUNT,
+        SUM(NVL(AMOUNT_ORIGIN, AMOUNT) * SIGN_IND) AS BALANCE_AMOUNT_ORIGIN,
         MAX(CURR_CODE) AS ORG_CURR_CODE,
+        MAX(NVL(CURR_CODE_ORIGIN, CURR_CODE)) AS CURR_CODE_ORIGIN,
         MAX(EX_RATE) AS EX_RATE,
+        MAX(NVL(EX_RATE_ORIGIN, EX_RATE)) AS EX_RATE_ORIGIN,
         MAX(DIV_CODE) AS DIV_CODE
       FROM TR_AC_INVDETAIL
       WHERE (COMPANY_CODE = :cc OR :cc IS NULL)
@@ -75,9 +78,17 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
 
     const mappedInvoices = (openResult.rows || []).map((row: any) => {
       const bal = Number(row.BALANCE_AMOUNT || 0);
+      const balOrig = Number(row.BALANCE_AMOUNT_ORIGIN ?? bal);
       return {
         ...row,
-        SIGN_IND: bal > 0 ? 1 : -1,
+        SIGN_IND: bal >= 0 ? 1 : -1,
+        DR_CR: bal >= 0 ? "Dr" : "Cr",
+        RAW_BALANCE: bal,
+        BALANCE_AMOUNT: Math.abs(bal),
+        RAW_BALANCE_ORIGIN: balOrig,
+        BALANCE_AMOUNT_ORIGIN: Math.abs(balOrig),
+        CURR_CODE_ORIGIN: row.CURR_CODE_ORIGIN || row.ORG_CURR_CODE || "INR",
+        EX_RATE_ORIGIN: Number(row.EX_RATE_ORIGIN || row.EX_RATE || 1),
       };
     });
 
@@ -94,7 +105,7 @@ export const getUnallocatedBills = async (req: RequestWithUser, res: Response): 
       data: {
         account: acInfo || { ac_code: acCode, ac_name: "" },
         unallocated_bills: unallocResult.rows || [],
-        open_invoices: openResult.rows || [],
+        open_invoices: mappedInvoices,
       },
     });
   } catch (err: any) {
@@ -599,6 +610,228 @@ export const cancelAllocation = async (req: RequestWithUser, res: Response): Pro
     }
     console.error("Error in cancelAllocation:", err);
     res.status(500).json({ success: false, message: err.message || "Failed to unallocate voucher" });
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch {}
+    }
+  }
+};
+
+/**
+ * Check if the JV for an asset depreciation doc_no is active or canceled in TR_AC_HEADER
+ */
+export const getAssetDepreciationStatus = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant context not found" });
+      return;
+    }
+
+    const companyCode = req.user?.company_code || "BTIND";
+    const docNo = req.query.doc_no ? Number(req.query.doc_no) : 0;
+    const divCode = String(req.query.div_code || "").trim();
+
+    if (!docNo) {
+      res.status(400).json({ success: false, message: "doc_no is required" });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
+
+    // Get REF_DOC_NO from TR_AC_ASSET_DPRCREGISTER
+    const regRes = await conn.execute(
+      `SELECT DISTINCT REF_DOC_NO, REF_DOC_TYPE 
+       FROM TR_AC_ASSET_DPRCREGISTER 
+       WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO = :dn AND (:dc IS NULL OR DIV_CODE = :dc)`,
+      { cc: companyCode, dn: docNo, dc: divCode || null },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!regRes.rows || regRes.rows.length === 0) {
+      res.json({ success: true, exists: false, isJvPosted: false, isJvCanceled: false, jvNo: null });
+      return;
+    }
+
+    let jvNo = (regRes.rows[0] as any).REF_DOC_NO;
+    let isCanceled = false;
+
+    if (!jvNo) {
+      // Check if a JV exists in TR_AC_HEADER matching this month's depreciation allocation
+      const dateRes = await conn.execute(
+        `SELECT DISTINCT TO_CHAR(DOC_DATE, 'mon-yy') AS MON_YY FROM TR_AC_ASSET_DPRCREGISTER WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO = :dn`,
+        { cc: companyCode, dn: docNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const monYy = (dateRes.rows?.[0] as any)?.MON_YY;
+      if (monYy) {
+        const jvSearch = await conn.execute(
+          `SELECT DOC_NO, CANCELED FROM TR_AC_HEADER 
+           WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'JV' AND (:dc IS NULL OR DIV_CODE = :dc) 
+             AND LOWER(REMARKS) LIKE :rem
+           ORDER BY DOC_DATE DESC, DOC_NO DESC`,
+          { cc: companyCode, dc: divCode || null, rem: `%${monYy.toLowerCase()}%` },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (jvSearch.rows && jvSearch.rows.length > 0) {
+          const matchRow = jvSearch.rows[0] as any;
+          jvNo = matchRow.DOC_NO;
+          isCanceled = matchRow.CANCELED === "Y";
+        }
+      }
+    } else {
+      // Check TR_AC_HEADER for this JV's cancellation status
+      const hdrRes = await conn.execute(
+        `SELECT CANCELED FROM TR_AC_HEADER WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'JV' AND DOC_NO = :jn`,
+        { cc: companyCode, jn: jvNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      isCanceled = hdrRes.rows && hdrRes.rows.length > 0 ? (hdrRes.rows[0] as any).CANCELED === "Y" : false;
+    }
+
+    res.json({
+      success: true,
+      exists: true,
+      isJvPosted: Boolean(jvNo),
+      isJvCanceled: isCanceled,
+      jvNo: jvNo || null,
+    });
+  } catch (err: any) {
+    console.error("Error in getAssetDepreciationStatus:", err);
+    res.status(500).json({ success: false, message: err.message || "Failed to check depreciation status" });
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch {}
+    }
+  }
+};
+
+/**
+ * Delete / Rollback an asset depreciation month calculation.
+ * Allowed only if:
+ * 1. No future period depreciation exists (strict reverse order: Dec -> Nov -> Oct).
+ * 2. The linked JV is either NOT posted or has been CANCELED in TR_AC_HEADER.
+ */
+export const deleteAssetDepreciation = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant context not found" });
+      return;
+    }
+
+    const companyCode = req.user?.company_code || "BTIND";
+    const { doc_no, div_code } = req.body;
+    const numDocNo = Number(doc_no);
+
+    if (!numDocNo) {
+      res.status(400).json({ success: false, message: "Valid doc_no is required" });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
+
+    // 1. Check if future period exists
+    const futureCheck = await conn.execute(
+      `SELECT COUNT(*) AS CNT 
+       FROM TR_AC_ASSET_DPRCREGISTER 
+       WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO > :dn AND DIV_CODE = :dc`,
+      { cc: companyCode, dn: numDocNo, dc: div_code || "16" },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const futureCnt = Number((futureCheck.rows?.[0] as any)?.CNT || 0);
+    if (futureCnt > 0) {
+      res.status(400).json({
+        success: false,
+        message: `Cannot delete: Future period depreciation records exist. Please delete later months first (sequential rollback).`,
+      });
+      return;
+    }
+
+    // 2. Check if linked JV is active
+    const jvCheck = await conn.execute(
+      `SELECT DISTINCT r.REF_DOC_NO, h.CANCELED 
+       FROM TR_AC_ASSET_DPRCREGISTER r
+       LEFT JOIN TR_AC_HEADER h ON h.COMPANY_CODE = r.COMPANY_CODE AND h.DOC_TYPE = 'JV' AND h.DOC_NO = r.REF_DOC_NO
+       WHERE r.COMPANY_CODE = :cc AND r.DOC_TYPE = 'ADP' AND r.DOC_NO = :dn`,
+      { cc: companyCode, dn: numDocNo },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (jvCheck.rows && jvCheck.rows.length > 0) {
+      const row = jvCheck.rows[0] as any;
+      if (row.REF_DOC_NO && row.CANCELED !== "Y") {
+        res.status(400).json({
+          success: false,
+          message: `Cannot delete: Linked Journal Voucher (${row.REF_DOC_NO}) is active in General Ledger. Please cancel the JV in Journal Voucher screen first.`,
+        });
+        return;
+      }
+    }
+
+    // 3. Fetch each asset's dprc_amount in this document to roll back MS_AC_ASSET
+    const dprcLines = await conn.execute(
+      `SELECT ASSET_ID, DPRC_AMOUNT 
+       FROM TR_AC_ASSET_DPRCREGISTER 
+       WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO = :dn`,
+      { cc: companyCode, dn: numDocNo },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    for (const line of (dprcLines.rows || []) as any[]) {
+      const assetId = line.ASSET_ID;
+      const amt = Number(line.DPRC_AMOUNT || 0);
+      if (assetId && amt > 0) {
+        // Find previous last_dprc_date before this doc_no
+        const prevDateRes = await conn.execute(
+          `SELECT MAX(DOC_DATE) AS PREV_DATE 
+           FROM TR_AC_ASSET_DPRCREGISTER 
+           WHERE COMPANY_CODE = :cc AND ASSET_ID = :aid AND DOC_NO < :dn`,
+          { cc: companyCode, aid: assetId, dn: numDocNo },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const prevDate = (prevDateRes.rows?.[0] as any)?.PREV_DATE || null;
+
+        await conn.execute(
+          `UPDATE MS_AC_ASSET 
+           SET WD_VALUE = WD_VALUE + :amt, 
+               ACCUDPRC_AMOUNT = GREATEST(0, NVL(ACCUDPRC_AMOUNT, 0) - :amt), 
+               YTD_DPRCN = GREATEST(0, NVL(YTD_DPRCN, 0) - :amt),
+               LAST_DPRC_DATE = :pdate
+           WHERE COMPANY_CODE = :cc AND ASSET_ID = :aid`,
+          { amt: amt, pdate: prevDate, cc: companyCode, aid: assetId }
+        );
+      }
+    }
+
+    // 4. Delete the register records
+    await conn.execute(
+      `DELETE FROM TR_AC_ASSET_DPRCREGISTER 
+       WHERE COMPANY_CODE = :cc AND DOC_TYPE = 'ADP' AND DOC_NO = :dn`,
+      { cc: companyCode, dn: numDocNo }
+    );
+
+    await conn.commit();
+
+    res.json({
+      success: true,
+      message: `Depreciation document ${numDocNo} has been successfully deleted and asset values restored. You can now re-calculate depreciation fresh.`,
+    });
+  } catch (err: any) {
+    if (conn) {
+      try {
+        await conn.rollback();
+      } catch {}
+    }
+    console.error("Error in deleteAssetDepreciation:", err);
+    res.status(500).json({ success: false, message: err.message || "Failed to delete asset depreciation" });
   } finally {
     if (conn) {
       try {

@@ -160,7 +160,25 @@
     runDynamic(req, p, "CR_REPORT_HEADER");
 
   const loadCreditRequestHistory = (req: RequestWithUser, p: ReqParams) =>
-    runDynamic(req, p, "CR_REPORT_HISTORY");
+  runDynamic(req, p, "CR_REPORT_HISTORY");
+
+export const getCreditRequestHistoryApi = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const params = extractParams(req);
+    assertSafe(params);
+    const rows = await loadCreditRequestHistory(req, params);
+    res.json({ success: true, data: rows });
+  } catch (error: any) {
+    console.error("Credit Request history error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to load history",
+    });
+  }
+};
 
   
 
@@ -309,7 +327,7 @@ function renderCreditRequestBody(h: ReportRow, history: ReportRow[]): string {
       '<div class="section-title" style="margin:14px 0 6px 0;font-size:12px;font-weight:700;color:#0b4ca1;">Approval History</div>' +
       '<table class="data-table cr-history">' +
       "<thead><tr>" +
-      "<th>S.No.</th><th>Action</th><th>By</th><th>Date &amp; Time</th>" +
+      "<th>Sr.No</th><th>Action</th><th>By</th><th>Date &amp; Time</th>" +
       '<th class="right">Level</th><th>Next Action By</th><th>Remarks</th>' +
       "</tr></thead>" +
       "<tbody>" + historyRows + "</tbody></table>";

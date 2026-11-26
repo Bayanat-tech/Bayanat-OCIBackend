@@ -2,6 +2,9 @@
 /.env
 /package-lock.json
 *.js
+!scripts/bootstrap-platform-admin.js
+!scripts/configure-platform-admins.js
+!scripts/install-company-subscriptions.js
 /build
 .md
 dockerfile

@@ -78,6 +78,37 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
+
+type KvPair = [string, string];
+
+/** One boxed table: light-blue title row + "Label : value" rows (values bold). */
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box ' + cls + '">' +
+    '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+    "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+/** Two boxes side by side (To wider, Invoice Details narrower). */
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col po-two-col po-two-wide"><tbody><tr>' +
+    "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to") + "</td>" +
+    "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details po-kv-wide") + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -165,6 +196,9 @@ interface InvoiceHeader {
   mobile_no: string;
   e_mail: string;
   payment_terms: string;
+  dlvr_term: string;
+  remarks: string;
+    ref_no: string;
   credit_period: string;
   due_date: any;
   tax_reg_no: string;
@@ -187,6 +221,11 @@ function buildInvoiceHeader(rows: ReportRow[]): InvoiceHeader {
     mobile_no: text(h.mobile_no),
     e_mail: text(h.e_mail),
     payment_terms: text(h.payment_terms),
+    ref_no: text(h.ref_no),
+    // ⚠ Check the "=== GENERATED SQL ===" console log: if the delivery term / remarks columns
+    // have different names, add them to these two lines.
+    dlvr_term: text(h.dlvr_term || h.delivery_term),
+    remarks: text(h.remarks || h.hdr_remarks),
     credit_period: text(h.credit_period),
     due_date: h.due_date,
     tax_reg_no: text(h.tax_reg_no),
@@ -223,6 +262,38 @@ function computeInvoiceTotals(rows: ReportRow[], header: InvoiceHeader) {
 }
 
 // ─── Layout CSS — same visual system as Sales Invoice / PO Order Register ──
+
+// Shared by both invoice reports: centered title, To / Details boxes, grid tables, terms strip
+const PI_BOX_CSS = `
+  .center { text-align: center; }
+  h1.center { margin: 4px 0 12px; font-size: 18px; font-weight: 800; color: #0b4ca1; letter-spacing: 1px; }
+
+  table.grn-two-col { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px 14px; }
+  .grn-two-col > tbody > tr > td { vertical-align: top; padding: 0; }
+  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
+
+  table.pr-kv-box { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; }
+  .pr-kv-box thead th { text-align: left; padding: 4px 10px; color: #0b4ca1; background: #eff6ff; font-size: 11px; font-weight: 700; border-bottom: 2px solid #0b4ca1; }
+  .pr-kv-box tbody td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; overflow-wrap: anywhere; }
+  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
+  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 38%; }
+
+  /* Payment / Delivery / Remarks strip + items table: same grid look */
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-bottom: 12px; }
+  table.po-terms th, table.po-terms td { width: 33.333% !important; text-align: center; overflow-wrap: anywhere; }
+    /* Keep notes + signature together; signature table stays 50/50 */
+  .po-sign-block, .po-sign-block table, .po-sign-block tr, .po-sign-block td, .po-sign-block th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  table.po-sign th, table.po-sign td { width: 50% !important; }
+`;
 
 const PURCHASE_INVOICE_EXTRA_CSS = `
   .doc-title-row {
@@ -310,6 +381,8 @@ const PURCHASE_INVOICE_EXTRA_CSS = `
     .data-table { width: 100%; table-layout: auto; }
   .data-table th, .data-table td { font-size: 10.5px; padding: 6px 5px; }
   .data-table td:nth-child(2) { min-width: 140px; }
+
+  ${PI_BOX_CSS}
 `;
 
 const PURCHASE_INVOICE_TAX_EXTRA_CSS = `${PURCHASE_INVOICE_EXTRA_CSS}
@@ -356,21 +429,9 @@ const PURCHASE_INVOICE_TAX_PORTRAIT_CSS = `
     word-break:break-word;
     overflow-wrap:anywhere;
   }
-`;
 
-// const TAX_TABLE_FIX_HTML_PORTRAIT = `
-// <style>
-//   @page { size: A4 portrait; margin: 10mm; }
-//   body table.data-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; }
-//   body table.data-table th,
-//   body table.data-table td {
-//     font-size: 8.5px !important;
-//     padding: 4px 3px !important;
-//     word-break: break-word;
-//     overflow-wrap: anywhere;
-//     white-space: normal !important;
-//   }
-// </style>`;
+  ${PI_BOX_CSS}
+`;
 
 const TAX_TABLE_FIX_HTML_PORTRAIT = ``;
 
@@ -387,44 +448,122 @@ const TAX_TABLE_FIX_HTML = `
   }
 </style>`;
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+/** Old blue-line title (still used by Account Details). */
+function printMetaHtml(title: string, _subtitle: string, _printDateTime: string, _loginId: string): string {
   return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      
+    <table class="si-top-line"><tbody><tr><td>
+      <h1 class="report-title">${escapeHtml(title)}</h1>
+    </td></tr></tbody></table>`;
+}
+
+/** Centered, uppercase, underlined title (Purchase Order style). */
+function reportTitleHtml(title: string): string {
+  return `<h1 class="center"><u>${escapeHtml(title.toUpperCase())}</u></h1>`;
+}
+
+const INVOICE_NOTES: string[] = [
+  "1. Our order number is to be quoted on all relevant Invoices & Delivery Notes.",
+  "2. Goods once sold will not be taken back.",
+];
+const INVOICE_APPROVAL_TEXT = "This Document Is Electronically Approved";
+
+/** Reference + notes (stay in the page) + signature table (pinned to the footer by the frontend). */
+function invoiceSignHtml(header: InvoiceHeader): string {
+  return `
+    <div class="po-sign-block">
+      ${header.ref_no ? `<div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no)}</span></div>` : ""}
+      <div class="group">${INVOICE_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
+
+      <table class="data-table po-sign">
+        <thead>
+          <tr>
+            <th class="center">For Supplier:</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}:</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <b>I have read &amp; agreed to all terms and conditions.</b>
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+            <td class="center">
+              ${escapeHtml(INVOICE_APPROVAL_TEXT)}
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>`;
 }
 
-function partyInfoBlockHtml(header: InvoiceHeader): string {
+/** PAYMENT TERM | DELIVERY TERM / PERIOD | REMARKS strip. */
+function invoiceTermsStripHtml(header: InvoiceHeader): string {
   return `
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.mobile_no ? `<div class="value-line">Mob: ${escapeHtml(header.mobile_no)}</div>` : ""}
-        ${header.e_mail ? `<div class="value-line">Email: ${escapeHtml(header.e_mail)}</div>` : ""}
-      </div>`;
+    <table class="data-table po-terms">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+/** "To" box rows – empty fields are skipped, the supplier name is always shown. */
+function partyPairs(header: InvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+      ["Mobile", header.mobile_no],
+      ["Email", header.e_mail],
+    ],
+    1
+  );
+}
+
+function invoiceDetailPairs(header: InvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      ["Due Date", header.due_date ? dateText(header.due_date) : ""],
+    ],
+    2
+  );
+}
+
+function invoiceTaxDetailPairs(header: InvoiceHeader): KvPair[] {
+  return [
+    ["Doc No", header.doc_no],
+    ["Date", dateText(header.doc_date)],
+    ["Tax Reg No", header.tax_reg_no],
+  ];
 }
 
 // ─── Body 1: Purchase Invoice ───────────────────────────────────────────
 
-function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
+function renderPurchaseInvoiceBody(rows: ReportRow[], _loginId: string): string {
   const header = buildInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
 
   const bodyRows = rows.map((r, i) => `
   <tr>
     <td>${i + 1}</td>
-    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+  <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
     <td>${escapeHtml(r.p_uom)}</td>
     <td class="right">${qtyFmt(r.quantity)}</td>
     <td class="right">${amtFmt(r.unit_price)}</td>
@@ -433,25 +572,17 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
   </tr>`).join("");
 
   return `
-    ${printMetaHtml("Purchase Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+    ${reportTitleHtml("Purchase Invoice")}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
-      </div>
-    </div>
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceDetailPairs(header))}
 
-    <table class="data-table">
+    ${invoiceTermsStripHtml(header)}
+
+    <table class="data-table pi-items po-items">
       
       <thead>
         <tr>
-          <th>S.No.</th>
+          <th>S.No</th>
           <th>Product / Description</th>
           <th>Unit</th>
           <th class="right">Qty</th>
@@ -468,21 +599,20 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
 <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
 <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
 <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
-    </div>`;
+    </div>
+
+    ${invoiceSignHtml(header)}`;
+    
 }
 
 // ─── Body 2: Purchase Invoice (Tax) ─────────────────────────────────────
 
 function renderPurchaseInvoiceTaxBody(
   rows: ReportRow[],
-  loginId: string,
+  _loginId: string,
   orientation: "portrait" | "landscape" = "landscape"
 ): string {
   const isPortrait = orientation === "portrait";
-
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
 
   const header = buildInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
@@ -494,7 +624,7 @@ function renderPurchaseInvoiceTaxBody(
       return `
         <tr>
           <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(r.quantity)}</td>
           <td class="right">${amtFmt(r.unit_price)}</td>
@@ -509,21 +639,13 @@ function renderPurchaseInvoiceTaxBody(
 
   return `
     ${isPortrait ? TAX_TABLE_FIX_HTML_PORTRAIT : TAX_TABLE_FIX_HTML}
-    ${printMetaHtml("Purchase Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+    ${reportTitleHtml("Purchase Invoice (Tax)")}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        <div class="value-line">Tax Reg No: ${escapeHtml(header.tax_reg_no)}</div>
-      </div>
-    </div>
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceTaxDetailPairs(header))}
 
-        <table class="data-table pi-portrait" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
+    ${invoiceTermsStripHtml(header)}
+
+       <table class="data-table pi-portrait pi-items-tax po-items po-items-ext" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
   <colgroup>
     ${isPortrait
       ? `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:6%">
@@ -535,7 +657,7 @@ function renderPurchaseInvoiceTaxBody(
   </colgroup>
   <thead>
     <tr>
-      <th>S.No.</th>
+      <th>S.No</th>
       <th>Product / Description</th>
       <th>Unit</th>
       <th class="right">Qty</th>
@@ -556,7 +678,9 @@ function renderPurchaseInvoiceTaxBody(
 <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
 <div class="row"><span>TAX Amount</span><span>${amtFmt(t.totalTax)}</span></div>
 <div class="row grand"><span>Net Total</span><span>${amtFmt(netTotal)}</span></div>
-    </div>`;
+    </div>
+
+    ${invoiceSignHtml(header)}`;
 }
 
 // ─── Body 3: Account Details ─────────────────────────────────────────────
@@ -635,18 +759,17 @@ export const getPurchaseInvoiceReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
-  title: "Purchase Invoice",                  
-  headerHtml,
-  bodyHtml,
-  footerHtml,
-  extraCss: PURCHASE_INVOICE_EXTRA_CSS,         
-  autoPrint: false,
-  showPrintButton: true,
-                                               
-});
+      title: "Purchase Invoice",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
@@ -675,18 +798,18 @@ export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res:
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation);
+    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
-  title: "Purchase Invoice (Tax)",
-  headerHtml,
-  bodyHtml,
-  footerHtml,
-  extraCss: orientation === "portrait" ? PURCHASE_INVOICE_TAX_PORTRAIT_CSS : PURCHASE_INVOICE_TAX_EXTRA_CSS,
-  autoPrint: false,
-  showPrintButton: true,
-  ...(orientation === "landscape" ? { orientation } : {}),
-});
+      title: "Purchase Invoice (Tax)",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: orientation === "portrait" ? PURCHASE_INVOICE_TAX_PORTRAIT_CSS : PURCHASE_INVOICE_TAX_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+      ...(orientation === "landscape" ? { orientation } : {}),
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
@@ -712,7 +835,7 @@ export const getPurchaseInvoiceAccountDetailsReportHtml = async (req: RequestWit
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderAccountDetailsBody(rows, params.loginid);
+    const bodyHtml = renderAccountDetailsBody(rows, params.loginid).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Account Details",
@@ -997,6 +1120,11 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
   return zip.toBuffer();
 }
 
+/** Payment / Delivery / Remarks line used in both invoice Excel files. */
+function termsLine(header: InvoiceHeader): string {
+  return `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`;
+}
+
 // ─── Excel builder 1: Purchase Invoice ─────────────────────────────────────
 
 function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
@@ -1016,6 +1144,10 @@ function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
 
+  // Payment Term / Delivery Term / Remarks
+  rows_.push([xlCell(termsLine(header), "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
+
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
@@ -1026,7 +1158,7 @@ function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   rows.forEach((r, i) => {
     rows_.push([
       xlCell(i + 1, "data"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+     xlCell(text(r.full_prod_name || r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
@@ -1077,19 +1209,23 @@ function buildPurchaseInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
+  // Payment Term / Delivery Term / Remarks
+  rows_.push([xlCell(termsLine(header), "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
+
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
     xlCell("S.No", "header"), xlCell("Product / Description", "header"), xlCell("Unit", "header"),
     xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"),
     xlCell("Amount", "header"), xlCell("VAT %", "header"), xlCell("Amount Tax", "header"),
-    xlCell("Amount (Incl. Tax)", "header"),
+    xlCell("Amount (Incl.Tax)", "header"),
   ]);
 
   rows.forEach((r, i) => {
     rows_.push([
       xlCell(i + 1, "data"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+    xlCell(text(r.full_prod_name || r.prod_name), "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),

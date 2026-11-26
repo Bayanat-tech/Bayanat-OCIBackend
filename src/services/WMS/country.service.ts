@@ -10,12 +10,14 @@ export class CountryService {
   static async findDuplicate(params: {
     country_code: string;
     country_name: string;
+    company_code: string;
   }): Promise<CountryMaster | null> {
     const repository = this.getCountryRepository();
     return await repository.findOne({
       where: {
         country_code: params.country_code,
         country_name: params.country_name,
+        company_code: params.company_code,
       },
     });
   }

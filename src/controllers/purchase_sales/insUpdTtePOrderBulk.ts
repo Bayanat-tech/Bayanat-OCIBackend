@@ -251,7 +251,10 @@ export const insUpdTtePOrderBulk = async (
         String(header.tx_compnt_1_expmt ?? ""),
 
       DISCOUNT_SCOOPE:
-        header.discount_scoope ?? null
+        header.discount_scoope ?? null,
+
+        PR_REQ_NO:
+        header.pr_req_no ?? null,
 
     };
     /******************************************************
@@ -460,6 +463,8 @@ export const insUpdTtePOrderBulk = async (
 
       TX_COMPNT_HDISC_AMT_1:
         d.tx_compnt_hdisc_amt_1 ?? 0,
+
+
 
 
 

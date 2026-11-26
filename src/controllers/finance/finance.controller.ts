@@ -261,13 +261,18 @@ export const getFinanceListData = async (
           `
           SELECT ranked.*,
                  COALESCE(
+                   ranked.party_name,
                    ranked.ac_name,
-                   (SELECT m.ac_name 
-                    FROM tr_ac_detail d, MS_ACCODES m 
+                   (SELECT NVL(h.party_name, m.ac_name)
+                    FROM tr_ac_detail d, MS_ACCODES m, tr_ac_header h 
                     WHERE d.company_code = ranked.company_code 
                       AND d.doc_type = ranked.doc_type 
                       AND d.doc_no = ranked.doc_no 
+                      AND d.company_code = m.company_code(+)
                       AND d.ac_code = m.ac_code(+) 
+                      AND d.company_code = h.company_code(+)
+                      AND d.doc_type = h.doc_type(+)
+                      AND d.doc_no = h.doc_no(+)
                       AND ROWNUM = 1)
                  ) AS resolved_ac_name,
                  COALESCE(
@@ -298,7 +303,8 @@ export const getFinanceListData = async (
           Object.keys(row).forEach((k) => {
             if (k.toLowerCase() !== "document_row_rank") mapped[k.toLowerCase()] = (row as any)[k];
           });
-          if (mapped.resolved_ac_name !== undefined) mapped.ac_name = mapped.resolved_ac_name;
+          if (mapped.resolved_ac_name) mapped.ac_name = mapped.resolved_ac_name;
+          else if (mapped.party_name) mapped.ac_name = mapped.party_name;
           if (mapped.resolved_amount !== undefined) mapped.amount = mapped.resolved_amount;
           return mapped;
         });
@@ -703,6 +709,109 @@ export const getFinanceListData = async (
       }
         break;
 
+      case "party_invoices": {
+        const partyCode = String(req.query.code || req.query.ac_code || "").trim();
+        const docType = String(req.query.doc_type || "").trim().toUpperCase();
+        const divCode = String(req.query.div_code || "").trim();
+        const search = String(req.query.search || req.query.query || "").trim();
+
+        let docTypesCondition = `h.doc_type IN ('SI', 'SV', 'IV', 'PI', 'PO')`;
+        if (docType === "CN") {
+          docTypesCondition = `h.doc_type IN ('SI', 'SV', 'IV')`;
+        } else if (docType === "DN") {
+          docTypesCondition = `h.doc_type IN ('PI', 'PO')`;
+        }
+
+        const binds: any = {
+          company_code: requestUser.company_code,
+        };
+
+        let filterConditions = "";
+        if (partyCode) {
+          filterConditions += ` AND (h.ac_code = :party_code OR EXISTS (
+            SELECT 1 FROM TR_AC_DETAIL d2
+            WHERE d2.company_code = h.company_code
+              AND d2.doc_type = h.doc_type
+              AND d2.doc_no = h.doc_no
+              AND d2.ac_code = :party_code
+          ))`;
+          binds.party_code = partyCode;
+        }
+
+        if (divCode && divCode !== "*" && divCode.toUpperCase() !== "ALL") {
+          filterConditions += ` AND (h.div_code = :div_code OR h.div_code IS NULL)`;
+          binds.div_code = divCode;
+        }
+
+        if (search) {
+          filterConditions += ` AND (
+            UPPER(h.doc_no) LIKE UPPER(:search)
+            OR UPPER(h.ref_no) LIKE UPPER(:search)
+            OR UPPER(h.remarks) LIKE UPPER(:search)
+          )`;
+          binds.search = `%${search}%`;
+        }
+
+        const countSql = `
+          SELECT COUNT(*) AS total_count
+          FROM TR_AC_HEADER h
+          WHERE h.company_code = :company_code
+            AND NVL(h.canceled, 'N') = 'N'
+            AND ${docTypesCondition}
+            ${filterConditions}
+        `;
+
+        const countRes = await connection.execute(countSql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        totalCount = Number((countRes.rows?.[0] as any)?.TOTAL_COUNT || 0);
+
+        const querySql = `
+          SELECT 
+            h.doc_no,
+            h.ref_no,
+            NVL(h.ref_no, h.doc_no) AS inv_no,
+            TO_CHAR(h.doc_date, 'YYYY-MM-DD') AS inv_date,
+            h.doc_type,
+            h.curr_code,
+            h.ex_rate,
+            h.remarks,
+            (
+              SELECT NVL(SUM(ABS(d.amount)), 0)
+              FROM TR_AC_DETAIL d
+              WHERE d.company_code = h.company_code
+                AND d.doc_type = h.doc_type
+                AND d.doc_no = h.doc_no
+                AND d.serial_no < 9000
+            ) AS amount
+          FROM TR_AC_HEADER h
+          WHERE h.company_code = :company_code
+            AND NVL(h.canceled, 'N') = 'N'
+            AND ${docTypesCondition}
+            ${filterConditions}
+          ORDER BY h.doc_date DESC, h.doc_no DESC
+          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        `;
+
+        const queryBinds = {
+          ...binds,
+          offset,
+          limit,
+        };
+
+        const dataRes = await connection.execute(querySql, queryBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        fetchedData = (dataRes.rows || []).map((r: any) => ({
+          doc_no: r.DOC_NO || r.doc_no,
+          ref_no: r.REF_NO || r.ref_no,
+          inv_no: r.INV_NO || r.inv_no,
+          inv_date: r.INV_DATE || r.inv_date,
+          doc_type: r.DOC_TYPE || r.doc_type,
+          curr_code: r.CURR_CODE || r.curr_code,
+          ex_rate: Number(r.EX_RATE || r.ex_rate || 1),
+          remarks: r.REMARKS || r.remarks || "",
+          amount: Number(r.AMOUNT || r.amount || 0),
+        }));
+        break;
+      }
+
       case "invoice": {
         const {
           code,
@@ -810,7 +919,7 @@ export const getFinanceListData = async (
                   AND NVL(pay_h.canceled, 'N') = 'N'
                  WHERE d.company_code = h.company_code
                    AND d.div_code     = h.div_code
-                   AND (d.ac_code = h.ac_code OR pay_h.ac_code = h.ac_code)
+                   AND (d.ac_code = :ac_code OR d.ac_code = h.ac_code OR pay_h.ac_code = :ac_code OR pay_h.ac_code = h.ac_code)
                    AND (
                      (h.doc_type IN ('PI', 'PO') AND pay_h.doc_type IN ('BP', 'CP', 'PJV', 'DN', 'JV', 'UJV', 'CN'))
                      OR (h.doc_type IN ('SI', 'SV', 'IV') AND pay_h.doc_type IN ('BR', 'CR', 'RJV', 'CN', 'JV', 'UJV', 'DN'))
@@ -882,7 +991,7 @@ export const getFinanceListData = async (
                 inv_date: hRow.INV_DATE || hRow.inv_date,
                 amount: paidAmt,
                 sign_ind: 1,
-                ac_code: hRow.AC_CODE || hRow.ac_code,
+                ac_code: code || hRow.AC_CODE || hRow.ac_code,
                 company_code: hRow.COMPANY_CODE || hRow.company_code,
                 inv_amt: invAmt,
                 c_curr_code: ' ',

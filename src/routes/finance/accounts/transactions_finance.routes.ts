@@ -27,6 +27,7 @@ import {
   saveCompanyFinanceSetup,
   saveFyPeriod,
   initializeCompanyFinance,
+  initializeCompanyGeneralMastersHandler,
   getDefaultTransactionDetails,
   getPurchaseHeader,
   getTransactionChildren,
@@ -112,7 +113,13 @@ import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interf
 import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
 import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
 
-import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+// import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+
+import { getPurchaseOrderReportCopyExcel, getPurchaseOrderReportCopyHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReportCopy";
+
+
+
+
 import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
 import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml, getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_report";
 import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountDetailsReportHtml, getPurchaseInvoiceReportExcel, getPurchaseInvoiceReportHtml, getPurchaseInvoiceTaxReportExcel, getPurchaseInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoicereports";
@@ -123,7 +130,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
 import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
-import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseGRNReport";
 import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNReport";
 import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransactionReportExcel, getStockTransactionReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/StockReportPS";
 import { exportEmployeeAssessmentReportExcel, getEmployeeAssessmentReport } from "../../../controllers/HR/Hr-Reports/Employeeassessmentreport";
@@ -136,8 +143,16 @@ import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from
 import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
 import { getPrRegisterDetailReportExcel, getPrRegisterDetailReportHtml, getPrRegisterSummaryReportExcel, getPrRegisterSummaryReportHtml } from "../../../controllers/ALMS/PurchaseRequestReports";
 import { getPrRegisterFormReportExcel, getPrRegisterFormReportHtml } from "../../../controllers/ALMS/PRFormReport";
-import { getCreditRequestReportExcel, getCreditRequestReportHtml } from "../../../controllers/ALMS/Creditrequestreports";
+import { getCreditRequestHistoryApi, getCreditRequestReportExcel, getCreditRequestReportHtml } from "../../../controllers/ALMS/Creditrequestreports";
 import { getCRListingReportExcel, getCRListingReportHtml } from "../../../controllers/ALMS/CRListingReport";
+import { getPurchaseQuotationRegisterReportExcel, getPurchaseQuotationRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationListing";
+import { getPurchaseInvoiceListingReportExcel, getPurchaseInvoiceListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoiceListingReport";
+import { getPurchaseGrnListingReportExcel,  } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseGRNListingreport";
+import { getPurchaseGrnListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseGRNListingreport";
+import { getSalesDnListingReportExcel, getSalesDnListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNListing";
+import { getSalesOrderListingReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderListingReport";
+import { getSalesOrderListingReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderListingReport";
+import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
 
 
 
@@ -238,12 +253,19 @@ router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 router.post('/reports/getPLSummaryReport/html', getPLSummaryReportHtml);
 router.post('/reports/getPLSummaryReport/excel', getPLSummaryReportExcel);
 
+// Purchase GRN Print Report Routes
+router.post('/reports/getPurchaseGrnListingReport/html', getPurchaseGrnListingReportHtml);
+router.post('/reports/getPurchaseGrnListingReport/excel', getPurchaseGrnListingReportExcel);
+
 // -----PO and Sales Order Register Report Routes------
 router.post('/reports/PoOrderRegisterReport/html', getPoOrderRegisterReportHtml);
 router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExcel);
 
 router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
 router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
+
+router.post('/reports/PurchaseOrderReportCopy/html', getPurchaseOrderReportCopyHtml);
+router.post('/reports/PurchaseOrderReportCopy/excel', getPurchaseOrderReportCopyExcel);
 
 
 router.post('/reports/PR_RegisterOld_Summary/html', getPrRegisterOldSummaryReportHtml);
@@ -275,6 +297,8 @@ router.post('/reports/CreditRequestReport/html', getCreditRequestReportHtml);
 router.post('/reports/CRListingReport/html', getCRListingReportHtml);
   router.post('/reports/CRListingReport/excel', getCRListingReportExcel);  
 
+  router.post("/reports/CreditRequestHistory",getCreditRequestHistoryApi);
+
 
 
 
@@ -299,7 +323,7 @@ router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
 router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
 router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
 
-//purchase 
+//purchase Quotation report routes
 
 router.post('/reports/PurchaseQuotation/html', getPurchaseQuotationReportHtml);
 router.post('/reports/PurchaseQuotation/excel', getPurchaseQuotationReportExcel);
@@ -309,6 +333,16 @@ router.post('/reports/PurchaseQuotationWithRates/excel',getPurchaseQuotationWith
 
 router.post('/reports/PurchaseQuotationCompare/html',getPurchaseQuotationCompareReportHtml);
 router.post('/reports/PurchaseQuotationCompare/excel',getPurchaseQuotationCompareReportExcel);
+
+//PQ Listing
+router.post('/reports/PurchaseQuotationRegister/html',getPurchaseQuotationRegisterReportHtml);
+router.post('/reports/PurchaseQuotationRegister/excel',getPurchaseQuotationRegisterReportExcel);
+
+
+
+// Purchase Invoice Listing Report Routes
+router.post('/reports/PurchaseInvoiceListingReport/html',getPurchaseInvoiceListingReportHtml);
+router.post('/reports/PurchaseInvoiceListingReport/excel',getPurchaseInvoiceListingReportExcel);
 
 
 
@@ -322,8 +356,10 @@ router.post('/reports/SalesInvoiceTaxReport/excel',getSalesInvoiceTaxReportExcel
 router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsReportHtml);
 router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
 
+// Sales DN report routes
 
-
+router.post('/reports/SalesDNListingReport/html', getSalesDnListingReportHtml);
+router.post('/reports/SalesDNListingReport/excel', getSalesDnListingReportExcel);
 
 
 // sales order report routes
@@ -332,6 +368,10 @@ router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
 router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
 
 
+
+// Sales Order Register Report Routes
+router.post('/reports/SalesOrderRegisterReport/html', getSalesOrderListingReportHtml);
+router.post('/reports/SalesOrderRegisterReport/excel', getSalesOrderListingReportExcel);
 
 //--------------GrnPrintReport----------------
 router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
@@ -448,6 +488,7 @@ router.get("/company-setup", getCompanyFinanceSetup);
 router.post("/company-setup", saveCompanyFinanceSetup);
 router.post("/company-setup/fy-period", saveFyPeriod);             
 router.post("/initialize_company_finance", initializeCompanyFinance);
+router.post("/initialize_company_general_masters", initializeCompanyGeneralMastersHandler);
 router.get("/default_details", getDefaultTransactionDetails);  
 router.get("/cheque_detail", getChequeDetail);                 
 router.get("/header/:doc_no", getChequePaymentHeader);   

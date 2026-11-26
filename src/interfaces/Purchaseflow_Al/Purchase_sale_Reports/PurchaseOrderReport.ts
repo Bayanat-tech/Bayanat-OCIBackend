@@ -82,6 +82,8 @@ function grossValue(r: ReportRow): number {
   return num(r.quantity) * num(r.unit_price);
 }
 
+const minifyHtml = (html: string) => html.replace(/>\s+</g, "><").trim();
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -165,6 +167,8 @@ interface PoHeader {
   cancelled: boolean;
   total_tx_compnt_amt_1: number;
   logo_url: string | null;
+ remarks: string;
+  ref_no: string;
 }
 
 function buildHeader(rows: ReportRow[]): PoHeader {
@@ -187,6 +191,8 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
     logo_url: h.logo_url || null,
+    remarks: text(h.remarks || "-"),
+    ref_no: text(h.ref_no),
   };
 }
 
@@ -205,6 +211,7 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalAmount = round2(rows.reduce((s, r) => s + grossValue(r), 0));
 
 
+
   const discount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
 
   const exclusiveVat = round2(totalAmount - discount);
@@ -219,32 +226,45 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
 
 const REPORT_TITLE = "Purchase Order";
 const REPORT_SUBTITLE = "PO Document";
+const PO_NOTES: string[] = [
+  "1. Our order number is to be quoted on all relevant Invoices.",
+  
+];
+
+const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
 
 /** PO-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_EXTRA_CSS = `
   .doc-title-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    justify-content: center !important;
+    align-items: center;
+    text-align: center !important;
     margin: 4px 0 12px 0;
   }
+
+  .doc-title-row > div {
+    text-align: center !important;
+    width: 100%;
+  }
+
   .doc-title-row h1 {
     margin: 0;
     font-size: 18px;
     font-weight: 800;
     color: #0b4ca1;
+    text-align: center !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
   }
+
   .doc-title-row .doc-sub {
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
+    text-align: center !important;
   }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
+
   .status-badge {
     display: inline-block;
     margin-top: 4px;
@@ -253,32 +273,73 @@ const PO_EXTRA_CSS = `
     font-size: 11px;
     font-weight: 600;
   }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
+  .status-CANCELLED {
+    background: #fee2e2;
+    color: #dc2626;
   }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    background: #f8fafc;
+
+  /* Two separate boxes */
+  table.grn-two-col {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 10px 0;
+    margin: 0 -10px 14px;
   }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 6px;
+
+  .grn-two-col > tbody > tr > td {
+    width: 50%;
+    vertical-align: top;
+    padding: 0;
+  }
+
+    table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
+
+  /* Individual box */
+  table.pr-kv-box {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    font-size: 11px;
+  }
+
+  .pr-kv-box thead th {
+    text-align: left;
+    padding: 8px 10px;
+    color: #0b4ca1;
+    background: #eff6ff;
+    font-size: 11px;
     font-weight: 700;
+    border-bottom: 2px solid #0b4ca1;
   }
-  .info-block .value-line {
-    font-size: 12px;
+
+  .pr-kv-box tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    vertical-align: top;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .pr-kv-box tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .pr-kv-box tbody td:first-child {
+    width: 34%;
+  }
+
+  .pr-kv-box tbody td:nth-child(2) {
+    width: 12px;
+    text-align: center;
+  }
+
+  .pr-kv-box tbody td:last-child {
     color: #0f172a;
-    line-height: 1.55;
   }
 
   table.data-table {
@@ -287,6 +348,7 @@ const PO_EXTRA_CSS = `
     font-size: 11px;
     margin-top: 4px;
   }
+
   table.data-table thead th {
     background: #f1f5f9;
     color: #334155;
@@ -295,19 +357,28 @@ const PO_EXTRA_CSS = `
     font-weight: 700;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: 0;
     border-bottom: 1px solid #cbd5e1;
   }
-  table.data-table thead th.right { text-align: right; }
+
+  table.data-table thead th.right {
+    text-align: right;
+  }
+
   table.data-table tbody td {
     padding: 7px 10px;
-    border: 0;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: top;
   }
-  table.data-table .right { text-align: right; font-variant-numeric: tabular-nums; }
-  table.data-table .amount { font-weight: 600; color: #065f46; }
+
+  table.data-table .right {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.data-table .amount {
+    font-weight: 600;
+    color: #065f46;
+  }
 
   .totals-box {
     margin-top: 16px;
@@ -317,6 +388,7 @@ const PO_EXTRA_CSS = `
     border-radius: 10px;
     overflow: hidden;
   }
+
   .totals-box .row {
     display: flex;
     justify-content: space-between;
@@ -324,6 +396,7 @@ const PO_EXTRA_CSS = `
     font-size: 12px;
     border-bottom: 1px solid #f1f5f9;
   }
+
   .totals-box .row.grand {
     background: #0b4ca1;
     color: #fff;
@@ -331,12 +404,190 @@ const PO_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
+
+   /* Payment / Delivery / Project strip */
+  table.po-terms-strip {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse !important;
+    border: 1px solid #4a6fa5 !important;
+    margin: 0 0 14px 0;
+  }
+  table.po-terms-strip thead th,
+  table.po-terms-strip tbody td {
+    border: 1px solid #4a6fa5 !important;
+    border-top: 1px solid #4a6fa5 !important;
+    border-bottom: 1px solid #4a6fa5 !important;
+    border-left: 1px solid #4a6fa5 !important;
+    border-right: 1px solid #4a6fa5 !important;
+    text-align: center !important;
+    color: #0f172a !important;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  table.po-terms-strip thead th {
+    background: #a4c9f4 !important;
+    font-weight: 700;
+    padding: 7px 8px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  table.po-terms-strip tbody td {
+    background: #ffffff !important;
+    line-height: 1.4;
+    padding: 10px 8px;
+  }
+
   .empty-lines {
     text-align: center;
     padding: 40px 20px;
     color: #64748b;
   }
+
+    /* Keep Reference + notes + signature together, never split across pages */
+  .po-sign-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .po-sign-block table,
+  .po-sign-block tr,
+  .po-sign-block td,
+  .po-sign-block th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Do not repeat the header row on the next page */
+  .po-sign-block thead {
+    display: table-row-group !important;
+  }
+
+    /* Terms strip + items table: same grid look */
+  table.po-terms,
+  table.po-items {
+    border-collapse: collapse;
+  }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td {
+    border: 1px solid #4a6fa5 !important;
+  }
+  table.po-terms {
+    margin-bottom: 12px;
+  }
+
+    .pr-kv-box.po-kv-to thead th,
+  .pr-kv-box.po-kv-details thead th {
+    padding: 4px 10px;
+  }
+      table.po-two-col > tbody > tr > td:first-child { width: 70% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 30% !important; }
+
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-bottom: 12px; }
+
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 32%; }
+  .pr-kv-box.po-kv-to thead th,
+  .pr-kv-box.po-kv-details thead th { padding: 4px 10px; }
 `;
+
+
+type KvPair = [string, string];
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
+  const rows = pairs
+    .map(
+      ([key, value]) => `
+        <tr>
+          <td>${escapeHtml(key)}</td>
+          <td>:</td>
+          <td><b>${escapeHtml(value || "-")}</b></td>
+        </tr>
+      `
+    )
+    .join("");
+
+  return `
+        <table class="pr-kv-box ${cls}">
+      <thead>
+        <tr>
+          <th colspan="3">${escapeHtml(title)}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function kvTwoBoxesHtml(
+  leftTitle: string,
+  left: KvPair[],
+  rightTitle: string,
+  right: KvPair[]
+): string {
+  return `
+      <table class="grn-two-col po-two-col">
+      <tbody>
+        <tr>
+                   <td>${kvBoxHtml(leftTitle, left, "po-kv-to")}</td>
+          <td>${kvBoxHtml(rightTitle, right, "po-kv-details")}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, value], index) =>
+    index < required || !!text(value).trim()
+  );
+
+function poPartyPairs(header: PoHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Supplier", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+    ],
+    1
+  );
+}
+
+
+function poTermsStripHtml(header: PoHeader): string {
+  return `
+   <table class="data-table po-terms">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+function poDetailPairs(header: PoHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+    
+
+    ],
+    3
+  );
+}
 
 /** Body only – no full HTML document */
 function renderPoBody(rows: ReportRow[], loginId: string): string {
@@ -357,63 +608,43 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       (r, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""
-        }</td>
+     <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
       <td>${escapeHtml(r.p_uom)}</td>
       <td class="right">${qtyFmt(r.quantity)}</td>
       <td class="right">${amtFmt(r.unit_price)}</td>
-<td class="right amount">${amtFmt(grossValue(r))}</td>
-<td class="right">${amtFmt(lineDiscOf(r))}</td>
-<td class="right">\u2014</td>
+      <td class="right amount">${amtFmt(grossValue(r))}</td>
+      <td class="right">${amtFmt(lineDiscOf(r))}</td>
+      
     </tr>`
     )
     .join("");
 
   return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(REPORT_TITLE)}</h1>
-        <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-        ${header.cancelled
-      ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>`
-      : ""
-    }
-      </div>
-      
-    </div>
+    <h1 class="center"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}${header.cancelled ? " (CANCELLED)" : ""}</u></h1>
 
-    <div class="info-grid">
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-      </div>
-      <div class="info-block">
-        <div class="label">PO Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        <div class="value-line">Delivery Term: ${escapeHtml(header.dlvr_term)}</div>
-      </div>
-    </div>
+    ${kvTwoBoxesHtml(
+    "To",
+    poPartyPairs(header),
+    "PO Details",
+    poDetailPairs(header)
+  )}
+
+    ${poTermsStripHtml(header)}
 
     ${rows.length === 0
       ? `<div class="empty-lines">No line items found for this PO.</div>`
       : `
-      <table class="data-table">
+      <table class="data-table po-items">
         <thead>
           <tr>
             <th>S.No.</th>
             <th>Product / Description</th>
-            <th>Unit</th>
+            <th>UOM</th>
             <th class="right">Qty</th>
             <th class="right">Unit Rate</th>
             <th class="right">Gross Value</th>
             <th class="right">Disc</th>
-            <th class="right">VAT Type</th>
+           
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -425,9 +656,38 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
         <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
         <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
         <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
-        <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
+      <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
       </div>`
     }
+
+            <div class="po-sign-block" style="break-inside:avoid;page-break-inside:avoid;">
+      <div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no || "as per above")}</span></div>
+      <div class="group">${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
+
+     <table class="data-table po-sign" style="break-inside:avoid;page-break-inside:avoid;">
+        <thead>
+          <tr>
+            <th class="center">For Supplier:</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}:</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <b>I have read &amp; agreed to all terms and conditions.</b>
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+            <td class="center">
+              ${escapeHtml(PO_APPROVAL_TEXT)}
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   `;
 }
 
@@ -446,7 +706,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 8; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, VAT Type
+  const COL_COUNT = 7; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, Disc
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -454,43 +714,52 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const blank = (): Row => new Array(COL_COUNT).fill(null);
+  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
+  const mergeFull = () =>
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null, null]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  rows_.push(fullRow(cell(`${REPORT_TITLE} - ${header.doc_no}`, "title")));
+  mergeFull();
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null, null]);
+  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push([
     cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
-    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null, null,
+    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
-  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 7 } });
+  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: COL_COUNT - 1 } });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(fullRow(cell(
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(blank());
 
   rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
+    cell("S.No", "header"), cell("Product / Description", "header"), cell("UOM", "header"),
     cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
-    cell("Disc", "header"), cell("VAT Type", "header"),
+    cell("Disc", "header"),
   ]);
 
   rows.forEach((r, i) => {
     rows_.push([
       cell(i + 1, "data"),
-      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      cell(text(r.prod_name), "data"),
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
       cell(grossValue(r), "dataNum"),
       cell(lineDiscOf(r), "dataNum"),
-      cell("", "data"), // TODO: VAT type column not available yet
     ]);
   });
 
-  rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push(blank());
 
   const totalRows: [string, number][] = [
     ["Total Quantity", totals.totalQty],
@@ -501,15 +770,36 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   ];
   totalRows.forEach(([label, value]) => {
     const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null, null]);
+    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
     merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
   });
 
   const gtRow = rows_.length;
-  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null, null]);
+  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
 
-  rows_.push([null, null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  rows_.push(blank());
+
+  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
+  mergeFull();
+
+  PO_NOTES.forEach((n) => {
+    rows_.push(fullRow(cell(n, "meta")));
+    mergeFull();
+  });
+
+  rows_.push(blank());
+  const sRow = rows_.length;
+  rows_.push([
+    cell("For Supplier — Signature / Date", "meta"), null, null, null,
+    cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta"), null, null,
+  ]);
+  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 3 } });
+  merges.push({ s: { r: sRow, c: 4 }, e: { r: sRow, c: COL_COUNT - 1 } });
+
+  const footRow: Row = blank();
+  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
+  rows_.push(footRow);
 
   // ── Style registration engine (identical to PO Order Register) ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
@@ -761,7 +1051,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
 // ─── Route handlers ─────────────────────────────────────────────────────────
 
-export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseOrderReportHtml  = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseOrderData(req, params);
@@ -782,7 +1072,7 @@ export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Resp
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderPoBody(rows, params.loginid);
+    const bodyHtml = minifyHtml(renderPoBody(rows, params.loginid));
 
     const html = buildReportDocument({
       title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,

@@ -6,10 +6,10 @@ import { escapeHtml } from "../../../purchase_sales/report/common/formatters";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../common/report_common";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 
-const money = (v: any) => {
+const money = (v: any, decimals = 2) => {
   const n = Number(v);
-  if (!Number.isFinite(n)) return "0.000";
-  return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  if (!Number.isFinite(n)) return (0).toFixed(decimals);
+  return n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 };
 const text = (v: any) => (v == null ? "" : String(v));
 const formatDateStr = (v: any) => {
@@ -18,10 +18,10 @@ const formatDateStr = (v: any) => {
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
 const num = (v: any) => Number(v) || 0;
-const moneyBalance = (v: any) => {
+const moneyBalance = (v: any, decimals = 2) => {
   const n = Number(v);
-  if (!Number.isFinite(n)) return "0.000";
-  const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  if (!Number.isFinite(n)) return (0).toFixed(decimals);
+  const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return n < 0 ? `(${abs})` : abs;
 };
 
@@ -95,6 +95,17 @@ export const AcStatementReport = async (req: Request, res: Response): Promise<vo
       return;
     }
     connection = await TenantManager.getConnection(tenantId);
+
+    let decimals = 2;
+    try {
+      const decRes = await connection.execute(
+        `SELECT AMOUNT_DECIMAL_NOS FROM MS_AC_SETUP WHERE COMPANY_CODE = :cc AND ROWNUM = 1`,
+        { cc: code1 || "BSG" }
+      );
+      if (decRes.rows?.length && (decRes.rows[0] as any)[0] != null) {
+        decimals = Number((decRes.rows[0] as any)[0]);
+      }
+    } catch (e) {}
 
     const binds: any = {
       parameter,
@@ -193,9 +204,9 @@ export const AcStatementReport = async (req: Request, res: Response): Promise<vo
             <td class="center">${escapeHtml(text(r.doc_type))}</td>
             <td class="wrap">${escapeHtml(text(r.doc_no))}</td>
             <td class="center">${formatDateStr(r.doc_date)}</td>
-            <td class="num">${debit === 0 ? "0.000" : money(debit)}</td>
-            <td class="num">${credit === 0 ? "0.000" : money(credit)}</td>
-            <td class="num ${runBal < 0 ? "neg-balance" : ""}">${moneyBalance(runBal)}</td>
+            <td class="num">${debit === 0 ? (0).toFixed(decimals) : money(debit, decimals)}</td>
+            <td class="num">${credit === 0 ? (0).toFixed(decimals) : money(credit, decimals)}</td>
+            <td class="num ${runBal < 0 ? "neg-balance" : ""}">${moneyBalance(runBal, decimals)}</td>
           </tr>`;
       });
 
@@ -203,9 +214,9 @@ export const AcStatementReport = async (req: Request, res: Response): Promise<vo
       tableBodyHtml += `
         <tr class="ac-total-row">
           <td colspan="6"></td>
-          <td class="num"><strong>${money(acDebitTotal)}</strong></td>
-          <td class="num"><strong>${money(acCreditTotal)}</strong></td>
-          <td class="num ${acNetBalance < 0 ? "neg-balance" : ""}"><strong>${moneyBalance(acNetBalance)}</strong></td>
+          <td class="num"><strong>${money(acDebitTotal, decimals)}</strong></td>
+          <td class="num"><strong>${money(acCreditTotal, decimals)}</strong></td>
+          <td class="num ${acNetBalance < 0 ? "neg-balance" : ""}"><strong>${moneyBalance(acNetBalance, decimals)}</strong></td>
         </tr>
         <tr><td colspan="9" style="height:8px;border:none;background:transparent;"></td></tr>`;
     });

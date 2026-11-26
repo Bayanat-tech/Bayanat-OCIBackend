@@ -3,6 +3,21 @@ import oracledb from "oracledb";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { scopeAlmsApprovalQuery } from "../../utils/workflowVisibility";
+import { assertSafeDynamicSecuritySql } from "../../middleware/companySecurity.middleware";
+
+const readClob = async (lob: oracledb.Lob | null | undefined): Promise<string> => {
+  if (!lob) return "";
+  try {
+    return (await lob.getData()) as string;
+  } finally {
+    lob.destroy();
+  }
+};
+
+type EdiInvalidRow = {
+  row: number; // 1-based position in the submitted rows
+  errors: { column: string; value: string | null; message: string }[];
+};
 
 export const procBuildCommonProcedurewmc = async (
   req: Request,
@@ -220,6 +235,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
 
     try {
       // Execute the DELETE SQL
+      assertSafeDynamicSecuritySql(req, rawSql);
       await connection.execute(rawSql, [], { autoCommit: true });
 
       res.json({
@@ -430,6 +446,7 @@ export const proc_build_dynamic_ins_upd_common = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1093,6 +1110,7 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
     // Execute INSERT / UPDATE
+    assertSafeDynamicSecuritySql(req, dynamicSql);
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
@@ -1117,3 +1135,97 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     }
   }
 };
+
+// ---- add to the same controller file as proc_build_dynamic_sql_common20 ----
+export const proc_build_dynamic_edi_save = async (req: Request, res: Response): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+
+  try {
+    const { ediKey, loginid, rows } = req.body;
+
+    if (!ediKey || !Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ success: false, message: "ediKey and rows are required" });
+      return;
+    }
+
+    let tenantId: string | undefined;
+    try { tenantId = getCurrentTenantId(); } catch (e) { }
+    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
+
+    // 1) procedure returns INSERT/UPDATE statements (CHR(30) separated)
+    //    plus a JSON array of rows whose parent-table values do not exist
+    const result = await connection.execute(
+      `
+      DECLARE
+        v_sql CLOB;
+        v_err CLOB;
+      BEGIN
+        PROC_BUILD_DYNAMIC_EDI_SAVE(:ediKey, :rows, v_sql, v_err);
+        :out_sql := v_sql;
+        :out_err := v_err;
+      END;
+      `,
+      {
+        ediKey: String(ediKey),
+        rows: { dir: oracledb.BIND_IN, type: oracledb.CLOB, val: JSON.stringify(rows) },
+        out_sql: { dir: oracledb.BIND_OUT, type: oracledb.CLOB },
+        out_err: { dir: oracledb.BIND_OUT, type: oracledb.CLOB },
+      }
+    );
+
+    const outBinds = result.outBinds as any;
+    const allSql = await readClob(outBinds?.out_sql);
+    const errJson = await readClob(outBinds?.out_err);
+
+    // 2) any invalid row -> nothing is saved, rows are returned to the frontend
+    let invalidRows: EdiInvalidRow[] = [];
+    if (errJson) {
+      try { invalidRows = JSON.parse(errJson); } catch { invalidRows = []; }
+    }
+    if (invalidRows.length) {
+      res.status(422).json({
+        success: false,
+        message: `${invalidRows.length} row(s) contain values that do not exist in the master tables`,
+        invalidRows,
+      });
+      return;
+    }
+
+    const statements = allSql.split("\x1E").map((s: string) => s.trim()).filter(Boolean);
+    if (!statements.length) {
+      res.status(400).json({ success: false, message: "Procedure returned no SQL" });
+      return;
+    }
+
+    // 3) run all in one transaction (all rows saved or none)
+    let current = 0;
+    try {
+      for (const stmt of statements) {
+        current++;
+        assertSafeDynamicSecuritySql(req, stmt);
+        await connection.execute(stmt, [], { autoCommit: false });
+      }
+      await connection.commit();
+    } catch (execErr: any) {
+      await connection.rollback().catch(() => { });
+      console.error(`EDI save failed at row ${current}:`, execErr);
+      res.status(500).json({ success: false, message: "Failed to save EDI rows", details: `Row ${current}: ${execErr.message}` });
+      return;
+    }
+
+    res.json({ success: true, message: `${statements.length} rows saved successfully`, count: statements.length });
+  } catch (error: any) {
+    console.error("Oracle Error:", error);
+    res.status(500).json({ success: false, message: "Failed to build EDI save statements", details: error.message });
+  } finally {
+    if (connection) await connection.close().catch(() => { });
+  }
+};
+
+// body limit for big files: app.use(express.json({ limit: "20mb" }));

@@ -7,15 +7,17 @@ import {
   IAccountLevelTwoAttributes
 } from "../../../interfaces/finance/accounts/masters/actree_finance.interface";
 
-// Validation schema for level three finance accounts
+// Validation schema for level two finance accounts
 export const accountLevelTwoFinanceSchema = (
   data: IAccountLevelTwoAttributes
 ) => {
   const schema = Joi.object().keys({
-    l2_description: Joi.string().required(),
+    l2_description: Joi.string().optional().allow(null, ""),
+    l2_name: Joi.string().optional().allow(null, ""),
     l1_code: Joi.string().required(),
-    company_code: Joi.string().optional().allow(null,""),
-  });
+    l2_code: Joi.string().optional().allow(null, ""),
+    company_code: Joi.string().optional().allow(null, ""),
+  }).or("l2_description", "l2_name");
   return schema.validate(data);
 };
 
@@ -26,10 +28,11 @@ export const accountLevelThreeFinanceSchema = (
 ) => {
   const schema = Joi.object().keys({
     l3_code: Joi.string().optional().allow(null, ""),
-    l3_description: Joi.string().required(),
+    l3_description: Joi.string().optional().allow(null, ""),
+    l3_name: Joi.string().optional().allow(null, ""),
     l2_code: Joi.string().required(),
-    company_code: Joi.string().optional().allow(null,""),
-  });
+    company_code: Joi.string().optional().allow(null, ""),
+  }).or("l3_description", "l3_name");
   return schema.validate(data);
 };
 
@@ -41,12 +44,15 @@ export const accountLevelFourFinanceSchema = (
   const schema = Joi.object().keys({
     l3_code: Joi.string().required(),
     l4_code: Joi.string().optional().allow(null, ""),
-    l4_description: Joi.string().required(),
-    company_code: Joi.string().optional().allow(null,""),
+    l4_description: Joi.string().optional().allow(null, ""),
+    l4_name: Joi.string().optional().allow(null, ""),
+    company_code: Joi.string().optional().allow(null, ""),
     l4_type: Joi.string().valid("Y", "N").optional().allow(null).allow(""), // Optional type flag
-    l4_job: Joi.string().valid("Y", "N").optional().allow(""),  // Optional job flag
-    l4_bill: Joi.string().valid("Y", "N").optional().allow(""), // Optional billing flag
-  });
+    l4_job: Joi.string().valid("Y", "N").optional().allow(null).allow(""),  // Optional job flag
+    l4_bill: Joi.string().valid("Y", "N").optional().allow(null).allow(""), // Optional billing flag
+    l4_dept: Joi.string().optional().allow(null, ""),
+    l4_pl_code: Joi.string().optional().allow(null, ""),
+  }).or("l4_description", "l4_name");
   return schema.validate(data);
 };
 
@@ -54,6 +60,12 @@ export const accountLevelFourFinanceSchema = (
 // Contains comprehensive validation rules for all account related information
 export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
   const schema = Joi.object().keys({
+    ac_code: Joi.string().optional().allow(null).allow(""),
+    ac_type: Joi.string().optional().allow(null).allow(""),
+    ac_active: Joi.string().optional().allow(null).allow(""),
+    ac_status: Joi.string().optional().allow(null).allow(""),
+    exp_alloc: Joi.string().optional().allow(null).allow(""),
+
     //--------contact---------
     // Basic account identification and contact details
     l4_code: Joi.string().required(),        // Required level 4 code identifier
@@ -118,6 +130,6 @@ export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
     exp_type_description: Joi.string().optional().allow(null).allow(""),  // Expense type description
     exp_subtype_description: Joi.string().optional().allow(null).allow(""), // Expense subtype description
     exp_subtype_code: Joi.string().optional().allow(null).allow(""),  // Expense subtype code
-  });
+  }).unknown(true);
   return schema.validate(data);
 };

@@ -1,3 +1,5 @@
+import { PlatformAdminService, PlatformError } from '../../services/Security/platformAdmin.service';
+import { operationTemplate } from '../../services/Security/operationTemplate.service';
 import { Response } from "express";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import constants from "../../helpers/constants";
@@ -22,11 +24,9 @@ export const getSecRollFunctionAccessUser = async (
       return;
     }
 
-    const userAccess = await AccessMasterService.findUserAccess(
-      loginid as string,
-      Number(serial_no_or_role_id),
-      req.user.company_code
-    );
+    const userAccess = (await PlatformAdminService.tenantQuery(String(req.user.tenantId || ''),
+      'SELECT * FROM #SCHEMA#.SEC_ROLE_FUNCTION_ACCESS_USER WHERE UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND SERIAL_NO_OR_ROLE_ID=:serial AND COMPANY_CODE=:company',
+      {loginid:String(loginid),serial:Number(serial_no_or_role_id),company:req.user.company_code}))[0];
 
     if (!userAccess) {
       res.status(constants.STATUS_CODES.OK).json({
@@ -174,9 +174,7 @@ export const getOperationalMaster = async (
       return;
     }
 
-    const operations = await AccessMasterService.getOperationsByModule(
-      Number(serial_no)
-    );
+    const operations = await operationTemplate(String(req.user?.tenantId || ''), String(req.user?.company_code || ''), Number(serial_no));
 
     if (operations.length === 0) {
       res.status(constants.STATUS_CODES.OK).json({
@@ -193,7 +191,7 @@ export const getOperationalMaster = async (
     });
   } catch (error: any) {
     console.error("Error in getOperationalMaster:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    res.status(error instanceof PlatformError ? error.status : constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: error.message,
     });
@@ -281,7 +279,8 @@ export const deleteSecRollFunctionAccessUser = async (
 
     const isDeleted =
       await AccessMasterService.deleteUserAccessesWithTransaction(
-        screen_details
+        screen_details,
+        req.user.company_code
       );
 
     if (!isDeleted) {
