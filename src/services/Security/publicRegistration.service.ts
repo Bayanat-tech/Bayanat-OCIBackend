@@ -182,9 +182,9 @@ export class PublicRegistrationService {
       const state=await c.execute<any>("SELECT SETUP_STATUS FROM CUSTOMERS.SEC_PUBLIC_SIGNUP WHERE EMAIL=:email AND STATE='COMPLETE'",{email:p.adminEmail},options);
       if(state.rows?.[0]?.SETUP_STATUS==='READY')return;
       if(p.quote.modules.some((m:string)=>['FINANCE','ACCOUNTS','AC'].includes(m))) {
-        const result=await c.execute<any>(`BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:company,NULL,:actor,:status,:msg); END;`,{company:p.company,actor:p.loginid,status:{dir:oracledb.BIND_OUT,type:oracledb.STRING,maxSize:100},msg:{dir:oracledb.BIND_OUT,type:oracledb.STRING,maxSize:4000}});
+        const result=await c.execute<any>(`BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(p_new_company=>:company,p_source_company=>NULL,p_currency=>:currency,p_loginid=>:actor,p_status=>:status,p_message=>:msg); END;`,{company:p.company,currency:p.currency||null,actor:p.loginid||'ADMIN',status:{dir:oracledb.BIND_OUT,type:oracledb.STRING,maxSize:100},msg:{dir:oracledb.BIND_OUT,type:oracledb.STRING,maxSize:4000}});
         const status=String(result.outBinds?.status||'').toUpperCase();
-        if(['E','ERROR','FAILED','FAILURE','N','0'].includes(status))throw new Error('Finance setup failed');
+        if(['E','ERROR','FAILED','FAILURE','N','0'].includes(status))throw new Error('Finance setup failed: '+(result.outBinds?.msg||status));
       }
       const start=billingToday(),next=periodStart(start,'MONTHLY',1),due=addDays(start,7);
       // Delayed setup must not consume the customer's trial or invoice period.

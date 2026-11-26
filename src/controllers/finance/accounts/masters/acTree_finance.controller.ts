@@ -221,6 +221,9 @@ export const createLevel2AcTreeNode = async (req: RequestWithUser, res: Response
   try {
     const requestUser: IUser = req.user;
     const { company_code, loginid } = requestUser;
+    if (!req.body.l2_description && req.body.l2_name) {
+      req.body.l2_description = req.body.l2_name;
+    }
     const { l1_code, l2_description } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -485,6 +488,9 @@ export const createLevel3AcTreeNode = async (req: RequestWithUser, res: Response
   try {
     const requestUser: IUser = req.user;
     const { company_code, loginid } = requestUser;
+    if (!req.body.l3_description && req.body.l3_name) {
+      req.body.l3_description = req.body.l3_name;
+    }
     const { l2_code, l3_description } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -753,6 +759,9 @@ export const createLevel4AcTreeNode = async (req: RequestWithUser, res: Response
   let connection: oracledb.Connection | undefined;
   try {
     const { company_code, loginid } = req.user;
+    if (!req.body.l4_description && req.body.l4_name) {
+      req.body.l4_description = req.body.l4_name;
+    }
     const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept, l4_pl_code } = req.body;
     const tenantId = getCurrentTenantId();
     

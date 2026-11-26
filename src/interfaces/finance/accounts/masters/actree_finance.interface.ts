@@ -1,33 +1,36 @@
 export interface IAccountLevelFourAttributes {
-  company_code: string;
-  l4_code: string;
-  l4_description: string;
-  l4_type: string;
-  l4_job: string;
-  l4_dept: string;
-  l4_bill: string;
-  l4_pl_code: string;
+  company_code?: string;
+  l4_code?: string;
+  l4_description?: string;
+  l4_name?: string;
+  l4_type?: string;
+  l4_job?: string;
+  l4_dept?: string;
+  l4_bill?: string;
+  l4_pl_code?: string;
   l3_code: string;
 }
 export interface IAccountLevelThreeAttributes {
-  company_code: string;
-  l3_code: string;
-  l3_description: string;
+  company_code?: string;
+  l3_code?: string;
+  l3_description?: string;
+  l3_name?: string;
   l2_code: string;
   updated_at?: Date;
   created_at?: Date;
-  updated_by: string;
-  created_by: string;
+  updated_by?: string;
+  created_by?: string;
 }
 export interface IAccountLevelTwoAttributes {
-  company_code: string;
-  l2_code: string;
-  l2_description: string;
+  company_code?: string;
+  l2_code?: string;
+  l2_description?: string;
+  l2_name?: string;
   l1_code: string;
   updated_at?: Date;
   created_at?: Date;
-  updated_by: string;
-  created_by: string;
+  updated_by?: string;
+  created_by?: string;
 }
 export interface IAccountFinanceAttributes {
   company_code: string;
