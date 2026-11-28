@@ -64,7 +64,7 @@ export class PlatformAdminService {
     input: any,
   ) {
     await this.assertTenant(actor, tenantId);
-    return this.provisionUserRecords(actor, tenantId, company, input);
+    return this.provisionUserRecords(actor, tenantId, company, input, true);
   }
 
   static async provisionCompanyUser(actor: string, tenantId: string, company: string, input: any) {
@@ -73,7 +73,11 @@ export class PlatformAdminService {
     return this.provisionUserRecords(actor, tenantId, company, input);
   }
 
-  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any) {
+  static async provisionRegistrationUser(c: oracledb.Connection, owner: string, tenant: string, company: string, input: any) {
+    return this.provisionUserRecords('PUBLIC_REGISTRATION',tenant,company,input,true,{c,owner});
+  }
+
+  private static async provisionUserRecords(actor: string, tenantId: string, company: string, input: any, companyAdmin=false, transaction?: {c:oracledb.Connection;owner:string}) {
     if (tenantId === "root")
       throw new PlatformError("Select a tenant and company");
     const loginid = String(input.loginid || "").trim();
@@ -90,15 +94,15 @@ export class PlatformAdminService {
       throw new PlatformError(
         "Provide a login (up to 15 characters), name and valid email",
       );
-    if (typeof input.password !== "string" || input.password.length < 12)
-      throw new PlatformError("Password must contain at least 12 characters");
+    if (typeof input.password !== "string" || (input.password.length < 8 || input.password.length > 20))
+      throw new PlatformError("Password must contain 8 to 20 characters");
     if (await this.isAdmin(loginid))
       throw new PlatformError(
         "This login is reserved for a platform administrator",
         403,
       );
     const hash = await bcrypt.hash(input.password, 12);
-    return this.scope(tenantId, async (c, owner) => {
+    const provision = async (c: oracledb.Connection, owner: string) => {
       const valid = await c.execute(
         `SELECT 1 FROM ${owner}.MS_COMPANY WHERE COMPANY_CODE=:company`,
         { company },
@@ -113,7 +117,7 @@ export class PlatformAdminService {
           "LOCK TABLE CUSTOMERS.SEC_LOGINTEST IN EXCLUSIVE MODE WAIT 5",
         );
         const existing = await c.execute(
-          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(LOGINID)=LOWER(:loginid) OR LOWER(EMAIL_ID)=LOWER(:email)",
+          "SELECT 1 FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID))=LOWER(TRIM(:loginid)) OR LOWER(TRIM(EMAIL_ID))=LOWER(TRIM(:email))",
           { loginid, email },
           options,
         );
@@ -185,13 +189,19 @@ export class PlatformAdminService {
           VALUES ((SELECT NVL(MAX(USER_MAP_ID),0)+1 FROM CUSTOMERS.USER_TENANT_MAPPING),:loginid,:tenantId,'Y',SYSDATE)`,
           { loginid, tenantId },
         );
+        const { seedDefaultMasterAccess } = await import("./defaultMasterAccess.service");
+        const defaultMasters = transaction ? 0 : await seedDefaultMasterAccess(c, owner, tenantId, company, loginid);
+        if (companyAdmin && !transaction) {
+          const { seedCompanyAdminAccess } = await import('./defaultMasterAccess.service');
+          await seedCompanyAdminAccess(c,owner,tenantId,company,loginid);
+        }
         await this.audit(
           actor,
           tenantId,
           company,
           "ATTEMPT",
           "PROVISION_USER",
-          { loginid },
+          { loginid }, c,
         );
         await this.audit(
           actor,
@@ -204,19 +214,20 @@ export class PlatformAdminService {
           },
           c,
         );
-        await c.commit();
-        return { loginid, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created. Assign an application module and screen permissions before the user signs in." };
+        if (!transaction) await c.commit();
+        return { loginid, defaultMasters, warning: "MODULE_ASSIGNMENT_REQUIRED", message: "User created with view-only general masters across modules. Assign operational module and transaction permissions before use." };
       } catch (e) {
         await c.rollback();
         throw e;
       }
-    });
+    };
+    return transaction ? provision(transaction.c,transaction.owner) : this.scope(tenantId,provision);
   }
 
   static async userAccess(tenantId: string, company: string, loginid: string) {
     const users = await this.tenantQuery(
       tenantId,
-      "SELECT LOGINID,USERNAME FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
+      "SELECT LOGINID,USERNAME,ACTIVE_FLAG FROM #SCHEMA#.SEC_LOGIN WHERE COMPANY_CODE=:company ORDER BY LOGINID",
       { company },
     );
     const screens = await this.screenCatalog(tenantId, company);
@@ -609,6 +620,18 @@ export class PlatformAdminService {
     );
   }
 
+  static async moduleEditorRows(actor: string, tenantId: string) {
+    await this.assertTenant(actor, tenantId);
+    if(tenantId==='root')throw new PlatformError('Select a tenant to maintain module screens');
+    return this.scope(tenantId,async(c,owner)=>{
+      const columns=await this.columns(c,owner,'SEC_MODULE_DATA');
+      const fields=['SERIAL_NO','APP_CODE','LEVEL1','LEVEL2','LEVEL3','URL_PATH','ICON','POSITION','COMPANY_CODE','IS_ACTIVE'].filter(name=>columns.some(col=>col.COLUMN_NAME===name));
+      if(!fields.length)throw new PlatformError('Module screens are unavailable in this tenant',404);
+      const order=['APP_CODE','POSITION','SERIAL_NO'].filter(name=>fields.includes(name));
+      return (await c.execute<any>(`SELECT ${fields.join(',')} FROM ${owner}.SEC_MODULE_DATA ${order.length?'ORDER BY '+order.join(','):''} FETCH FIRST 10000 ROWS ONLY`,{},options)).rows||[];
+    });
+  }
+
   static async editorOptions(tenantId: string, company: string, actor: string) {
     const access = await this.assertTenant(actor, tenantId);
     return this.scope(tenantId, async (c, owner) => {
@@ -943,7 +966,7 @@ export class PlatformAdminService {
         columns: cols.map((x) => ({
           name: x.COLUMN_NAME,
           type: x.DATA_TYPE,
-          required: x.NULLABLE === "N",
+          required: x.NULLABLE === "N" || (["SEC_LOGIN", "SEC_LOGINTEST"].includes(table) && ["LOGINID", "USERNAME", "EMAIL_ID"].includes(x.COLUMN_NAME)) || (table === "MS_COMPANY" && ["COMPANY_CODE","COMPANY_NAME"].includes(x.COLUMN_NAME)),
           secret: SECRETS.test(x.COLUMN_NAME),
           readonly:
             SYSTEM_FIELDS.test(x.COLUMN_NAME) || x.IDENTITY_COLUMN === "YES",
@@ -997,6 +1020,7 @@ export class PlatformAdminService {
     remove = false,
   ) {
     const access = await this.assertTenant(actor, tenantId);
+    if(table==='MS_COMPANY'&&remove)throw new PlatformError('Use the company deletion preview to remove a company and its related data',409);
     if (table === "SEC_LOGIN" && !payload.rowid && !remove) {
       const v = payload.values || {};
       const result = await this.provisionUser(actor, tenantId, company, {
@@ -1174,6 +1198,12 @@ export class PlatformAdminService {
         !(table === "MS_COMPANY" && !rowid)
       )
         values.COMPANY_CODE = company;
+      if(table==='SEC_MODULE_DATA'&&!remove){
+        for(const key of ['APP_CODE','LEVEL1','LEVEL2','LEVEL3','ICON','URL_PATH'])if(key in values)values[key]=String(values[key]??'').trim();
+        if(!values.APP_CODE||!values.LEVEL1)throw new PlatformError('Choose App Code and Level 1 for this screen');
+        if(!Number.isInteger(Number(values.POSITION))||Number(values.POSITION)<1)throw new PlatformError('Position must be a whole number of at least 1');
+        if(!values.URL_PATH)values.URL_PATH=[values.APP_CODE,values.LEVEL1,values.LEVEL2,values.LEVEL3].filter(Boolean).join('/').toLowerCase();
+      }
       // IDs on older schemas have no sequence/default. Hold the table lock until commit.
       if (!rowid && !remove) {
         for (const col of cols.filter(
@@ -1213,9 +1243,9 @@ export class PlatformAdminService {
       }
       const password = values.USERPASS || values.SEC_PASSWD || values.PASSWORD;
       if (password) {
-        if (String(password).length < 12)
+        if ((String(password).length < 8 || String(password).length > 20))
           throw new PlatformError(
-            "Password must contain at least 12 characters",
+            "Password must contain 8 to 20 characters",
           );
         const hash = await bcrypt.hash(String(password), 12);
         for (const col of cols.filter((x) =>
@@ -1324,9 +1354,10 @@ export class PlatformAdminService {
           try {
             console.log(`[PlatformAdmin] Auto-provisioning Finance setup for new company '${values.COMPANY_CODE}' in ${owner}`);
             await c.execute(
-              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(:code, NULL, :actor, :status, :msg); END;`,
+              `BEGIN ${owner}.PROC_INITIALIZE_COMPANY_FINANCE_SETUP(p_new_company=>:code, p_source_company=>NULL, p_currency=>:currency, p_loginid=>:actor, p_status=>:status, p_message=>:msg); END;`,
               {
                 code: String(values.COMPANY_CODE).trim(),
+                currency: values.CURR_CODE ? String(values.CURR_CODE).trim() : null,
                 actor: actor || "ADMIN",
                 status: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
                 msg: { dir: oracledb.BIND_OUT, type: oracledb.STRING },

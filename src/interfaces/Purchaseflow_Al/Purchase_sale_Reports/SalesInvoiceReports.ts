@@ -78,6 +78,9 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const qtyBlank = (value: unknown): string => (num(value) === 0 ? "" : qtyFmt(value));
+const amtBlank = (value: unknown): string => (num(value) === 0 ? "" : amtFmt(value));
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -150,6 +153,21 @@ async function loadSalesInvoiceData(req: RequestWithUser, p: ReqParams, dispatch
   }
 }
 
+// ─── Cancel helpers ─────────────────────────────────────────────────────────
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/** Y / YES / 1 / TRUE → true */
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+
+/** Cancelled if the header flag (from the procedure) or the line flag (DET_CANCEL) is Y */
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+
+/** Document is cancelled when every line is cancelled */
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
+
 // ─── Header model (built from the first line-item row) ─────────────────────
 
 interface SalesInvoiceHeader {
@@ -165,6 +183,9 @@ interface SalesInvoiceHeader {
   cust_mobile: string;
   cust_email: string;
   payment_terms: string;
+  dlvr_term: string;
+  remarks: string;
+  ref_no: string;
   credit_period: string;
   due_date: any;
   salesman_code: string;
@@ -173,7 +194,7 @@ interface SalesInvoiceHeader {
   disc_hdr_price: number;
   disc_hdr_percent: number;
   curr_code: string;
-   cancelled: boolean; 
+  cancelled: boolean;
 }
 
 function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
@@ -192,6 +213,11 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     cust_mobile: text(h.cust_mobile),
     cust_email: text(h.cust_email),
     payment_terms: text(h.payment_terms),
+    // ⚠ Check the "=== GENERATED SQL (Sales Invoice) ===" console log: if the delivery term /
+    // remarks columns have different names, add them to these two lines.
+    dlvr_term: text(h.dlvr_term || h.delivery_term),
+    remarks: text(h.remarks || h.hdr_remarks),
+    ref_no: text(h.ref_no),
     credit_period: text(h.credit_period),
     due_date: h.due_date,
     salesman_code: text(h.salesman_code),
@@ -200,30 +226,11 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
-         cancelled: isCancelledDoc(rows),
+    cancelled: isCancelledDoc(rows),
   };
 }
 
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-
-/** True when the document row is cancelled (add your real column name here if different) */
-// const isCancelledRow = (r: ReportRow): boolean => {
-//   const v = text(r.cancelled ?? r.canceled ?? r.doc_status ?? r.status).trim().toUpperCase();
-//   return v === "Y" || v === "YES" || v === "1" || v === "TRUE" || v.startsWith("CANCEL");
-// };
-
-/** Line-level cancel flag (column DET_CANCEL = 'Y') */
-const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
-
-/** Cancelled if the header flag (from the procedure) or the line flag is Y */
-const isCancelledRow = (r: ReportRow): boolean =>
-  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
-
-/** Document is cancelled when every line is cancelled */
-const isCancelledDoc = (rows: ReportRow[]): boolean =>
-  rows.length > 0 && rows.every(isCancelledRow);
-
+// ─── Line / totals calculations ─────────────────────────────────────────────
 
 const lineDiscOf = (r: ReportRow) => {
   const gross = num(r.quantity) * num(r.unit_price);
@@ -238,7 +245,7 @@ function computeInvoiceTotals(rows: ReportRow[], header: SalesInvoiceHeader) {
   const totalAmount = round2(rows.reduce((s, r) => s + lineGrossOf(r), 0));
   const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
 
-  
+  // Header-level discount is applied only when there are no line discounts
   const headerDiscount =
     lineDiscount > 0
       ? 0
@@ -251,73 +258,43 @@ function computeInvoiceTotals(rows: ReportRow[], header: SalesInvoiceHeader) {
   return { totalQty, totalAmount, overallDiscount, grandTotal, totalTax };
 }
 
-const SALES_INVOICE_EXTRA_CSS = `
-   .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 0 0 4px 0 !important;
-    padding: 0 !important;
-  }
-  .doc-title-row h1 {
-    margin: 0 !important;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-    line-height: 1.2 !important;
-  }
-  .doc-title-row .doc-sub {
-    margin: 1px 0 0 !important;
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.3 !important;
-  }
-  .status-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    vertical-align: middle;
-  }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
+// ─── Layout CSS — same visual system as Purchase Invoice ───────────────────
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 24px !important;
-    align-items: start !important;
-    margin: 0 0 12px 0 !important;
-    padding: 0 !important;
-  }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 8px 12px !important;
-    background: #f8fafc;
-    height: auto !important;
-    min-height: 0 !important;
-  }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin: 0 0 4px 0 !important;
-    padding: 0 !important;
-    line-height: 1.3 !important;
-  }
-  .info-block .value-line {
-    font-size: 11px;
-    color: #0f172a;
-    margin: 0 !important;
-    padding: 0 !important;
-    line-height: 1.45 !important;
-    min-height: 0 !important;
-    height: auto !important;
-  }
+// Shared: centered title, To / Details boxes, grid tables, terms strip, signature
+const SI_BOX_CSS = `
+  .center { text-align: center; }
+  h1.center { margin: 4px 0 12px; font-size: 18px; font-weight: 800; color: #0b4ca1; letter-spacing: 1px; }
+  .si-cancel-text { text-align: center; color: #dc2626; font-weight: 700; font-size: 12px; margin: -6px 0 10px; letter-spacing: 1px; }
 
+  table.grn-two-col { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 10px 0; margin: 0 -10px 14px; }
+  .grn-two-col > tbody > tr > td { vertical-align: top; padding: 0; }
+  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
+
+  table.pr-kv-box { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; background: #fff; font-size: 11px; }
+  .pr-kv-box thead th { text-align: left; padding: 4px 10px; color: #0b4ca1; background: #eff6ff; font-size: 11px; font-weight: 700; border-bottom: 2px solid #0b4ca1; }
+  .pr-kv-box tbody td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: top; overflow-wrap: anywhere; }
+  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
+  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
+  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
+  .pr-kv-box.po-kv-details tbody td:first-child { width: 38%; }
+
+  /* Payment / Delivery / Remarks strip + items table: same grid look */
+  table.po-terms, table.po-items { border-collapse: collapse; }
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
+  table.po-terms { margin-bottom: 12px; }
+  table.po-terms th, table.po-terms td { width: 33.333% !important; text-align: center; overflow-wrap: anywhere; }
+
+  /* Keep notes + signature together; signature table stays 50/50 */
+  .po-sign-block, .po-sign-block table, .po-sign-block tr, .po-sign-block td, .po-sign-block th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  table.po-sign th, table.po-sign td { width: 50% !important; }
+`;
+
+const SI_TOTALS_CSS = `
   .totals-box {
     margin-top: 16px;
     margin-left: auto;
@@ -325,6 +302,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     overflow: hidden;
+    page-break-inside: avoid;
   }
   .totals-box .row {
     display: flex;
@@ -340,82 +318,120 @@ const SALES_INVOICE_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
+  .status-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 `;
 
-// ─── Inline spacing overrides (CHANGED) ─────────────────────────────────────
-// const S_TITLE_ROW = "background:#ffd6d6 !important;margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
-// const S_TITLE_ROW = "margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
-const S_H1 = "margin:0 !important;padding:0 !important;line-height:1.2 !important;";
-const S_TITLE_ROW = "margin:0 0 2px 0 !important;padding:0 !important;gap:0 !important;";
-const S_SUB = "margin:1px 0 0 0 !important;padding:0 !important;line-height:1.2 !important;";
-// const S_GRID      = "background:#d6e8ff !important;display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
-const S_GRID = "display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
-// const S_BLOCK     = "background:#fff3b0 !important;display:block !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 7px !important;gap:0 !important;";
-const S_BLOCK = "display:block !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:8px 12px !important;gap:0 !important;";
-// const S_LABEL     = "background:#c9f7c9 !important;display:block !important;margin:0 0 4px 0 !important;padding:0 !important;line-height:1.3 !important;min-height:0 !important;height:auto !important;";
-const S_LABEL = "display:block !important;margin:0 0 4px 0 !important;padding:0 !important;line-height:1.3 !important;min-height:0 !important;height:auto !important;";
-const S_LINE = "display:block !important;margin:0 !important;padding:0 !important;line-height:1.45 !important;min-height:0 !important;height:auto !important;";
-const S_TABLE = "margin-top:0 !important;";
+// Sales Invoice (portrait) + Account Details
+const SALES_INVOICE_EXTRA_CSS = `
+  ${SI_TOTALS_CSS}
 
-const vl = (inner: string): string => `<div class="value-line" style="${S_LINE}">${inner}</div>`;
+  .data-table { width: 100%; table-layout: auto; }
+  .data-table th, .data-table td { font-size: 10.5px; padding: 6px 5px; }
+  .data-table td:nth-child(2) { min-width: 140px; }
 
-function infoBlockHtml(label: string, linesHtml: string): string {
-  return `
-      <div class="info-block" style="${S_BLOCK}">
-        <div class="label" style="${S_LABEL}">${escapeHtml(label)}</div>
-        ${linesHtml}
-      </div>`;
-}
+  ${SI_BOX_CSS}
+`;
 
+// Sales Invoice (Tax) — landscape
+const SALES_INVOICE_TAX_EXTRA_CSS = `${SALES_INVOICE_EXTRA_CSS}
+  @page { size: A4 landscape; margin: 10mm; }
 
+  .data-table { width: 100% !important; table-layout: fixed !important; }
+  .data-table th,
+  .data-table td {
+    font-size: 9.5px !important;
+    padding: 5px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 5%; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 21%; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 6%; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 6%; }
+  .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 6%; }
+  .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 6%; }
+  .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 8%; }
+  .data-table th:nth-child(8), .data-table td:nth-child(8) { width: 8%; }
+  .data-table th:nth-child(9), .data-table td:nth-child(9) { width: 7%; }
+  .data-table th:nth-child(10), .data-table td:nth-child(10) { width: 8%; }
+  .data-table th:nth-child(11), .data-table td:nth-child(11) { width: 5%; }
+  .data-table th:nth-child(12), .data-table td:nth-child(12) { width: 7%; }
+  .data-table th:nth-child(13), .data-table td:nth-child(13) { width: 7%; }
+`;
 
+// Sales Invoice (Tax) — portrait
+const SALES_INVOICE_TAX_PORTRAIT_CSS = `
+  ${SI_TOTALS_CSS}
+
+  table.data-table.pi-portrait { width: 100%; table-layout: fixed; }
+  table.data-table.pi-portrait th,
+  table.data-table.pi-portrait td {
+    font-size: 9px;
+    padding: 5px 3px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  ${SI_BOX_CSS}
+`;
+
+const TAX_TABLE_FIX_HTML = `
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body table.data-table { width: 100% !important; table-layout: fixed !important; }
+  body table.data-table th,
+  body table.data-table td {
+    font-size: 9.5px !important;
+    padding: 5px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+</style>`;
+
+// ─── Boxed header helpers (same markup the frontend PDF already understands) ─
 
 type KvPair = [string, string];
- 
+
 /** One boxed table: light-blue title row + "Label : value" rows (values bold). */
-function kvBoxHtml(title: string, pairs: KvPair[]): string {
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
   const rows = pairs
     .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
     .join("");
   return (
-    '<table class="pr-kv-box">' +
-      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody>" +
+    '<table class="pr-kv-box ' + cls + '">' +
+    '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+    "<tbody>" + rows + "</tbody>" +
     "</table>"
   );
 }
- 
-/** Two boxes side by side (50% / 50%, no outer border). */
+
+/** Two boxes side by side (To wider 60%, Invoice Details narrower 40%). */
 function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
   return (
-    '<table class="grn-two-col"><tbody><tr>' +
-      "<td>" + kvBoxHtml(leftTitle, left) + "</td>" +
-      "<td>" + kvBoxHtml(rightTitle, right) + "</td>" +
+    '<table class="grn-two-col po-two-col po-two-wide"><tbody><tr>' +
+    "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to") + "</td>" +
+    "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details po-kv-wide") + "</td>" +
     "</tr></tbody></table>"
   );
 }
- 
-/** "To" box rows – empty fields are skipped, the customer name is always shown. */
-function partyPairs(header: SalesInvoiceHeader): KvPair[] {
-  const all: KvPair[] = [
-    ["Customer", header.party_name],
-    ["Address", header.party_address],
-    ["Tel", header.party_phone],
-    ["Fax", header.party_fax],
-    ["Mobile", header.cust_mobile],
-    ["Email", header.cust_email],
-    ["TRN No", header.trn_no],
-  ];
-  return all.filter(([, v], i) => i === 0 || !!text(v).trim());
-}
 
-function infoGridHtml(innerHtml: string): string {
-  return `<div class="info-grid" style="${S_GRID}">${innerHtml}</div>`;
-}
+/** First `required` pairs are always shown; the rest only when filled. */
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
 
 // ─── Shared body pieces ─────────────────────────────────────────────────────
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled = false): string {
+/** Old blue-line title (still used by Account Details; supports the CANCELLED tag). */
+function printMetaHtml(title: string, _subtitle: string, _printDateTime: string, _loginId: string, cancelled = false): string {
   if (cancelled) {
     return `
     <table class="si-top-line si-top-cancel"><tbody><tr>
@@ -429,159 +445,223 @@ function printMetaHtml(title: string, subtitle: string, printDateTime: string, l
     </td></tr></tbody></table>`;
 }
 
-function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
-  return infoBlockHtml(
-    "To",
+/** Centered, uppercase, underlined title (+ red CANCELLED line when the document is cancelled). */
+function reportTitleHtml(title: string, cancelled = false): string {
+  return (
+    `<h1 class="center"><u>${escapeHtml(title.toUpperCase())}</u></h1>` +
+    (cancelled ? `<p class="center si-cancel-text">CANCELLED</p>` : "")
+  );
+}
+
+const INVOICE_NOTES: string[] = [
+  "1. Please quote the invoice number in all payments and correspondence.",
+  "2. Goods once sold will not be taken back.",
+];
+const INVOICE_APPROVAL_TEXT = "This Document Is Electronically Approved";
+
+/** Reference + notes (stay in the page) + signature table (pinned to the footer by the frontend). */
+function invoiceSignHtml(header: SalesInvoiceHeader): string {
+  return `
+    <div class="po-sign-block">
+      ${header.ref_no ? `<div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no)}</span></div>` : ""}
+      <div class="group">${INVOICE_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
+
+      <table class="data-table po-sign">
+        <thead>
+          <tr>
+            <th class="center">For Customer:</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}:</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <b>I have received the goods in good condition.</b>
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+            <td class="center">
+              ${escapeHtml(INVOICE_APPROVAL_TEXT)}
+              <br/><br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/** PAYMENT TERM | DELIVERY TERM / PERIOD | REMARKS strip. */
+function invoiceTermsStripHtml(header: SalesInvoiceHeader): string {
+  return `
+    <table class="data-table po-terms">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+/** "To" box rows – empty fields are skipped, the customer name is always shown. */
+function partyPairs(header: SalesInvoiceHeader): KvPair[] {
+  return keepFilled(
     [
-      vl(`<strong>${escapeHtml(header.party_name)}</strong>`),
-      header.party_address ? vl(escapeHtml(header.party_address)) : "",
-      header.party_phone ? vl(`Tel: ${escapeHtml(header.party_phone)}`) : "",
-      header.party_fax ? vl(`Fax: ${escapeHtml(header.party_fax)}`) : "",
-      header.cust_mobile ? vl(`Mob: ${escapeHtml(header.cust_mobile)}`) : "",
-      header.cust_email ? vl(`Email: ${escapeHtml(header.cust_email)}`) : "",
-      header.trn_no ? vl(`TRN No: ${escapeHtml(header.trn_no)}`) : "",
-    ].join("")
+      ["Customer", header.party_name],
+      ["Address", header.party_address],
+      ["Tel", header.party_phone],
+      ["Fax", header.party_fax],
+      ["Mobile", header.cust_mobile],
+      ["Email", header.cust_email],
+      ["TRN No", header.trn_no],
+    ],
+    1
+  );
+}
+
+function invoiceDetailPairs(header: SalesInvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      // ["A/C Code", header.ac_code],
+      ["Due Date", header.due_date ? dateText(header.due_date) : ""],
+      ["Sold By", header.salesman_code],
+    ],
+    3
+  );
+}
+
+function invoiceTaxDetailPairs(header: SalesInvoiceHeader): KvPair[] {
+  return keepFilled(
+    [
+      ["Doc No", header.doc_no],
+      ["Date", dateText(header.doc_date)],
+      // ["A/C Code", header.ac_code],
+      ["Company TRN No", header.company_trn_no],
+      ["Sold By", header.salesman_code],
+    ],
+    4
   );
 }
 
 // ─── Body 1: Sales Invoice ───────────────────────────────────────────────
 
-function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
-
-
-
-
-  console.log("Invoice columns👍👍:", Object.keys(rows[0] || {}));
-console.log("Cancel-like values:👍👍👍👍", Object.entries(rows[0] || {}).filter(([k]) => /cancel|status|stat|void/i.test(k)));
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
- 
+function renderSalesInvoiceBody(rows: ReportRow[], _loginId: string): string {
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
- 
-  const bodyRows = rows.map((r, i) => `
-  <tr>
-    <td>${i + 1}</td>
-    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-    <td>${escapeHtml(r.p_uom)}</td>
-    <td class="right">${qtyFmt(r.quantity)}</td>
-    <td class="right">${amtFmt(r.unit_price)}</td>
-    <td class="right">${amtFmt(lineDiscOf(r))}</td>
-    <td class="right amount">${amtFmt(r.amount)}</td>
-  </tr>`).join("");
- 
-  const detailsPairs: KvPair[] = [
-    ["Doc No", header.doc_no],
-    ["Date", dateText(header.doc_date)],
-    ["A/C Code", header.ac_code],
-    ["Payment Term", header.payment_terms],
-  ];
-  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
-  if (header.due_date) detailsPairs.push(["Due Date", dateText(header.due_date)]);
- 
+  const bodyRows = rows.map((r, i) => {
+    const pQty = r.qty_puom ?? r.quantity;
+    const lQty = r.qty_luom ?? r.quantity;
+    const lineValue = lineGrossOf(r);
+    const net = lineNetOf(r);
+    return `
+      <tr>
+        <td class="center">${i + 1}</td>
+        <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+        <td class="right">${qtyBlank(pQty)}</td>
+<td class="center">${escapeHtml(r.p_uom || "")}</td>
+<td class="right">${qtyBlank(lQty)}</td>
+<td class="center">${escapeHtml(r.l_uom || r.p_uom || "")}</td>
+<td class="right">${amtBlank(r.unit_price)}</td>
+<td class="right">${amtBlank(lineValue)}</td>
+<td class="right">${amtBlank(lineDiscOf(r))}</td>
+<td class="right">${amtBlank(net)}</td>
+<td class="right amount">${amtBlank(net)}</td>
+      </tr>`;
+  }).join("");
   return `
-    ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
- 
-        <table class="data-table si-items" style="${S_TABLE}">
-      <thead>
-        <tr>
-          <th>S.No</th>
-          <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Disc</th>
-          <th class="right">Amount</th>
-        </tr>
-      </thead>
+    ${reportTitleHtml("Sales Invoice", header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceDetailPairs(header))}
+    ${invoiceTermsStripHtml(header)}
+    <table class="data-table si-items po-items">
+      <thead><tr>
+        <th class="center">S.No</th><th>Product / Description</th>
+        <th class="right">P.Qty</th><th class="center">P.UOM</th>
+        <th class="right">L.Qty</th><th class="center">L.UOM</th>
+        <th class="right">Unit Price</th><th class="right">Line Value</th>
+        <th class="right">Disc Amt</th><th class="right">Net Amt</th>
+        <th class="right">Grand Total</th>
+      </tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
- 
     <div class="totals-box">
       <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
       <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
       <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
       <div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
-    </div>`;
+    </div>
+    ${invoiceSignHtml(header)}`;
 }
+
 // ─── Body 2: Sales Invoice (Tax) ───────────────────────────────────────────
 
-function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
- 
+function renderSalesInvoiceTaxBody(
+  rows: ReportRow[],
+  _loginId: string,
+  orientation: "portrait" | "landscape" = "landscape"
+): string {
+  const isPortrait = orientation === "portrait";
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
   const netTotal = round2(t.grandTotal + t.totalTax);
- 
-  rows.forEach((r) => {
-    const expected = round2((lineNetOf(r) * num(r.tx_compnt_perc_1)) / 100);
-    if (Math.abs(expected - num(r.tx_compnt_amt_1)) > 0.01) {
-      console.warn("Tax mismatch", r.doc_no, r.prod_code, "expected:", expected, "db:", r.tx_compnt_amt_1);
-    }
-  });
- 
-  const bodyRows = rows
-    .map((r, i) => {
-      const net = lineNetOf(r);
-      const amountInclTax = round2(net + num(r.tx_compnt_amt_1));
-      return `
-  <tr>
-    <td>${i + 1}</td>
-    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-    <td>${escapeHtml(r.p_uom)}</td>
-    <td class="right">${qtyFmt(r.quantity)}</td>
-    <td class="right">${amtFmt(r.unit_price)}</td>
-    <td class="right">${amtFmt(lineDiscOf(r))}</td>
-    <td class="right">${amtFmt(net)}</td>
-    <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
-    <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
-    <td class="right amount">${amtFmt(amountInclTax)}</td>
-  </tr>`;
-    })
-    .join("");
- 
-  const detailsPairs: KvPair[] = [
-    ["Doc No", header.doc_no],
-    ["Date", dateText(header.doc_date)],
-    ["A/C Code", header.ac_code],
-    ["Payment Term", header.payment_terms],
-  ];
-  if (header.salesman_code) detailsPairs.push(["Sold By", header.salesman_code]);
-  detailsPairs.push(["Company TRN No", header.company_trn_no]);
- 
+  const bodyRows = rows.map((r, i) => {
+    const pQty = r.qty_puom ?? r.quantity;
+    const lQty = r.qty_luom ?? r.quantity;
+    const lineValue = lineGrossOf(r);
+    const net = lineNetOf(r);
+    const tax = num(r.tx_compnt_amt_1);
+    return `
+      <tr>
+        <td class="center">${i + 1}</td>
+        <td>${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+       <td class="right">${qtyBlank(pQty)}</td>
+<td class="center">${escapeHtml(r.p_uom || "")}</td>
+<td class="right">${qtyBlank(lQty)}</td>
+<td class="center">${escapeHtml(r.l_uom || r.p_uom || "")}</td>
+<td class="right">${amtBlank(r.unit_price)}</td>
+<td class="right">${amtBlank(lineValue)}</td>
+<td class="right">${amtBlank(lineDiscOf(r))}</td>
+<td class="right">${amtBlank(net)}</td>
+<td class="right">${amtBlank(r.tx_compnt_perc_1)}${num(r.tx_compnt_perc_1) === 0 ? "" : "%"}</td>
+<td class="right">${amtBlank(tax)}</td>
+<td class="right amount">${amtBlank(round2(net + tax))}</td>
+      </tr>`;
+  }).join("");
   return `
-    ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId, header.cancelled)}
-    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", detailsPairs)}
- 
-        <table class="data-table si-items-tax" style="${S_TABLE}">
-      <thead>
-        <tr>
-          <th>S.No.</th>
-          <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Disc</th>
-          <th class="right">Amount</th>
-          <th class="right">VAT %</th>
-          <th class="right">Tax Amount</th>
-          <th class="right">Amount (Inc. Tax)</th>
-        </tr>
-      </thead>
+    ${isPortrait ? "" : TAX_TABLE_FIX_HTML}
+    ${reportTitleHtml("Sales Invoice (Tax)", header.cancelled)}
+    ${kvTwoBoxesHtml("To", partyPairs(header), "Invoice Details", invoiceTaxDetailPairs(header))}
+    ${invoiceTermsStripHtml(header)}
+    <table class="data-table pi-portrait si-items-tax po-items po-items-ext" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
+      <colgroup>${[5,21,6,6,6,6,8,8,7,8,5,7,7].map(w => `<col style="width:${w}%">`).join("")}</colgroup>
+      <thead><tr>
+        <th class="center">S.No</th><th>Product / Description</th>
+        <th class="right">P.Qty</th><th class="center">P.UOM</th>
+        <th class="right">L.Qty</th><th class="center">L.UOM</th>
+        <th class="right">Unit Price</th><th class="right">Line Value</th>
+        <th class="right">Disc Amt</th><th class="right">Net Amt</th>
+        <th class="right">VAT %</th><th class="right">VAT Amt</th><th class="right">Grand Total</th>
+      </tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
- 
     <div class="totals-box">
       <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
       <div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
       <div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
-      <div class="row"><span>Tax Amount</span><span>${amtFmt(t.totalTax)}</span></div>
-      <div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
-    </div>`;
+      <div class="row"><span>VAT Amount</span><span>${amtFmt(t.totalTax)}</span></div>
+      <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(netTotal)}</span></div>
+    </div>
+    ${invoiceSignHtml(header)}`;
 }
 
 // ─── Body 3: Sales - Account Details ───────────────────────────────────────
@@ -617,9 +697,9 @@ function renderSalesAccountDetailsBody(rows: ReportRow[], loginId: string): stri
     .join("");
 
   return `
-   ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId, text(rows[0]?.cancelled || rows[0]?.canceled).toUpperCase() === "Y")}
+    ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId, isCancelledDoc(rows))}
 
-    <table class="data-table" style="${S_TABLE}">
+    <table class="data-table">
       <thead>
         <tr>
           <th>Type</th>
@@ -661,6 +741,7 @@ export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Respo
       endLabel: "Powered by Bayanat Technology",
     });
     const bodyHtml = renderSalesInvoiceBody(rows, params.loginid).replace(/>\s+</g, "><");
+
     const html = buildReportDocument({
       title: "Sales Invoice",
       headerHtml,
@@ -682,6 +763,9 @@ export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Respo
 export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
+    const orientation: "portrait" | "landscape" =
+      text(req.body?.orientation || req.query?.orientation).toLowerCase() === "portrait" ? "portrait" : "landscape";
+
     const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_SI_TAX_19082026");
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected document." });
@@ -695,16 +779,17 @@ export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Re
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-   const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid).replace(/>\s+</g, "><");
+    const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid, orientation).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
       title: "Sales Invoice (Tax)",
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: SALES_INVOICE_EXTRA_CSS,
+      extraCss: orientation === "portrait" ? SALES_INVOICE_TAX_PORTRAIT_CSS : SALES_INVOICE_TAX_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
+      ...(orientation === "landscape" ? { orientation } : {}),
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1022,63 +1107,54 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
   return zip.toBuffer();
 }
 
+/** Payment / Delivery / Remarks line used in both invoice Excel files. */
+function termsLine(header: SalesInvoiceHeader): string {
+  return `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`;
+}
+
 // ─── Excel builder 1: Sales Invoice ─────────────────────────────────────────
 
 function buildSalesInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
-  const COL_COUNT = 7; // S.No, Product, Unit, Qty, Unit Rate, Disc, Amount
+  const COL_COUNT = 11; // Sales Order layout without VAT columns
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
-
-  rows_.push([xlCell("SALES INVOICE", "title"), null, null, null, null, null, null]);
+  rows_.push([xlCell(`Sales Invoice - ${header.doc_no}${header.cancelled ? " (CANCELLED)" : ""}`, "title"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
-  rows_.push([
-    xlCell(`Invoice No: ${header.doc_no}`, "meta"), null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null,
-  ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
-  merges.push({ s: { r: 1, c: 4 }, e: { r: 1, c: 6 } });
-
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 6 } });
-
+  rows_.push([xlCell(`To: ${header.party_name}${header.party_address ? ", " + header.party_address : ""}`, "meta"), null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), ...new Array(COL_COUNT - 4).fill(null)]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
+  rows_.push([xlCell(termsLine(header), "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
   rows_.push(new Array(COL_COUNT).fill(null));
-
-  rows_.push([
-    xlCell("S.No", "header"), xlCell("Product/Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"), xlCell("Amount", "header"),
-  ]);
-
+  rows_.push(["S.No","Product / Description","P.Qty","P.UOM","L.Qty","L.UOM","Unit Price","Line Value","Disc Amt","Net Amt","Grand Total"].map(x => xlCell(x,"header")));
   rows.forEach((r, i) => {
+    const pQty = r.qty_puom ?? r.quantity;
+    const lQty = r.qty_luom ?? r.quantity;
+    const net = lineNetOf(r);
     rows_.push([
-      xlCell(i + 1, "dataNumInt"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
-      xlCell(text(r.p_uom), "data"),
-      xlCell(num(r.quantity), "dataNumInt"),
-      xlCell(num(r.unit_price), "dataNum"),
-      xlCell(lineDiscOf(r), "dataNum"),
-      xlCell(lineNetOf(r), "dataNum"),
+      xlCell(i + 1, "data"), xlCell(text(r.full_prod_name || r.prod_name), "data"),
+      xlCell(num(pQty), "dataNum"), xlCell(text(r.p_uom), "data"),
+      xlCell(num(lQty), "dataNum"), xlCell(text(r.l_uom || r.p_uom), "data"),
+      xlCell(num(r.unit_price), "dataNum"), xlCell(lineGrossOf(r), "dataNum"),
+      xlCell(lineDiscOf(r), "dataNum"), xlCell(net, "dataNum"), xlCell(net, "dataNum"),
     ]);
   });
-
   rows_.push(new Array(COL_COUNT).fill(null));
-
-  const addTotal = (label: string, value: number, style: "groupTotal" | "grandTotal") => {
-    const r = rows_.length;
-    rows_.push([xlCell(label, style), null, null, null, null, null, xlCell(value, style === "grandTotal" ? "grandTotalNum" : "groupTotalNum")]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length; const arr: XlRow = new Array(COL_COUNT).fill(null);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr); merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
   };
-  addTotal("Total Amount", t.totalAmount, "groupTotal");
-  addTotal("Overall Discount", t.overallDiscount, "groupTotal");
-  addTotal("Grand Total", t.grandTotal, "grandTotal");
-
-  rows_.push([null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
-
-  return buildXlsxBuffer("Sales Invoice", COL_COUNT, 18, rows_, merges, defaultXlStyleDefs());
+  addTotal("Total Amount", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("Grand Total", t.grandTotal, true);
+  const footer: XlRow = new Array(COL_COUNT).fill(null);
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer"); rows_.push(footer);
+  return buildXlsxBuffer("Sales Invoice", COL_COUNT, 20, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Excel builder 2: Sales Invoice (Tax) ───────────────────────────────────
@@ -1087,69 +1163,48 @@ function buildSalesInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildSalesInvoiceHeader(rows);
   const t = computeInvoiceTotals(rows, header);
   const netTotal = round2(t.grandTotal + t.totalTax);
-  const COL_COUNT = 10; // S.No, Product, Unit, Qty, Rate, Disc, Amount, VAT%, Tax, Amount(Inc Tax)
+  const COL_COUNT = 13; // Exact Sales Order column structure
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
-
-  rows_.push([xlCell("SALES INVOICE (TAX)", "title"), ...new Array(COL_COUNT - 1).fill(null)]);
+  rows_.push([xlCell(`Sales Invoice (Tax) - ${header.doc_no}${header.cancelled ? " (CANCELLED)" : ""}`, "title"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
-  rows_.push([
-    xlCell(`Invoice No: ${header.doc_no}`, "meta"), null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
-    xlCell(`Company TRN No: ${header.company_trn_no}`, "meta"), null, null, null, null,
-  ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 4 } });
-  merges.push({ s: { r: 1, c: 5 }, e: { r: 1, c: 9 } });
-
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
+  rows_.push([xlCell(`To: ${header.party_name}${header.party_address ? ", " + header.party_address : ""}`, "meta"), null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}   Company TRN No: ${header.company_trn_no}`, "meta"),
+    ...new Array(COL_COUNT - 4).fill(null)]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
+  rows_.push([xlCell(termsLine(header), "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
-
   rows_.push(new Array(COL_COUNT).fill(null));
-
-  rows_.push([
-    xlCell("S.No", "header"), xlCell("Product/Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"),
-    xlCell("Amount", "header"), xlCell("VAT %", "header"), xlCell("Tax Amount", "header"),
-    xlCell("Amount (Inc. Tax)", "header"),
-  ]);
-
+  rows_.push(["S.No","Product / Description","P.Qty","P.UOM","L.Qty","L.UOM","Unit Price","Line Value","Disc Amt","Net Amt","VAT %","VAT Amt","Grand Total"].map(x => xlCell(x,"header")));
   rows.forEach((r, i) => {
+    const pQty = r.qty_puom ?? r.quantity;
+    const lQty = r.qty_luom ?? r.quantity;
+    const net = lineNetOf(r); const tax = num(r.tx_compnt_amt_1);
     rows_.push([
-      xlCell(i + 1, "dataNumInt"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
-      xlCell(text(r.p_uom), "data"),
-      xlCell(num(r.quantity), "dataNumInt"),
-      xlCell(num(r.unit_price), "dataNum"),
-      xlCell(lineDiscOf(r), "dataNum"),
-xlCell(lineNetOf(r), "dataNum"),
-      xlCell(num(r.tx_compnt_perc_1), "dataNum"),
-      xlCell(num(r.tx_compnt_amt_1), "dataNum"),
-      xlCell(round2(lineNetOf(r) + num(r.tx_compnt_amt_1)), "dataNum"),
+      xlCell(i + 1, "data"), xlCell(text(r.full_prod_name || r.prod_name), "data"),
+      xlCell(num(pQty), "dataNum"), xlCell(text(r.p_uom), "data"),
+      xlCell(num(lQty), "dataNum"), xlCell(text(r.l_uom || r.p_uom), "data"),
+      xlCell(num(r.unit_price), "dataNum"), xlCell(lineGrossOf(r), "dataNum"),
+      xlCell(lineDiscOf(r), "dataNum"), xlCell(net, "dataNum"),
+      xlCell(num(r.tx_compnt_perc_1), "dataNum"), xlCell(tax, "dataNum"),
+      xlCell(round2(net + tax), "dataNum"),
     ]);
   });
-
   rows_.push(new Array(COL_COUNT).fill(null));
-
-  const addTotal = (label: string, value: number, style: "groupTotal" | "grandTotal") => {
-    const r = rows_.length;
-    const rowArr: XlRow = new Array(COL_COUNT).fill(null);
-    rowArr[0] = xlCell(label, style);
-    rowArr[9] = xlCell(value, style === "grandTotal" ? "grandTotalNum" : "groupTotalNum");
-    rows_.push(rowArr);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 8 } });
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length; const arr: XlRow = new Array(COL_COUNT).fill(null);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr); merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
   };
-  addTotal("Total Amount", t.totalAmount, "groupTotal");
-  addTotal("Overall Discount", t.overallDiscount, "groupTotal");
-  addTotal("Tax Amount", t.totalTax, "groupTotal");
-  addTotal("Total (Inclusive Tax)", netTotal, "grandTotal");
-
+  addTotal("Total Amount", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("VAT Amount", t.totalTax);
+  addTotal("Total (Inclusive VAT)", netTotal, true);
   const footer: XlRow = new Array(COL_COUNT).fill(null);
-  footer[9] = xlCell("Powered by Bayanat Technology", "footer");
-  rows_.push(footer);
-
-  return buildXlsxBuffer("Sales Invoice Tax", COL_COUNT, 15, rows_, merges, defaultXlStyleDefs());
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer"); rows_.push(footer);
+  return buildXlsxBuffer("Sales Invoice Tax", COL_COUNT, 16, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Excel builder 3: Sales - Account Details ───────────────────────────────

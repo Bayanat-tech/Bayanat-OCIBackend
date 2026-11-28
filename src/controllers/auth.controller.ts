@@ -15,7 +15,8 @@ import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 import { CompanyBillingService } from "../services/Security/companyBilling.service";
-import { PlatformAdminService } from "../services/Security/platformAdmin.service";
+import { CompanyAccountService } from "../services/Security/companyAccount.service";
+import { PlatformAdminService, PlatformError } from "../services/Security/platformAdmin.service";
 import { oracleDb } from "../database/connection";
 
 
@@ -222,6 +223,12 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       return;
     }
     if (!tenantId) throw new Error("Account has no default tenant mapping");
+    try { await CompanyAccountService.assertActive(tenantId, user.COMPANY_CODE, user.LOGINID); }
+    catch (e: any) {
+      if (!(e instanceof PlatformError)) console.error("[login] Account-state validation failed", { code: e.code });
+      res.status(e instanceof PlatformError ? e.status : 503).json({ success: false, message: e instanceof PlatformError ? e.message : "Unable to verify company account status. Please retry or contact support." });
+      return;
+    }
 
     // Get tenant config for additional info
     console.log(`[login] STEP 3: Getting tenant config...`);

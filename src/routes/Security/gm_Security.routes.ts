@@ -110,6 +110,20 @@ router.post("/accessassignrole/delete", deleteSecRollAppAccess);
 router.put("/accessassignrole", updateSecRollAppAccess);
 
 //AccessUserto
+router.post('/accessassignuser/selection',async(req:any,res)=>{
+  const {CompanySecurityService}=await import('../../services/Security/companySecurity.service');
+  const {PlatformError}=await import('../../services/Security/platformAdmin.service');
+  try{res.json({success:true,data:await CompanySecurityService.operationSelection(req.user,req.body)});}
+  catch(e){res.status(e instanceof PlatformError?e.status:500).json({success:false,message:e instanceof PlatformError?e.message:'Unable to load selected screen operations'});}
+});
+router.post('/accessassignuser/bulk',async(req:any,res)=>{
+  try {
+    const {CompanySecurityService}=await import('../../services/Security/companySecurity.service');
+    const {PlatformError}=await import('../../services/Security/platformAdmin.service');
+    try{res.json({success:true,data:await CompanySecurityService.bulkUserAccess(req.user,req.body,req.body.remove===true)});}
+    catch(e){res.status(e instanceof PlatformError?e.status:500).json({success:false,message:e instanceof PlatformError?e.message:'Unable to save screen assignments. No changes were saved.'});}
+  }catch{res.status(500).json({success:false,message:'Unable to verify company permissions'});}
+});
 router.get("/accessassignuser", getSecRollFunctionAccessUser);
 router.post("/accessassignuser", createSecRollFunctionAccessUser);
 router.get("/accessassignuser/:serial_no", getOperationalMaster);

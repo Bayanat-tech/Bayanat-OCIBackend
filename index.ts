@@ -5,16 +5,27 @@ import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 import { companyBillingGate } from "./src/middleware/companyBilling.middleware";
+import { companyAccountGate } from "./src/middleware/companyAccount.middleware";
 
 const app = express();
 console.log("index.ts loaded");
 
 app.use(cors());
 
+// Public signup does not need the ERP's large document-upload body allowance.
+app.use('/api/auth/registration',(req:Request,res:Response,next)=>{
+  if(req.method==='POST'&&!req.is('application/json')){res.status(415).json({success:false,message:'Send registration details as JSON.'});return;}
+  next();
+});
+app.use('/api/auth/registration',express.json({limit:'16kb',strict:true}));
+app.use('/api/auth/registration',(error:any,_req:Request,res:Response,_next:any)=>{
+  res.status(error.status===413?413:400).json({success:false,message:error.status===413?'Registration details are too large. Please shorten the supplied fields.':'Provide valid registration details.'});
+});
+
 app.use(express.json({ limit: '50mb' }));
 
 app.use(express.urlencoded({limit: '50mb', extended: true }));
-app.use("/api", companyBillingGate);
+app.use("/api", companyAccountGate, companyBillingGate);
 
 // passport strategies will be initialized after TypeORM is ready (see startServer)
 export const withTenantContext = () => [

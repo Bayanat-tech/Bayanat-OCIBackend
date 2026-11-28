@@ -2,6 +2,8 @@ import { PlatformAdminService, PlatformError } from "./platformAdmin.service";
 import bcrypt from "bcrypt";
 import oracledb from "oracledb";
 import { CompanyBillingService } from "./companyBilling.service";
+import { isGeneralMaster } from "./defaultMasterAccess.service";
+import { readOperationTemplates } from './operationTemplate.service';
 
 const flags = ["SNEW", "SMODIFY", "SDELETE", "SSAVE", "SSEARCH", "SSAVEAS", "SUPLOAD", "SUNDO", "SPRINT", "SPRINTSETUP", "SHELP"];
 export type CompanyActor = { loginid: string; tenantId: string; company_code: string };
@@ -9,18 +11,66 @@ export type CompanyActor = { loginid: string; tenantId: string; company_code: st
 // A tenant administrator may delegate only permissions they currently hold.
 // Resolve from the database on every request, never from a browser-supplied list.
 export class CompanySecurityService {
+  static async operationSelection(actor:CompanyActor,input:any) {
+    if(!Array.isArray(input.serials)||!input.serials.length||input.serials.length>5000)throw new PlatformError('Select between 1 and 5000 screens');
+    const serials=[...new Set<number>(input.serials.map(Number))];
+    const policy=await this.capability(actor,['access_assign_user'],'SSEARCH');
+    if(serials.some(n=>!Number.isSafeInteger(n)||!policy.screens.some(s=>Number(s.SERIAL_NO)===n)))throw new PlatformError('Select screens within your assigned modules',403);
+    return PlatformAdminService.scope(actor.tenantId,async(c,owner)=>{
+      const templates=await readOperationTemplates(c,owner,actor.company_code);
+      const bySerial=new Map<number,any>();for(const row of templates)if(!bySerial.has(Number(row.SERIAL_NO)))bySerial.set(Number(row.SERIAL_NO),row);
+      return Object.fromEntries(flags.map(f=>[f.toLowerCase(),serials.every(serial=>policy.permissions.get(serial)?.[f]==='Y'&&String(bySerial.get(serial)?.[f]||'').toUpperCase()!=='NA')?'N':'NA']));
+    });
+  }
+  static async bulkUserAccess(actor:CompanyActor,input:any,remove=false) {
+    if(!Array.isArray(input.serials)||!input.serials.length||input.serials.length>5000)throw new PlatformError('Select between 1 and 5000 screens');
+    const serials=[...new Set<number>(input.serials.map(Number))];
+    if(serials.some(n=>!Number.isSafeInteger(n)||n<=0||n>=90001))throw new PlatformError('Select valid screens');
+    await this.targetUser(actor,input.loginid);
+    const policy=await this.capability(actor,['access_assign_user'],remove?'SDELETE':'SSAVE');
+    const requested=Object.fromEntries(flags.map(f=>[f,String(input.permissions?.[f.toLowerCase()]??'N').toUpperCase()]));
+    if(Object.values(requested).some(v=>!['Y','N','NA'].includes(v)))throw new PlatformError('Choose valid operation permissions');
+    for(const serial of serials) {
+      if(!policy.screens.some(s=>Number(s.SERIAL_NO)===serial))throw new PlatformError('You can assign only your own available screens and modules',403);
+      if(!remove)for(const f of flags)if(requested[f]==='Y'&&policy.permissions.get(serial)?.[f]!=='Y')throw new PlatformError('You cannot grant an operation you do not have',403);
+    }
+    return PlatformAdminService.scope(actor.tenantId,async(c,owner)=>{
+      try {
+        // Serialize assignments for this company user without requiring LOCK ANY TABLE.
+        // A table-wide lock on another schema fails for the central backend account.
+        const target=await c.execute(`SELECT LOGINID FROM ${owner}.SEC_LOGIN
+          WHERE COMPANY_CODE=:company AND UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) FOR UPDATE WAIT 5`,
+          {company:actor.company_code,loginid:input.loginid});
+        if(!target.rows?.length)throw new PlatformError('Select a user in your own company',403);
+        // Read every operation template before the first write; a failed batch never partially assigns.
+        const templates=await readOperationTemplates(c,owner,actor.company_code);
+        const bySerial=new Map<number,any>();for(const row of templates)if(!bySerial.has(Number(row.SERIAL_NO)))bySerial.set(Number(row.SERIAL_NO),row);
+        for(const serial of serials){
+          const template=bySerial.get(serial);
+          const values=Object.fromEntries(flags.map(f=>[f.toLowerCase(),template&&String(template[f]).toUpperCase()==='NA'?'NA':requested[f]]));
+          const binds={company:actor.company_code,loginid:input.loginid,serial,actor:actor.loginid};
+          if(remove)await c.execute(`DELETE FROM ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER WHERE COMPANY_CODE=:company AND UPPER(TRIM(LOGINID))=UPPER(TRIM(:loginid)) AND SERIAL_NO_OR_ROLE_ID=:serial`,{company:actor.company_code,loginid:input.loginid,serial});
+          else await c.execute(`MERGE INTO ${owner}.SEC_ROLE_FUNCTION_ACCESS_USER t USING(SELECT :company COMPANY_CODE,:loginid LOGINID,:serial SERIAL_NO_OR_ROLE_ID FROM DUAL)s ON(t.COMPANY_CODE=s.COMPANY_CODE AND UPPER(TRIM(t.LOGINID))=UPPER(TRIM(s.LOGINID)) AND t.SERIAL_NO_OR_ROLE_ID=s.SERIAL_NO_OR_ROLE_ID)
+            WHEN MATCHED THEN UPDATE SET ${flags.map(f=>`t.${f}=:${f.toLowerCase()}`).join(',')},USERID=:actor,USER_DT=SYSTIMESTAMP
+            WHEN NOT MATCHED THEN INSERT(COMPANY_CODE,LOGINID,SERIAL_NO_OR_ROLE_ID,${flags.join(',')},USERID) VALUES(:company,:loginid,:serial,${flags.map(f=>':'+f.toLowerCase()).join(',')},:actor)`,{...binds,...values});
+        }
+        await PlatformAdminService.audit(actor.loginid,actor.tenantId,actor.company_code,remove?'DELETE':'UPDATE','BULK_USER_ACCESS',{loginid:input.loginid,serials},c);
+        await c.commit();return {changed:serials.length};
+      }catch(e:any){await c.rollback();if([54,30006].includes(e?.errorNum))throw new PlatformError("This user's screen access is being updated. Please retry shortly. No changes were saved.",409);throw e;}
+    });
+  }
   static async updateUser(actor: CompanyActor, input: any) {
     const actorPolicy = await this.capability(actor, ["sec_login"], "SMODIFY");
     await this.targetUser(actor, input.loginid);
     const targetPolicy = await this.policy({ ...actor, loginid: input.loginid }, false);
     for (const [serial, grant] of targetPolicy.permissions) for (const flag of flags)
-      if (grant[flag] === "Y" && actorPolicy.permissions.get(serial)?.[flag] !== "Y")
+      if (grant[flag] === "Y" && actorPolicy.permissions.get(serial)?.[flag] !== "Y" && !(flag === "SSEARCH" && isGeneralMaster(targetPolicy.screens.find(s => Number(s.SERIAL_NO) === serial) || {})))
         throw new PlatformError("This user has broader access. A platform administrator must edit their sign-in account.", 403);
     const values: Record<string, any> = {};
     for (const key of ["username", "email_id", "contact_no", "active_flag"])
       if (Object.prototype.hasOwnProperty.call(input, key)) values[key.toUpperCase()] = input[key];
     if (input.userpass) {
-      if (typeof input.userpass !== "string" || input.userpass.length < 12) throw new PlatformError("Password must contain at least 12 characters");
+      if (typeof input.userpass !== "string" || (input.userpass.length < 8 || input.userpass.length > 20)) throw new PlatformError("Password must contain 8 to 20 characters");
       const hash = await bcrypt.hash(input.userpass, 12);
       for (const key of ["USERPASS", "SEC_PASSWD", "PASSWORD"]) values[key] = hash;
     }

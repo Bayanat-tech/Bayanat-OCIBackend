@@ -132,6 +132,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const binds: Record<string, any> = {
       fromDate: toOracleDate(p.fromdate) ?? new Date("1900-01-01"),
       toDate:   toOracleDate(p.todate)   ?? new Date("2999-12-31"),
+      company_code: p.company_code,
     };
 
     const groupClause    = buildInClause("GROUP_CODE",    p.group,        "grp", binds);
@@ -140,6 +141,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const typeClause     = buildInClause("PRODTYPE_CODE", p.prodtype,     "typ", binds);
     const manuClause     = buildInClause("MANU_CODE",     p.manu,         "man", binds);
     const custClause     = buildInClause("AC_CODE",       p.cust,         "cus", binds);
+    const company_code    = "COMPANY_CODE"; // column name is the same as the bind variable
 
     // Only bind :docNo when the SQL text actually references it
     // (otherwise oracledb throws ORA-01036).
@@ -167,6 +169,7 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
       AND ${typeClause}
       AND ${manuClause}
       AND ${custClause}
+      AND ${company_code} = :company_code
     `;
 
     let sql = "";
@@ -428,8 +431,7 @@ function renderHtmlTable(lines: ReportLine[], columns: ColumnDef[]): string {
   }).join("");
 
   return `
-    <table class="data-table">
-      ${colgroup}
+      <table class="data-table ${columns.length === 7 ? "pls-inv" : "pls-std"}">
       <thead><tr>${headerCells}</tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>`;
@@ -440,10 +442,10 @@ async function renderHtml(mode: ReportMode, lines: ReportLine[], columns: Column
   const headerHtml = await reportHeader({ company_code: p.company_code, req });
 
   const bodyHtml = `
-    <div class="pl-title">${escapeHtml(MODE_TITLES[mode])}</div>
-    <div class="group">
+       <h1 class="center pl-title pls-title" style="margin:0 0 8px 0;text-align:center;font-size:16px;font-weight:800;color:#0b4ca1;"><u>${escapeHtml(MODE_TITLES[mode].toUpperCase())}</u></h1>
+       <div class="group">
       ${renderHtmlTable(lines, columns)}
-    </div>`;
+    </div>`.replace(/>\s+</g, "><");
 
   // ── Shared footer (print date / user / report name) ──
   const footerHtml = reportFooter({

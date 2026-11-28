@@ -1,4 +1,5 @@
 import * as express from "express";
+import publicRegistrationRoutes from './publicRegistration.routes';
 import passport from "passport";
 import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 import {
@@ -16,6 +17,7 @@ import { PlatformAdminService } from "../services/Security/platformAdmin.service
 
 // Create a new Express router
 const router = express.Router();
+router.use('/registration',publicRegistrationRoutes);
 
 router.get("/public/invoice", public_invoice)
 router.post("/login", login);
