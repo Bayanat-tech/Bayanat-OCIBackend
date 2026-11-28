@@ -13,11 +13,11 @@ type ReportRow = Record<string, any>;
 interface ReqParams {
   loginid: string;
   company_code: string;
-  doc_type: string; // "LPO"
+  doc_type: string;
   doc_no: string;
 }
 
-// ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
+// ─── DB helpers ─────────────────────────────────────────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
@@ -59,11 +59,21 @@ function dateText(value: unknown): string {
 }
 
 function escapeHtml(value: unknown): string {
-  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function escapeXml(value: unknown): string {
-  return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  return text(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function qtyFmt(value: unknown): string {
@@ -78,11 +88,116 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function grossValue(r: ReportRow): number {
-  return num(r.quantity) * num(r.unit_price);
+/** Table cells: show nothing instead of 0 / 0.00 */
+const qtyBlank = (value: unknown): string => (num(value) === 0 ? "" : qtyFmt(value));
+const amtBlank = (value: unknown): string => (num(value) === 0 ? "" : amtFmt(value));
+
+function numberToWords(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "Zero";
+  n = Math.abs(Math.floor(n));
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen",
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const chunk = (x: number): string => {
+    if (x === 0) return "";
+    if (x < 20) return ones[x];
+    if (x < 100) return tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
+    return ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + chunk(x % 100) : "");
+  };
+  let r = "";
+  const m = Math.floor(n / 1_000_000);
+  const t = Math.floor((n % 1_000_000) / 1000);
+  const rem = n % 1000;
+  if (m) r += chunk(m) + " Million";
+  if (t) r += (r ? " " : "") + chunk(t) + " Thousand";
+  if (rem) r += (r ? " " : "") + chunk(rem);
+  return r || "Zero";
 }
 
-const minifyHtml = (html: string) => html.replace(/>\s+</g, "><").trim();
+function currencyInfo(code: string): { name: string; sub: string; dec: number } {
+  switch ((code || "").toUpperCase()) {
+    case "OMR": return { name: "OMANI RIAL", sub: "Baisa", dec: 3 };
+    case "QAR":
+    case "QR":  return { name: "QATARI RIYAL", sub: "Dirham", dec: 2 };
+    case "INR": return { name: "INDIAN RUPEES", sub: "Paise", dec: 2 };
+    case "AED": return { name: "UAE DIRHAM", sub: "Fils", dec: 2 };
+    default:    return { name: code || "AMOUNT", sub: "", dec: 2 };
+  }
+}
+
+function amountToWords(value: number, currCode: string): string {
+  const { name, sub, dec } = currencyInfo(currCode);
+  const factor = Math.pow(10, dec);
+  const total = Math.round(Math.abs(value) * factor);
+  const whole = Math.floor(total / factor);
+  const frac = total % factor;
+  let words = numberToWords(whole);
+  if (frac > 0) words += ` and ${numberToWords(frac)} ${sub}`.trimEnd();
+  return `${name} - ${value < 0 ? "Minus " : ""}${words} Only`;
+}
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+const flagY = (v: unknown) => ["Y", "YES", "1", "TRUE"].includes(text(v).trim().toUpperCase());
+const isCancelledRow = (r: ReportRow): boolean =>
+  flagY(r.cancelled) || flagY(r.canceled) || flagY(r.det_cancel);
+const isCancelledDoc = (rows: ReportRow[]): boolean =>
+  rows.length > 0 && rows.every(isCancelledRow);
+
+const grossValue = (r: ReportRow): number => num(r.quantity) * num(r.unit_price);
+
+const lineDiscOf = (r: ReportRow): number => {
+  const gross = num(r.quantity) * num(r.unit_price);
+  return round2(num(r.disc_price) || (gross * num(r.disc_percent)) / 100);
+};
+
+const netOf = (r: ReportRow): number =>
+  r.amount != null && r.amount !== "" ? round2(num(r.amount)) : round2(grossValue(r) - lineDiscOf(r));
+
+const vatOf = (r: ReportRow): number =>
+  r.tx_compnt_amt_1 != null && r.tx_compnt_amt_1 !== ""
+    ? round2(num(r.tx_compnt_amt_1))
+    : round2((netOf(r) * num(r.tx_compnt_perc_1)) / 100);
+
+// ─── Boxed header helpers ───────────────────────────────────────────────────
+
+type KvPair = [string, string];
+
+function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
+  const rows = pairs
+    .map(([k, v]) => "<tr><td>" + escapeHtml(k) + "</td><td>:</td><td><b>" + escapeHtml(v || "-") + "</b></td></tr>")
+    .join("");
+  return (
+    '<table class="pr-kv-box ' + cls + '">' +
+      '<thead><tr><th colspan="3">' + escapeHtml(title) + "</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody>" +
+    "</table>"
+  );
+}
+
+function kvTwoBoxesHtml(leftTitle: string, left: KvPair[], rightTitle: string, right: KvPair[]): string {
+  return (
+    '<table class="grn-two-col grn-flush po-two-col"><tbody><tr>' +
+      "<td>" + kvBoxHtml(leftTitle, left, "po-kv-to") + "</td>" +
+      "<td>" + kvBoxHtml(rightTitle, right, "po-kv-details") + "</td>" +
+    "</tr></tbody></table>"
+  );
+}
+
+const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
+  pairs.filter(([, v], i) => i < required || !!text(v).trim());
+
+// ─── Editable print texts ───────────────────────────────────────────────────
+
+const PO_NOTES: string[] = [
+  "1. Our order number is to be quoted on all relevant Invoices & Delivery Notes.",
+  "2. Goods once sold will not be taken back.",
+];
+
+const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
 
 // ─── Param extraction ───────────────────────────────────────────────────────
 
@@ -94,6 +209,15 @@ function extractParams(req: RequestWithUser): ReqParams {
     doc_type: text(b.doc_type) || "LPO",
     doc_no: text(b.doc_no),
   };
+}
+
+function resolveCompanyCode(req: RequestWithUser, params: ReqParams): string {
+  return (
+    params.company_code ||
+    text(req.user?.company_code) ||
+    text(req.query.company_code) ||
+    "BSG"
+  );
 }
 
 // ─── Data loader ────────────────────────────────────────────────────────────
@@ -138,8 +262,6 @@ async function loadPurchaseOrderData(req: RequestWithUser, p: ReqParams): Promis
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
-    console.log("=== GENERATED SQL ===\n", rawSql, "\n=== END ===");
-
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return normalize(dataResult.rows as any[]);
   } finally {
@@ -147,12 +269,11 @@ async function loadPurchaseOrderData(req: RequestWithUser, p: ReqParams): Promis
   }
 }
 
-// ─── Report line model ──────────────────────────────────────────────────────
+// ─── Header model ───────────────────────────────────────────────────────────
 
 interface PoHeader {
   doc_no: string;
   doc_date: any;
-  doc_type: string;
   div_name: string;
   ac_code: string;
   party_name: string;
@@ -161,14 +282,12 @@ interface PoHeader {
   party_fax: string;
   payment_terms: string;
   dlvr_term: string;
+  remarks: string;
+  ref_no: string;
+  curr_code: string;
   disc_hdr_price: number;
   disc_hdr_percent: number;
-  total_discount: number;
   cancelled: boolean;
-  total_tx_compnt_amt_1: number;
-  logo_url: string | null;
- remarks: string;
-  ref_no: string;
 }
 
 function buildHeader(rows: ReportRow[]): PoHeader {
@@ -176,7 +295,6 @@ function buildHeader(rows: ReportRow[]): PoHeader {
   return {
     doc_no: text(h.doc_no),
     doc_date: h.doc_date,
-    doc_type: text(h.doc_type),
     div_name: text(h.div_name),
     ac_code: text(h.ac_code),
     party_name: text(h.party_name),
@@ -185,101 +303,35 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     party_fax: text(h.party_fax),
     payment_terms: text(h.payment_terms),
     dlvr_term: text(h.dlvr_term),
+    remarks: text(h.remarks || h.ref_no),
+    ref_no: text(h.ref_no),
+    curr_code: text(h.curr_code),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
-    total_discount: num(h.total_discount),
-    total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
-    cancelled: text(h.cancelled).toUpperCase() === "Y",
-    logo_url: h.logo_url || null,
-    remarks: text(h.remarks || "-"),
-    ref_no: text(h.ref_no),
+    cancelled: isCancelledDoc(rows),
   };
 }
 
-
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-
-
-const lineDiscOf = (r: ReportRow) =>
-  round2(num(r.disc_price) || (grossValue(r) * num(r.disc_percent)) / 100);
-
 function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-
-  // Gross = qty × rate
-  const totalAmount = round2(rows.reduce((s, r) => s + grossValue(r), 0));
-
-
-
-  const discount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
-
+  const totalAmount = round2(rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0));
+  const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
+  const lineNet = totalAmount - lineDiscount;
+  const headerDiscount = round2(header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100);
+  const discount = round2(lineDiscount + headerDiscount);
   const exclusiveVat = round2(totalAmount - discount);
-  const total_tx_compnt_amt_1 = header.total_tx_compnt_amt_1;
-  const inclusiveVat = round2(exclusiveVat + total_tx_compnt_amt_1);
-
-  return { totalQty, totalAmount, discount, exclusiveVat, total_tx_compnt_amt_1, inclusiveVat };
+  const vat = round2(rows.reduce((s, r) => s + vatOf(r), 0));
+  const inclusiveVat = round2(exclusiveVat + vat);
+  return { totalQty, totalAmount, discount, exclusiveVat, vat, inclusiveVat };
 }
 
+// ─── Shared CSS ─────────────────────────────────────────────────────────────
 
-// ─── HTML renderer (same visual system as PO Order Register) ──────────────
-
-const REPORT_TITLE = "Purchase Order";
-const REPORT_SUBTITLE = "PO Document";
-const PO_NOTES: string[] = [
-  "1. Our order number is to be quoted on all relevant Invoices.",
-  
-];
-
-const PO_APPROVAL_TEXT = "This Document Is Electronically Approved";
-
-/** PO-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: center !important;
-    align-items: center;
-    text-align: center !important;
-    margin: 4px 0 12px 0;
-  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .so-items { font-size: 7.5px; }
+  .so-items th, .so-items td { padding: 3px 2px !important; }
 
-  .doc-title-row > div {
-    text-align: center !important;
-    width: 100%;
-  }
-
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-    text-align: center !important;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-    text-align: center !important;
-  }
-
-  .status-badge {
-    display: inline-block;
-    margin-top: 4px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .status-CANCELLED {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-
-  /* Two separate boxes */
   table.grn-two-col {
     width: 100%;
     table-layout: fixed;
@@ -287,17 +339,14 @@ const PO_EXTRA_CSS = `
     border-spacing: 10px 0;
     margin: 0 -10px 14px;
   }
-
   .grn-two-col > tbody > tr > td {
     width: 50%;
     vertical-align: top;
     padding: 0;
   }
-
-    table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
+  table.po-two-col > tbody > tr > td:first-child { width: 60% !important; }
   table.po-two-col > tbody > tr > td:last-child  { width: 40% !important; }
 
-  /* Individual box */
   table.pr-kv-box {
     width: 100%;
     border-collapse: collapse;
@@ -305,79 +354,69 @@ const PO_EXTRA_CSS = `
     background: #ffffff;
     font-size: 11px;
   }
-
   .pr-kv-box thead th {
     text-align: left;
-    padding: 8px 10px;
+    padding: 6px 10px;
     color: #0b4ca1;
     background: #eff6ff;
     font-size: 11px;
     font-weight: 700;
     border-bottom: 2px solid #0b4ca1;
   }
-
   .pr-kv-box tbody td {
-    padding: 6px 10px;
+    padding: 5px 10px;
     border-bottom: 1px solid #e2e8f0;
     color: #334155;
     vertical-align: top;
     line-height: 1.4;
     overflow-wrap: anywhere;
   }
+  .pr-kv-box tbody tr:last-child td { border-bottom: none; }
+  .pr-kv-box tbody td:first-child { width: 30%; }
+  .pr-kv-box tbody td:nth-child(2) { width: 12px; text-align: center; }
+  .pr-kv-box tbody td:last-child { color: #0f172a; }
 
-  .pr-kv-box tbody tr:last-child td {
-    border-bottom: none;
+  table.po-terms, table.po-items {
+    border-collapse: collapse;
+    width: 100%;
   }
 
-  .pr-kv-box tbody td:first-child {
-    width: 34%;
-  }
+  table.po-items-tax {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 7px;
+}
 
-  .pr-kv-box tbody td:nth-child(2) {
-    width: 12px;
+table.po-items-tax th,
+table.po-items-tax td {
+  border: 1px solid #4a6fa5 !important;
+  padding: 3px 2px !important;
+  vertical-align: middle;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+table.po-items-tax th {
+  background: #a4c9f4 !important;
+  font-weight: 700;
+  text-align: center;
+}
+
+  table.po-terms th, table.po-terms td,
+  table.po-items th, table.po-items td {
+    border: 1px solid #4a6fa5 !important;
+  }
+  table.po-terms { margin-bottom: 12px; }
+  table.po-terms thead th {
+    background: #a4c9f4 !important;
+    font-weight: 700;
+    padding: 7px 8px;
     text-align: center;
   }
-
-  .pr-kv-box tbody td:last-child {
-    color: #0f172a;
-  }
-
-  table.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    margin-top: 4px;
-  }
-
-  table.data-table thead th {
-    background: #f1f5f9;
-    color: #334155;
-    padding: 8px 10px;
-    text-align: left;
-    font-weight: 700;
-    font-size: 10px;
-    text-transform: uppercase;
-    border-bottom: 1px solid #cbd5e1;
-  }
-
-  table.data-table thead th.right {
-    text-align: right;
-  }
-
-  table.data-table tbody td {
-    padding: 7px 10px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: top;
-  }
-
-  table.data-table .right {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-
-  table.data-table .amount {
-    font-weight: 600;
-    color: #065f46;
+  table.po-terms tbody td {
+    text-align: center;
+    padding: 10px 8px;
   }
 
   .totals-box {
@@ -388,7 +427,6 @@ const PO_EXTRA_CSS = `
     border-radius: 10px;
     overflow: hidden;
   }
-
   .totals-box .row {
     display: flex;
     justify-content: space-between;
@@ -396,7 +434,6 @@ const PO_EXTRA_CSS = `
     font-size: 12px;
     border-bottom: 1px solid #f1f5f9;
   }
-
   .totals-box .row.grand {
     background: #0b4ca1;
     color: #fff;
@@ -405,161 +442,69 @@ const PO_EXTRA_CSS = `
     border-bottom: none;
   }
 
-   /* Payment / Delivery / Project strip */
-  table.po-terms-strip {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse !important;
-    border: 1px solid #4a6fa5 !important;
-    margin: 0 0 14px 0;
-  }
-  table.po-terms-strip thead th,
-  table.po-terms-strip tbody td {
-    border: 1px solid #4a6fa5 !important;
-    border-top: 1px solid #4a6fa5 !important;
-    border-bottom: 1px solid #4a6fa5 !important;
-    border-left: 1px solid #4a6fa5 !important;
-    border-right: 1px solid #4a6fa5 !important;
-    text-align: center !important;
-    color: #0f172a !important;
-    font-size: 11px;
-    overflow-wrap: anywhere;
-  }
-  table.po-terms-strip thead th {
-    background: #a4c9f4 !important;
-    font-weight: 700;
-    padding: 7px 8px;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  table.po-terms-strip tbody td {
-    background: #ffffff !important;
-    line-height: 1.4;
-    padding: 10px 8px;
-  }
-
-  .empty-lines {
-    text-align: center;
-    padding: 40px 20px;
-    color: #64748b;
-  }
-
-    /* Keep Reference + notes + signature together, never split across pages */
   .po-sign-block {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    margin-top: 16px;
   }
-
-  .po-sign-block table,
-  .po-sign-block tr,
-  .po-sign-block td,
-  .po-sign-block th {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* Do not repeat the header row on the next page */
-  .po-sign-block thead {
-    display: table-row-group !important;
-  }
-
-    /* Terms strip + items table: same grid look */
-  table.po-terms,
-  table.po-items {
-    border-collapse: collapse;
-  }
-  table.po-terms th, table.po-terms td,
-  table.po-items th, table.po-items td {
-    border: 1px solid #4a6fa5 !important;
-  }
-  table.po-terms {
-    margin-bottom: 12px;
-  }
-
-    .pr-kv-box.po-kv-to thead th,
-  .pr-kv-box.po-kv-details thead th {
-    padding: 4px 10px;
-  }
-      table.po-two-col > tbody > tr > td:first-child { width: 70% !important; }
-  table.po-two-col > tbody > tr > td:last-child  { width: 30% !important; }
-
-  table.po-terms, table.po-items { border-collapse: collapse; }
-  table.po-terms th, table.po-terms td,
-  table.po-items th, table.po-items td { border: 1px solid #4a6fa5 !important; }
-  table.po-terms { margin-bottom: 12px; }
-
-  .pr-kv-box.po-kv-to tbody td:first-child { width: 18%; }
-  .pr-kv-box.po-kv-details tbody td:first-child { width: 32%; }
-  .pr-kv-box.po-kv-to thead th,
-  .pr-kv-box.po-kv-details thead th { padding: 4px 10px; }
 `;
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  HTML RENDERERS
+// ═══════════════════════════════════════════════════════════════════════════
 
-type KvPair = [string, string];
-function kvBoxHtml(title: string, pairs: KvPair[], cls = ""): string {
-  const rows = pairs
-    .map(
-      ([key, value]) => `
+/** Non-tax version – 10 columns */
+function renderPoBody(rows: ReportRow[]): string {
+  const header = buildHeader(rows);
+  const totals = computeTotals(rows, header);
+  const cancelled = header.cancelled ? " — CANCELLED" : "";
+
+  let sumLine = 0, sumDisc = 0, sumNet = 0;
+
+  const bodyRows = rows
+    .map((r, i) => {
+      const line = round2(grossValue(r));
+      const disc = lineDiscOf(r);
+      const net = netOf(r);
+      sumLine += line;
+      sumDisc += disc;
+      sumNet += net;
+
+      return `
         <tr>
-          <td>${escapeHtml(key)}</td>
-          <td>:</td>
-          <td><b>${escapeHtml(value || "-")}</b></td>
-        </tr>
-      `
-    )
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="num">${qtyBlank(r.qty_puom ?? r.quantity)}</td>
+          <td class="center">${escapeHtml(r.p_uom || r.uom || "")}</td>
+          <td class="num">${qtyBlank(r.qty_luom)}</td>
+          <td class="center">${escapeHtml(r.l_uom || "")}</td>
+          <td class="num">${amtBlank(r.unit_price)}</td>
+          <td class="num">${amtBlank(line)}</td>
+          <td class="num">${amtBlank(disc)}</td>
+          <td class="num">${amtBlank(net)}</td>
+        </tr>`;
+    })
     .join("");
 
   return `
-        <table class="pr-kv-box ${cls}">
-      <thead>
-        <tr>
-          <th colspan="3">${escapeHtml(title)}</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
+    <h1 class="report-title center"><u>PURCHASE ORDER${cancelled}</u></h1>
 
-function kvTwoBoxesHtml(
-  leftTitle: string,
-  left: KvPair[],
-  rightTitle: string,
-  right: KvPair[]
-): string {
-  return `
-      <table class="grn-two-col po-two-col">
-      <tbody>
-        <tr>
-                   <td>${kvBoxHtml(leftTitle, left, "po-kv-to")}</td>
-          <td>${kvBoxHtml(rightTitle, right, "po-kv-details")}</td>
-        </tr>
-      </tbody>
-    </table>
-  `;
-}
+    ${kvTwoBoxesHtml(
+      "To",
+      keepFilled([
+        ["Supplier", header.party_name],
+        ["Address", header.party_address],
+        ["Tel", header.party_phone],
+        ["Fax", header.party_fax],
+      ], 1),
+      "PO Details",
+      keepFilled([
+        ["PO No", header.doc_no],
+        ["Date", dateText(header.doc_date)],
+      ], 2)
+    )}
 
-const keepFilled = (pairs: KvPair[], required: number): KvPair[] =>
-  pairs.filter(([, value], index) =>
-    index < required || !!text(value).trim()
-  );
-
-function poPartyPairs(header: PoHeader): KvPair[] {
-  return keepFilled(
-    [
-      ["Supplier", header.party_name],
-      ["Address", header.party_address],
-      ["Tel", header.party_phone],
-      ["Fax", header.party_fax],
-    ],
-    1
-  );
-}
-
-
-function poTermsStripHtml(header: PoHeader): string {
-  return `
-   <table class="data-table po-terms">
+    <table class="data-table po-terms">
       <thead>
         <tr>
           <th class="center">PAYMENT TERM</th>
@@ -574,238 +519,236 @@ function poTermsStripHtml(header: PoHeader): string {
           <td class="center">${escapeHtml(header.remarks || "-")}</td>
         </tr>
       </tbody>
-    </table>`;
-}
+    </table>
 
-function poDetailPairs(header: PoHeader): KvPair[] {
-  return keepFilled(
-    [
-      ["Doc No", header.doc_no],
-      ["Date", dateText(header.doc_date)],
-    
-
-    ],
-    3
-  );
-}
-
-/** Body only – no full HTML document */
-function renderPoBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const header = buildHeader(rows);
-  const totals = computeTotals(rows, header);
-
-  const bodyRows = rows
-    .map(
-      (r, i) => `
-    <tr>
-      <td>${i + 1}</td>
-     <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-      <td>${escapeHtml(r.p_uom)}</td>
-      <td class="right">${qtyFmt(r.quantity)}</td>
-      <td class="right">${amtFmt(r.unit_price)}</td>
-      <td class="right amount">${amtFmt(grossValue(r))}</td>
-      <td class="right">${amtFmt(lineDiscOf(r))}</td>
-      
-    </tr>`
-    )
-    .join("");
-
-  return `
-    <h1 class="center"><u>${escapeHtml(REPORT_TITLE.toUpperCase())}${header.cancelled ? " (CANCELLED)" : ""}</u></h1>
-
-    ${kvTwoBoxesHtml(
-    "To",
-    poPartyPairs(header),
-    "PO Details",
-    poDetailPairs(header)
-  )}
-
-    ${poTermsStripHtml(header)}
-
-    ${rows.length === 0
-      ? `<div class="empty-lines">No line items found for this PO.</div>`
-      : `
+    ${
+      rows.length === 0
+        ? `<div class="empty">No line items found for this order.</div>`
+        : `
       <table class="data-table po-items">
         <thead>
           <tr>
-            <th>S.No.</th>
+            <th class="center">S.No</th>
             <th>Product / Description</th>
-            <th>UOM</th>
-            <th class="right">Qty</th>
-            <th class="right">Unit Rate</th>
-            <th class="right">Gross Value</th>
-            <th class="right">Disc</th>
-           
+            <th class="right">P.Qty</th>
+            <th class="center">P.UOM</th>
+            <th class="right">L.Qty</th>
+            <th class="center">L.UOM</th>
+            <th class="right">Unit Price</th>
+            <th class="right">Line Value</th>
+            <th class="right">Disc Amt</th>
+            <th class="right">Net Amt</th>
           </tr>
         </thead>
-        <tbody>${bodyRows}</tbody>
+        <tbody>
+          ${bodyRows}
+          <tr class="subtotal-row">
+            <td colspan="7" class="right"><b>Total</b></td>
+            <td class="num"><b>${amtBlank(sumLine)}</b></td>
+            <td class="num"><b>${amtBlank(sumDisc)}</b></td>
+            <td class="num"><b>${amtBlank(sumNet)}</b></td>
+          </tr>
+        </tbody>
       </table>
 
       <div class="totals-box">
         <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
         <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
         <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
-        <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
-        <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
-      <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
+        <div class="row grand"><span>Net Amount</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
       </div>`
     }
 
-            <div class="po-sign-block" style="break-inside:avoid;page-break-inside:avoid;">
-      <div class="group"><span class="strong">Reference: ${escapeHtml(header.ref_no || "as per above")}</span></div>
-      <div class="group">${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}</div>
+    <div class="po-sign-block">
+      <div style="margin-top:8px;font-size:10px;">
+        <b>Reference:</b> ${escapeHtml(header.ref_no || "-")}
+      </div>
+      ${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}
 
-     <table class="data-table po-sign" style="break-inside:avoid;page-break-inside:avoid;">
+      <table class="data-table po-sign" style="margin-top:12px;">
         <thead>
           <tr>
-            <th class="center">For Supplier:</th>
-            <th class="center">For ${escapeHtml(header.div_name || "Company")}:</th>
+            <th class="center">For Supplier</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>
-              <b>I have read &amp; agreed to all terms and conditions.</b>
-              <br/><br/><br/>
+            <td style="padding:16px 10px;">
+              <br/><br/>
               Signature: ______________________ &nbsp; Date: ______________
             </td>
-            <td class="center">
-              ${escapeHtml(PO_APPROVAL_TEXT)}
-              <br/><br/><br/>
+            <td class="center" style="padding:16px 10px;">
+              ${escapeHtml(PO_APPROVAL_TEXT)}<br/><br/>
               Signature: ______________________ &nbsp; Date: ______________
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
   `;
 }
 
-// ─── Excel builder (same raw-OOXML engine as PO Order Register) ───────────
-
-function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
-  const BLUE = "FF1D4ED8";
-  const WHITE = "FFFFFFFF";
-  const LBLUE = "FFDBEAFE";
-  const GREEN_BG = "FFD1FAE5";
-
+/** Tax version – 13 columns (same as Sales Order) */
+ function renderPoTaxBody(rows: ReportRow[]): string {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
+  const cancelled = header.cancelled ? " — CANCELLED" : "";
 
-  const COL_COUNT = 7; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, Disc
+  let sumLine = 0, sumDisc = 0, sumNet = 0, sumVat = 0, sumGrand = 0;
 
-  interface XlCell { v: unknown; styleKey: string }
-  type Row = (XlCell | null)[];
-  const rows_: Row[] = [];
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  const bodyRows = rows
+    .map((r, i) => {
+      const line = round2(grossValue(r));
+      const disc = lineDiscOf(r);
+      const net = netOf(r);
+      const vatAmt = vatOf(r);
+      const grand = round2(net + vatAmt);
+      sumLine += line;
+      sumDisc += disc;
+      sumNet += net;
+      sumVat += vatAmt;
+      sumGrand += grand;
 
-  const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
-  const blank = (): Row => new Array(COL_COUNT).fill(null);
-  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
-  const mergeFull = () =>
-    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+      return `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="num">${qtyBlank(r.qty_puom ?? r.quantity)}</td>
+          <td class="center">${escapeHtml(r.p_uom || r.uom || "")}</td>
+          <td class="num">${qtyBlank(r.qty_luom)}</td>
+          <td class="center">${escapeHtml(r.l_uom || "")}</td>
+          <td class="num">${amtBlank(r.unit_price)}</td>
+          <td class="num">${amtBlank(line)}</td>
+          <td class="num">${amtBlank(disc)}</td>
+          <td class="num">${amtBlank(net)}</td>
+          <td class="num">${amtBlank(r.tx_compnt_perc_1)}</td>
+          <td class="num">${amtBlank(vatAmt)}</td>
+          <td class="num">${amtBlank(grand)}</td>
+        </tr>`;
+    })
+    .join("");
 
-  rows_.push(fullRow(cell(`${REPORT_TITLE} - ${header.doc_no}`, "title")));
-  mergeFull();
+  return `
+    <h1 class="report-title center"><u>PURCHASE ORDER${cancelled}</u></h1>
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
+    ${kvTwoBoxesHtml(
+      "To",
+      keepFilled([
+        ["Supplier", header.party_name],
+        ["Address", header.party_address],
+        ["Tel", header.party_phone],
+        ["Fax", header.party_fax],
+      ], 1),
+      "PO Details",
+      keepFilled([
+        ["PO No", header.doc_no],
+        ["Date", dateText(header.doc_date)],
+      ], 2)
+    )}
 
-  rows_.push([
-    cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
-    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
-  ]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
-  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: COL_COUNT - 1 } });
+    <table class="data-table po-terms">
+      <thead>
+        <tr>
+          <th class="center">PAYMENT TERM</th>
+          <th class="center">DELIVERY TERM / PERIOD</th>
+          <th class="center">REMARKS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="center">${escapeHtml(header.payment_terms || "-")}</td>
+          <td class="center">${escapeHtml(header.dlvr_term || "-")}</td>
+          <td class="center">${escapeHtml(header.remarks || "-")}</td>
+        </tr>
+      </tbody>
+    </table>
 
-  rows_.push(fullRow(cell(
-    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
-    "meta"
-  )));
-  mergeFull();
+    ${
+      rows.length === 0
+        ? `<div class="empty">No line items found for this order.</div>`
+        : `
+     
+      <table class="data-table po-items-tax">
+        <thead>
+          <tr>
+            <th class="center">S.No</th>
+            <th>Product / Description</th>
+            <th class="right">P.Qty</th>
+            <th class="center">P.UOM</th>
+            <th class="right">L.Qty</th>
+            <th class="center">L.UOM</th>
+            <th class="right">Unit Price</th>
+            <th class="right">Line Value</th>
+            <th class="right">Disc Amt</th>
+            <th class="right">Net Amt</th>
+            <th class="right">TAX%</th>
+            <th class="right">TAX Amt</th>
+            <th class="right">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bodyRows}
+          <tr class="subtotal-row">
+            <td colspan="7" class="right"><b>Total</b></td>
+            <td class="num"><b>${amtBlank(sumLine)}</b></td>
+            <td class="num"><b>${amtBlank(sumDisc)}</b></td>
+            <td class="num"><b>${amtBlank(sumNet)}</b></td>
+            <td></td>
+            <td class="num"><b>${amtBlank(sumVat)}</b></td>
+            <td class="num"><b>${amtBlank(sumGrand)}</b></td>
+          </tr>
+        </tbody>
+      </table>
 
-  rows_.push(blank());
+      <div class="totals-box">
+        <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
+        <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
+        <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
+        <div class="row"><span>Net Amount</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
+        <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.vat)}</span></div>
+        <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
+      </div>`
+    }
 
-  rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("UOM", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
-    cell("Disc", "header"),
-  ]);
+    <div class="po-sign-block">
+      <div style="margin-top:8px;font-size:10px;">
+        <b>Reference:</b> ${escapeHtml(header.ref_no || "-")}
+      </div>
+      ${PO_NOTES.map((t) => `<div class="muted">${escapeHtml(t)}</div>`).join("")}
 
-  rows.forEach((r, i) => {
-    rows_.push([
-      cell(i + 1, "data"),
-      cell(text(r.prod_name), "data"),
-      cell(text(r.p_uom), "data"),
-      cell(num(r.quantity), "dataNum"),
-      cell(num(r.unit_price), "dataNum"),
-      cell(grossValue(r), "dataNum"),
-      cell(lineDiscOf(r), "dataNum"),
-    ]);
-  });
+      <table class="data-table po-sign" style="margin-top:12px;">
+        <thead>
+          <tr>
+            <th class="center">For Supplier</th>
+            <th class="center">For ${escapeHtml(header.div_name || "Company")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:16px 10px;">
+              <br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+            <td class="center" style="padding:16px 10px;">
+              ${escapeHtml(PO_APPROVAL_TEXT)}<br/><br/>
+              Signature: ______________________ &nbsp; Date: ______________
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
 
-  rows_.push(blank());
+// ═══════════════════════════════════════════════════════════════════════════
+//  EXCEL BUILDERS
+// ═══════════════════════════════════════════════════════════════════════════
 
-  const totalRows: [string, number][] = [
-    ["Total Quantity", totals.totalQty],
-    ["Total Amount", totals.totalAmount],
-    ["Overall Discount", totals.discount],
-    ["Total (Exclusive VAT)", totals.exclusiveVat],
-    ["VAT Amount", totals.total_tx_compnt_amt_1],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
-  });
-
-  const gtRow = rows_.length;
-  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
-
-  rows_.push(blank());
-
-  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
-  mergeFull();
-
-  PO_NOTES.forEach((n) => {
-    rows_.push(fullRow(cell(n, "meta")));
-    mergeFull();
-  });
-
-  rows_.push(blank());
-  const sRow = rows_.length;
-  rows_.push([
-    cell("For Supplier — Signature / Date", "meta"), null, null, null,
-    cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta"), null, null,
-  ]);
-  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 3 } });
-  merges.push({ s: { r: sRow, c: 4 }, e: { r: sRow, c: COL_COUNT - 1 } });
-
-  const footRow: Row = blank();
-  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
-  rows_.push(footRow);
-
-  // ── Style registration engine (identical to PO Order Register) ──
-  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
-  interface FillDef { color?: string; }
-  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
-  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
+function buildExcelStyles() {
+  const BLUE = "FF1D4ED8";
+  const WHITE = "FFFFFFFF";
+  const GREEN_BG = "FFD1FAE5";
 
   const styleDefs: Record<string, any> = {
     title: {
@@ -850,6 +793,11 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
     footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
 
+  interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string }
+  interface FillDef { color?: string }
+  interface BorderDef { top?: string; bottom?: string; left?: string; right?: string }
+  interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean }
+
   const fonts: FontDef[] = [{}];
   const fills: FillDef[] = [{}, {}];
   const borders: BorderDef[] = [{}];
@@ -882,7 +830,8 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
-      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb, left: b.left?.color?.rgb, right: b.right?.color?.rgb,
+      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb, right: b.right?.color?.rgb,
     };
     if (!def.top && !def.bottom && !def.left && !def.right) return 0;
     const key = `border:${JSON.stringify(def)}`;
@@ -920,34 +869,35 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
 
-  const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="18" customWidth="1"/>`
-  ).join("");
+  const buildZip = (COL_COUNT: number, rows_: any[], merges: any[], sheetName: string): Buffer => {
+    const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
+      `<col min="${i + 1}" max="${i + 1}" width="${i === 1 ? 36 : 14}" customWidth="1"/>`
+    ).join("");
 
-  let sheetDataXml = "";
-  rows_.forEach((row, ri) => {
-    const rn = ri + 1;
-    let rowXml = `<row r="${rn}">`;
-    row.forEach((c, ci) => {
-      if (c === null) return;
-      const ref = String.fromCharCode(65 + ci) + rn;
-      const s = styleIndexFor(c.styleKey);
-      if (typeof c.v === "number") {
-        rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
-      } else {
-        rowXml += `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${escapeXml(c.v ?? "")}</t></is></c>`;
-      }
+    let sheetDataXml = "";
+    rows_.forEach((row, ri) => {
+      const rn = ri + 1;
+      let rowXml = `<row r="${rn}">`;
+      row.forEach((c: any, ci: number) => {
+        if (c === null) return;
+        const ref = String.fromCharCode(65 + ci) + rn;
+        const s = styleIndexFor(c.styleKey);
+        if (typeof c.v === "number") {
+          rowXml += `<c r="${ref}" s="${s}"><v>${c.v}</v></c>`;
+        } else {
+          rowXml += `<c r="${ref}" s="${s}" t="inlineStr"><is><t>${escapeXml(c.v ?? "")}</t></is></c>`;
+        }
+      });
+      rowXml += "</row>";
+      sheetDataXml += rowXml;
     });
-    rowXml += "</row>";
-    sheetDataXml += rowXml;
-  });
 
-  const mergesXml = merges.map((m) =>
-    `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
-  ).join("");
-  const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
+    const mergesXml = merges
+      .map((m: any) => `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`)
+      .join("");
+    const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
 
-  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheetFormatPr defaultRowHeight="15"/>
   <cols>${colXml}</cols>
@@ -955,103 +905,363 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   ${mergeFinal}
 </worksheet>`;
 
-  const numFmtsXml = numFmts.length
-    ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
-    : "";
+    const numFmtsXml = numFmts.length
+      ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
+      : "";
 
-  const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
+    const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
     <font>
-        ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
-        ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
-        <name val="Arial"/>
-        ${f.bold ? "<b/>" : ""}
-        ${f.italic ? "<i/>" : ""}
+      ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
+      ${f.color ? `<color rgb="${f.color}"/>` : '<color rgb="FF000000"/>'}
+      <name val="Arial"/>
+      ${f.bold ? "<b/>" : ""}
+      ${f.italic ? "<i/>" : ""}
     </font>`).join("")}
 </fonts>`;
 
-  const fillsXml = `<fills count="${fills.length}">
+    const fillsXml = `<fills count="${fills.length}">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     ${fills.slice(2).map((f) => `
     <fill>
-        <patternFill patternType="solid">
-            <fgColor rgb="${f.color}"/>
-            <bgColor rgb="${f.color}"/>
-        </patternFill>
+      <patternFill patternType="solid">
+        <fgColor rgb="${f.color}"/>
+        <bgColor rgb="${f.color}"/>
+      </patternFill>
     </fill>`).join("")}
 </fills>`;
 
-  const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
-  const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
+    const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
+    const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
     <border>
-        <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
-        <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
-        <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
-        <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
-        <diagonal/>
+      <left style="${b.left ? "thin" : "none"}">${borderEdge(b.left)}</left>
+      <right style="${b.right ? "thin" : "none"}">${borderEdge(b.right)}</right>
+      <top style="${b.top ? "thin" : "none"}">${borderEdge(b.top)}</top>
+      <bottom style="${b.bottom ? "thin" : "none"}">${borderEdge(b.bottom)}</bottom>
+      <diagonal/>
     </border>`).join("")}
 </borders>`;
 
-  const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
-    const applyAlign = xf.align || xf.wrap;
-    return `
+    const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
+      const applyAlign = xf.align || xf.wrap;
+      return `
     <xf numFmtId="${xf.numFmtId}" fontId="${xf.fontId}" fillId="${xf.fillId}" borderId="${xf.borderId}"
         applyFont="1" applyFill="${xf.fillId ? 1 : 0}" applyBorder="${xf.borderId ? 1 : 0}"
         applyNumberFormat="${xf.numFmtId ? 1 : 0}" applyAlignment="${applyAlign ? 1 : 0}">
-        ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
+      ${applyAlign ? `<alignment${xf.align ? ` horizontal="${xf.align}"` : ""}${xf.wrap ? ` wrapText="1"` : ""} vertical="center"/>` : ""}
     </xf>`;
-  }).join("")}
+    }).join("")}
 </cellXfs>`;
 
-  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    ${numFmtsXml}
-    ${fontsXml}
-    ${fillsXml}
-    ${bordersXml}
-    <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-    ${cellXfsXml}
-    <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+  ${numFmtsXml}
+  ${fontsXml}
+  ${fillsXml}
+  ${bordersXml}
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  ${cellXfsXml}
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
-  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Purchase Order" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
-  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 
-  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`;
 
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml"  ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`;
 
-  const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
-  zip.addFile("_rels/.rels", Buffer.from(rels));
-  zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
-  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
-  zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
-  zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
-  return zip.toBuffer();
+    const zip = new AdmZip();
+    zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
+    zip.addFile("_rels/.rels", Buffer.from(rels));
+    zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
+    zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+    zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
+    zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
+    return zip.toBuffer();
+  };
+
+  return { styleIndexFor, buildZip };
 }
 
-// ─── Route handlers ─────────────────────────────────────────────────────────
+/** Non-tax Excel – 10 columns */
+function buildPoExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
 
-export const getPurchaseOrderReportHtml  = async (req: RequestWithUser, res: Response): Promise<void> => {
+  const header = buildHeader(rows);
+  const totals = computeTotals(rows, header);
+  const COL_COUNT = 10;
+
+  interface XlCell { v: unknown; styleKey: string }
+  type Row = (XlCell | null)[];
+  const rows_: Row[] = [];
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+
+  const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const blank = (): Row => new Array(COL_COUNT).fill(null);
+  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
+  const mergeFull = () =>
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+
+  rows_.push(fullRow(cell(`PURCHASE ORDER${header.cancelled ? " (CANCELLED)" : ""}`, "title")));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `PO No: ${header.doc_no}   Date: ${dateText(header.doc_date)}   Print: ${printDateTime} (${loginId})`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Supplier: ${header.ac_code} ${header.party_name}, ${header.party_address}   TEL: ${header.party_phone}   FAX: ${header.party_fax}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(blank());
+
+  rows_.push([
+    cell("S.No", "header"), cell("Product / Description", "header"),
+    cell("P.Qty", "header"), cell("P.UOM", "header"), cell("L.Qty", "header"), cell("L.UOM", "header"),
+    cell("Unit Price", "header"), cell("Line Value", "header"), cell("Disc Amt", "header"), cell("Net Amt", "header"),
+  ]);
+
+  let sumLine = 0, sumDisc = 0, sumNet = 0;
+  rows.forEach((r, i) => {
+    const line = round2(grossValue(r));
+    const disc = lineDiscOf(r);
+    const net = netOf(r);
+    sumLine += line; sumDisc += disc; sumNet += net;
+
+    rows_.push([
+      cell(i + 1, "data"),
+      cell(`${text(r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`, "data"),
+      cell(num(r.qty_puom ?? r.quantity), "dataNum"),
+      cell(text(r.p_uom), "data"),
+      cell(num(r.qty_luom), "dataNum"),
+      cell(text(r.l_uom), "data"),
+      cell(num(r.unit_price), "dataNum"),
+      cell(line, "dataNum"),
+      cell(disc, "dataNum"),
+      cell(net, "dataNum"),
+    ]);
+  });
+
+  const tRow = rows_.length;
+  const totalLine: Row = blank();
+  totalLine[0] = cell(`Total: ${amountToWords(totals.exclusiveVat, header.curr_code)}`, "groupTotal");
+  totalLine[7] = cell(round2(sumLine), "groupTotalNum");
+  totalLine[8] = cell(round2(sumDisc), "groupTotalNum");
+  totalLine[9] = cell(round2(sumNet), "groupTotalNum");
+  rows_.push(totalLine);
+  merges.push({ s: { r: tRow, c: 0 }, e: { r: tRow, c: 6 } });
+
+  rows_.push(blank());
+
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: Row = blank();
+    arr[0] = cell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = cell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total Quantity", totals.totalQty);
+  addTotal("Total Amount", totals.totalAmount);
+  addTotal("Overall Discount", totals.discount);
+  addTotal("Net Amount", totals.exclusiveVat, true);
+
+  rows_.push(blank());
+  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
+  mergeFull();
+
+  PO_NOTES.forEach((n) => {
+    rows_.push(fullRow(cell(n, "meta")));
+    mergeFull();
+  });
+
+  rows_.push(blank());
+  const sRow = rows_.length;
+  const signRow: Row = blank();
+  signRow[0] = cell("For Supplier — Signature / Date", "meta");
+  signRow[5] = cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta");
+  rows_.push(signRow);
+  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 4 } });
+  merges.push({ s: { r: sRow, c: 5 }, e: { r: sRow, c: COL_COUNT - 1 } });
+
+  const footRow: Row = blank();
+  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
+  rows_.push(footRow);
+
+  const { buildZip } = buildExcelStyles();
+  return buildZip(COL_COUNT, rows_, merges, "Purchase Order");
+}
+
+/** Tax Excel – 13 columns */
+function buildPoTaxExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+
+  const header = buildHeader(rows);
+  const totals = computeTotals(rows, header);
+  const COL_COUNT = 13;
+
+  interface XlCell { v: unknown; styleKey: string }
+  type Row = (XlCell | null)[];
+  const rows_: Row[] = [];
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+
+  const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
+  const blank = (): Row => new Array(COL_COUNT).fill(null);
+  const fullRow = (c: XlCell): Row => [c, ...new Array(COL_COUNT - 1).fill(null)];
+  const mergeFull = () =>
+    merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: COL_COUNT - 1 } });
+
+  rows_.push(fullRow(cell(`PURCHASE ORDER${header.cancelled ? " (CANCELLED)" : ""}`, "title")));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `PO No: ${header.doc_no}   Date: ${dateText(header.doc_date)}   Print: ${printDateTime} (${loginId})`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Supplier: ${header.ac_code} ${header.party_name}, ${header.party_address}   TEL: ${header.party_phone}   FAX: ${header.party_fax}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(fullRow(cell(
+    `Payment Term: ${header.payment_terms || "-"}   Delivery Term / Period: ${header.dlvr_term || "-"}   Remarks: ${header.remarks || "-"}`,
+    "meta"
+  )));
+  mergeFull();
+
+  rows_.push(blank());
+
+  rows_.push([
+    cell("S.No", "header"), cell("Product / Description", "header"),
+    cell("P.Qty", "header"), cell("P.UOM", "header"), cell("L.Qty", "header"), cell("L.UOM", "header"),
+    cell("Unit Price", "header"), cell("Line Value", "header"), cell("Disc Amt", "header"),
+    cell("Net Amt", "header"), cell("TAX%", "header"), cell("TAX Amt", "header"), cell("Grand Total", "header"),
+  ]);
+
+  let sumLine = 0, sumDisc = 0, sumNet = 0, sumVat = 0, sumGrand = 0;
+  rows.forEach((r, i) => {
+    const line = round2(grossValue(r));
+    const disc = lineDiscOf(r);
+    const net = netOf(r);
+    const vatAmt = vatOf(r);
+    const grand = round2(net + vatAmt);
+    sumLine += line; sumDisc += disc; sumNet += net; sumVat += vatAmt; sumGrand += grand;
+
+    rows_.push([
+      cell(i + 1, "data"),
+      cell(`${text(r.prod_name)}${r.det_remarks ? ` — ${text(r.det_remarks)}` : ""}`, "data"),
+      cell(num(r.qty_puom ?? r.quantity), "dataNum"),
+      cell(text(r.p_uom), "data"),
+      cell(num(r.qty_luom), "dataNum"),
+      cell(text(r.l_uom), "data"),
+      cell(num(r.unit_price), "dataNum"),
+      cell(line, "dataNum"),
+      cell(disc, "dataNum"),
+      cell(net, "dataNum"),
+      cell(num(r.tx_compnt_perc_1), "dataNum"),
+      cell(vatAmt, "dataNum"),
+      cell(grand, "dataNum"),
+    ]);
+  });
+
+  const tRow = rows_.length;
+  const totalLine: Row = blank();
+  totalLine[0] = cell(`Total: ${amountToWords(totals.inclusiveVat, header.curr_code)}`, "groupTotal");
+  totalLine[7] = cell(round2(sumLine), "groupTotalNum");
+  totalLine[8] = cell(round2(sumDisc), "groupTotalNum");
+  totalLine[9] = cell(round2(sumNet), "groupTotalNum");
+  totalLine[11] = cell(round2(sumVat), "groupTotalNum");
+  totalLine[12] = cell(round2(sumGrand), "groupTotalNum");
+  rows_.push(totalLine);
+  merges.push({ s: { r: tRow, c: 0 }, e: { r: tRow, c: 6 } });
+
+  rows_.push(blank());
+
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: Row = blank();
+    arr[0] = cell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = cell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total Quantity", totals.totalQty);
+  addTotal("Total Amount", totals.totalAmount);
+  addTotal("Overall Discount", totals.discount);
+  addTotal("Net Amount (Excl. VAT)", totals.exclusiveVat);
+  addTotal("VAT Amount", totals.vat);
+  addTotal("Grand Total", totals.inclusiveVat, true);
+
+  rows_.push(blank());
+  rows_.push(fullRow(cell(`Reference: ${header.ref_no || "as per above"}`, "meta")));
+  mergeFull();
+
+  PO_NOTES.forEach((n) => {
+    rows_.push(fullRow(cell(n, "meta")));
+    mergeFull();
+  });
+
+  rows_.push(blank());
+  const sRow = rows_.length;
+  const signRow: Row = blank();
+  signRow[0] = cell("For Supplier — Signature / Date", "meta");
+  signRow[6] = cell(`For ${header.div_name || "Company"} — Signature / Date`, "meta");
+  rows_.push(signRow);
+  merges.push({ s: { r: sRow, c: 0 }, e: { r: sRow, c: 5 } });
+  merges.push({ s: { r: sRow, c: 6 }, e: { r: sRow, c: COL_COUNT - 1 } });
+
+  const footRow: Row = blank();
+  footRow[COL_COUNT - 1] = cell("Powered by Bayanat Technology", "footer");
+  rows_.push(footRow);
+
+  const { buildZip } = buildExcelStyles();
+  return buildZip(COL_COUNT, rows_, merges, "Purchase Order Tax");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ROUTE HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Purchase Order (no tax) – HTML */
+export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseOrderData(req, params);
@@ -1060,28 +1270,24 @@ export const getPurchaseOrderReportHtml  = async (req: RequestWithUser, res: Res
       return;
     }
 
-    const companyCode =
-      params.company_code ||
-      text(req.user?.company_code) ||
-      text(req.query.company_code) ||
-      "BSG";
-
+    const companyCode = resolveCompanyCode(req, params);
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
-      reportName: REPORT_TITLE,
+      reportName: "Purchase Order",
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = minifyHtml(renderPoBody(rows, params.loginid));
+    const bodyHtml = renderPoBody(rows).replace(/>\s+</g, "><");
 
     const html = buildReportDocument({
-      title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,
+      title: `Purchase Order ${buildHeader(rows).doc_no}`,
       headerHtml,
       bodyHtml,
       footerHtml,
       extraCss: PO_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
+      orientation: "portrait",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1095,6 +1301,7 @@ export const getPurchaseOrderReportHtml  = async (req: RequestWithUser, res: Res
   }
 };
 
+/** Purchase Order (no tax) – Excel */
 export const getPurchaseOrderReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
@@ -1103,13 +1310,81 @@ export const getPurchaseOrderReportExcel = async (req: RequestWithUser, res: Res
       res.status(200).json({ success: false, message: "No data found for this PO." });
       return;
     }
-    const buffer = buildExcelBuffer(rows, params.loginid);
+    const buffer = buildPoExcelBuffer(rows, params.loginid);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="Purchase_Order.xlsx"');
     res.end(buffer);
   } catch (error: any) {
     console.error("Purchase Order Report Excel error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate Excel",
+    });
+  }
+};
+
+/** Purchase Order Tax – HTML */
+export const getPurchaseOrderTaxReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const params = extractParams(req);
+    const rows = await loadPurchaseOrderData(req, params);
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for this PO." });
+      return;
+    }
+
+    const companyCode = resolveCompanyCode(req, params);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "Purchase Order Tax",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPoTaxBody(rows).replace(/>\s+</g, "><");
+
+    const html = buildReportDocument({
+  title: `Purchase Order ${buildHeader(rows).doc_no}`,
+  headerHtml,
+  bodyHtml,
+  footerHtml,
+  extraCss: PO_EXTRA_CSS,
+  autoPrint: false,
+  showPrintButton: true,
+  orientation: "landscape",
+});
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (error: any) {
+    console.error("Purchase Order Tax Report HTML error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
+  }
+
+};
+
+/** Purchase Order Tax – Excel */
+export const getPurchaseOrderTaxReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const params = extractParams(req);
+    const rows = await loadPurchaseOrderData(req, params);
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for this PO." });
+      return;
+    }
+    const buffer = buildPoTaxExcelBuffer(rows, params.loginid);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", 'attachment; filename="Purchase_Order_Tax.xlsx"');
+    res.end(buffer);
+  } catch (error: any) {
+    console.error("Purchase Order Tax Report Excel error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate Excel",
+    });
   }
 };

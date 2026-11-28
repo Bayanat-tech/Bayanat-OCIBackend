@@ -456,8 +456,8 @@ function renderPoBody(rows: ReportRow[]): string {
             <th class="right">Line Value</th>
             <th class="right">Disc Amt</th>
             <th class="right">Net Amt</th>
-            <th class="right">VAT %</th>
-            <th class="right">VAT Amt</th>
+            <th class="right">TAX%</th>
+            <th class="right">TAX Amt</th>
             <th class="right">Grand Total</th>
           </tr>
         </thead>
@@ -565,7 +565,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
     cell("S.No", "header"), cell("Product / Description", "header"),
     cell("P.Qty", "header"), cell("P.UOM", "header"), cell("L.Qty", "header"), cell("L.UOM", "header"),
     cell("Unit Price", "header"), cell("Line Value", "header"), cell("Disc Amt", "header"),
-    cell("Net Amt", "header"), cell("VAT %", "header"), cell("VAT Amt", "header"), cell("Grand Total", "header"),
+    cell("Net Amt", "header"), cell("TAX%", "header"), cell("TAX Amt", "header"), cell("Grand Total", "header"),
   ]);
 
   let sumLine = 0, sumDisc = 0, sumNet = 0, sumVat = 0, sumGrand = 0;

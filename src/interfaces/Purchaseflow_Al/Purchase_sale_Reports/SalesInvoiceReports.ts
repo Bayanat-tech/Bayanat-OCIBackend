@@ -650,7 +650,7 @@ function renderSalesInvoiceTaxBody(
         <th class="right">L.Qty</th><th class="center">L.UOM</th>
         <th class="right">Unit Price</th><th class="right">Line Value</th>
         <th class="right">Disc Amt</th><th class="right">Net Amt</th>
-        <th class="right">VAT %</th><th class="right">VAT Amt</th><th class="right">Grand Total</th>
+        <th class="right">TAX%</th><th class="right">TAX Amt</th><th class="right">Grand Total</th>
       </tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
@@ -1176,7 +1176,7 @@ function buildSalesInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
   rows_.push([xlCell(termsLine(header), "meta"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: COL_COUNT - 1 } });
   rows_.push(new Array(COL_COUNT).fill(null));
-  rows_.push(["S.No","Product / Description","P.Qty","P.UOM","L.Qty","L.UOM","Unit Price","Line Value","Disc Amt","Net Amt","VAT %","VAT Amt","Grand Total"].map(x => xlCell(x,"header")));
+  rows_.push(["S.No","Product / Description","P.Qty","P.UOM","L.Qty","L.UOM","Unit Price","Line Value","Disc Amt","Net Amt","TAX%","TAX Amt","Grand Total"].map(x => xlCell(x,"header")));
   rows.forEach((r, i) => {
     const pQty = r.qty_puom ?? r.quantity;
     const lQty = r.qty_luom ?? r.quantity;
