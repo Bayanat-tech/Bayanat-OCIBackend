@@ -63,6 +63,7 @@ import pamsRoutes from "./src/routes/pams.routes";
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
 import gmHrRoutes from "./src/routes/HR/gmHr.routes";
+import tmsRoutes from "./src/routes/tms/tms.routes";
 //----------------routes-------------
 app.use("/api/files", fileRoutes);
 
@@ -107,6 +108,8 @@ app.use("/api/user", editLangrouter);
 app.use("/api/support", supportRoutes);
 
 app.use("/api/mms", mmsRoutes); 
+
+app.use("/api/tms", tmsRoutes); 
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
