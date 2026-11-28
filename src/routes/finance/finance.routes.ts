@@ -69,6 +69,7 @@ router.use(tenantContextMiddleware);
 
 import { getFinanceDashboardData } from "../../controllers/finance/financeDashboard.controller";
 import { upsertMsAcBankCode } from "../../models/finance/accounts/masters/controller_bank_code";
+import { insUpdHrManReq } from "../../controllers/HR/insUpdHrManReq";
 
 router.post("/dashboard", getFinanceDashboardData);
 router.post("/workspace/dashboard", getFinanceDashboardData);
@@ -228,6 +229,10 @@ router.post(
   router.post(
   "/insUpdHrEmployee",
   insUpdHrEmployee)
+
+    router.post(
+  "/man-req",
+  insUpdHrManReq)
 
   router.post("/UpdHrEmployeeDetail", UpdHrEmployeeDetail)
 
